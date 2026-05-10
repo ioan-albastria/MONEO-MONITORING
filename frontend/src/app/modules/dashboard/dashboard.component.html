@@ -10,6 +10,10 @@
           (change)="selectDashboardById($any($event.target).value)"
         >
           <option value="" [disabled]="ownedDashboards.length > 0">Select dashboard</option>
+          <!-- Transient entry when a public (non-owned) dashboard is active -->
+          <optgroup label="Viewing (public)" *ngIf="selectedDashboard && !isOwnedSelected">
+            <option [value]="selectedDashboard.id">{{ selectedDashboard.name }}</option>
+          </optgroup>
           <optgroup label="My dashboards" *ngIf="ownedDashboards.length">
             <option *ngFor="let d of ownedDashboards; trackBy: trackDashboard" [value]="d.id">
               {{ d.name }}

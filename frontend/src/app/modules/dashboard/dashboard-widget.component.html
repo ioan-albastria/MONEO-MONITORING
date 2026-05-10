@@ -7,18 +7,98 @@
   <!-- Badge slot -->
   <div widgetBadge class="widget-badge">{{ badgeText }}</div>
 
-  <!-- Header action: refresh (always visible, no-op stub) -->
+  <!-- Header action: refresh -->
   <div widgetActions>
-    <button type="button" class="icon-btn" title="Refresh widget" (click)="$event.stopPropagation()">
+    <button type="button" class="icon-btn" title="Refresh widget" (click)="$event.stopPropagation(); reload()">
       <span class="icon icon-muted">refresh</span>
     </button>
   </div>
 
-  <!-- Placeholder body -->
-  <div class="widget-placeholder">
-    <span class="icon widget-placeholder__icon">{{ placeholderIcon }}</span>
-    <div class="widget-placeholder__type">{{ widget.widget_type }}</div>
-    <div class="widget-placeholder__note">chart rendering lands in slice 4</div>
+  <!-- ── Widget body ──────────────────────────────────────────────────── -->
+  <div class="widget-body">
+
+    <!-- Loading spinner -->
+    <div *ngIf="loading" class="widget-state-overlay">
+      <div class="widget-spinner"></div>
+    </div>
+
+    <!-- Error state -->
+    <div *ngIf="!loading && error" class="widget-state-overlay widget-state-overlay--error">
+      <span class="icon">error_outline</span>
+      <div class="widget-state__message">{{ error }}</div>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!loading && !error && !chartType" class="widget-state-overlay widget-state-overlay--empty">
+      <span class="icon">sensors_off</span>
+      <div class="widget-state__message">{{ emptyMessage || 'No data.' }}</div>
+    </div>
+
+    <!-- ApexCharts (line / bar) -->
+    <apx-chart
+      *ngIf="!loading && !error && chartType === 'apex' && chartConfig"
+      class="widget-apex"
+      [series]="chartConfig.series"
+      [chart]="chartConfig.chart"
+      [colors]="chartConfig.colors"
+      [dataLabels]="chartConfig.dataLabels"
+      [stroke]="chartConfig.stroke"
+      [grid]="chartConfig.grid"
+      [xaxis]="chartConfig.xaxis"
+      [yaxis]="chartConfig.yaxis"
+      [legend]="chartConfig.legend"
+      [tooltip]="chartConfig.tooltip"
+      [plotOptions]="chartConfig.plotOptions"
+      [noData]="chartConfig.noData"
+      [fill]="chartConfig.fill"
+    ></apx-chart>
+
+    <!-- Gauge dial -->
+    <div *ngIf="!loading && !error && chartType === 'gauge'" class="widget-gauge">
+      <div class="widget-gauge__dial"
+           [style.--gauge-pct]="gaugePercent"
+           [style.--gauge-color]="gaugeColor">
+        <div class="widget-gauge__inner">
+          <span class="widget-gauge__value">
+            {{ gaugeValue !== null ? gaugeValue.toFixed(1) : '—' }}
+          </span>
+          <span class="widget-gauge__unit">{{ gaugeUnit }}</span>
+        </div>
+      </div>
+      <div class="widget-gauge__range">
+        <span>{{ gaugeMin }}</span>
+        <span>{{ gaugeMax }}</span>
+      </div>
+    </div>
+
+    <!-- Stat card -->
+    <div *ngIf="!loading && !error && chartType === 'stat'" class="widget-stat">
+      <div class="widget-stat__left">
+        <div class="widget-stat__value">
+          {{ statValue !== null ? statValue.toFixed(1) : '—' }}
+          <span class="widget-stat__unit" *ngIf="statUnit">{{ statUnit }}</span>
+        </div>
+        <div class="widget-stat__delta" [attr.data-dir]="statDeltaDir" *ngIf="statDelta !== null">
+          <span class="widget-stat__arrow">
+            {{ statDeltaDir === 'up' ? '▲' : statDeltaDir === 'down' ? '▼' : '▸' }}
+          </span>
+          {{ statDeltaLabel }}
+          <span class="widget-stat__delta-label">vs 1h ago</span>
+        </div>
+      </div>
+      <div class="widget-stat__right" *ngIf="statSparklineConfig">
+        <apx-chart
+          class="widget-stat__sparkline"
+          [series]="statSparklineConfig.series"
+          [chart]="statSparklineConfig.chart"
+          [colors]="statSparklineConfig.colors"
+          [stroke]="statSparklineConfig.stroke"
+          [fill]="statSparklineConfig.fill"
+          [tooltip]="statSparklineConfig.tooltip"
+        ></apx-chart>
+      </div>
+    </div>
+
   </div>
 
   <!-- Chrome bar — left meta -->
@@ -26,7 +106,7 @@
 
   <!-- Chrome bar — right actions -->
   <div widgetChrome class="widget-chrome-actions">
-    <button type="button" class="icon-btn" title="Refresh widget" (click)="$event.stopPropagation()">
+    <button type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
       <span class="icon icon-muted">refresh</span>
     </button>
     <button
@@ -48,4 +128,5 @@
       <span class="icon icon-muted">delete</span>
     </button>
   </div>
+
 </app-widget-shell>

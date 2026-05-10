@@ -34,8 +34,8 @@ export class SensorApiService {
     to: string,
     opts: { aggregated?: boolean; bucket_minutes?: number } = {}
   ) {
-    let params = new HttpParams().set('from', from).set('to', to);
-    sensor_ids.forEach((id) => (params = params.append('sensor_ids', String(id))));
+    let params = new HttpParams().set('from_timestamp', from).set('to_timestamp', to);
+    sensor_ids.forEach((id) => (params = params.append('sensor_id', String(id))));
     if (opts.aggregated) params = params.set('aggregated', 'true');
     if (opts.bucket_minutes) params = params.set('bucket_minutes', String(opts.bucket_minutes));
     return firstValueFrom(this.http.get<AnalyticsResponse>('/api/analytics', { params }));

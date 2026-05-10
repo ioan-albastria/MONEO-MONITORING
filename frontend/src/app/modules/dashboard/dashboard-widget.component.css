@@ -1,3 +1,4 @@
+/* ── Badge ──────────────────────────────────────────────────────────────── */
 .widget-badge {
   font-size: 10px;
   padding: 2px 8px;
@@ -10,32 +11,202 @@
   white-space: nowrap;
 }
 
-.widget-placeholder {
+/* ── Body container ─────────────────────────────────────────────────────── */
+.widget-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+/* ── State overlays (loading / error / empty) ───────────────────────────── */
+.widget-state-overlay {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  gap: 6px;
+  gap: 8px;
+  z-index: 2;
 }
 
-.widget-placeholder__icon {
-  font-size: 32px;
+.widget-state-overlay .icon {
+  font-size: 28px;
   color: var(--color-fg-faint);
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
-.widget-placeholder__type {
+.widget-state__message {
   font-size: 12px;
-  font-weight: 500;
+  color: var(--color-fg-muted);
+  text-align: center;
+  padding: 0 16px;
+}
+
+.widget-state-overlay--error .icon {
+  color: var(--color-danger);
+  opacity: 0.75;
+}
+
+/* ── Loading spinner ────────────────────────────────────────────────────── */
+.widget-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: widget-spin 0.7s linear infinite;
+}
+
+@keyframes widget-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── ApexCharts wrapper ─────────────────────────────────────────────────── */
+.widget-apex {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Gauge ──────────────────────────────────────────────────────────────── */
+.widget-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+}
+
+.widget-gauge__dial {
+  --gauge-pct: 0;
+  --gauge-color: var(--color-brand);
+  --dial-size: min(120px, 80%);
+
+  position: relative;
+  width: var(--dial-size);
+  height: var(--dial-size);
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--gauge-color) calc(var(--gauge-pct) * 1%),
+    var(--color-surface-2) calc(var(--gauge-pct) * 1%)
+  );
+  transition: background 0.4s ease;
+}
+
+.widget-gauge__inner {
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: var(--color-surface-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.widget-gauge__value {
+  font-size: clamp(18px, 3.5vw, 28px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg);
+  line-height: 1;
+}
+
+.widget-gauge__unit {
+  font-size: 11px;
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.widget-gauge__range {
+  display: flex;
+  justify-content: space-between;
+  width: min(120px, 80%);
+  font-size: 10px;
+  color: var(--color-fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Stat card ──────────────────────────────────────────────────────────── */
+.widget-stat {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.widget-stat__left {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.widget-stat__value {
+  font-size: clamp(24px, 5vw, 42px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono, 'JetBrains Mono', 'Fira Mono', monospace);
+  color: var(--color-fg);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.widget-stat__unit {
+  font-size: 0.5em;
+  font-weight: 400;
+  color: var(--color-fg-muted);
+  margin-left: 4px;
+}
+
+.widget-stat__delta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
   color: var(--color-fg-muted);
 }
 
-.widget-placeholder__note {
-  font-size: 11px;
-  color: var(--color-fg-faint);
+.widget-stat__delta[data-dir="up"] { color: var(--color-success); }
+.widget-stat__delta[data-dir="down"] { color: var(--color-danger); }
+
+.widget-stat__arrow {
+  font-size: 10px;
+  line-height: 1;
 }
 
+.widget-stat__delta-label {
+  font-size: 10px;
+  color: var(--color-fg-faint);
+  margin-left: 2px;
+}
+
+.widget-stat__right {
+  flex: 0 0 auto;
+  width: 100px;
+  height: 64px;
+}
+
+.widget-stat__sparkline {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Chrome bar actions ─────────────────────────────────────────────────── */
 .widget-chrome-actions {
   display: flex;
   align-items: center;
