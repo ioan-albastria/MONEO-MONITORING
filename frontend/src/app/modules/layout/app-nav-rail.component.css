@@ -1,0 +1,109 @@
+.nav-rail {
+  position: fixed;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+
+  width: var(--nav-rail-w);
+  transition: width var(--dur-2) var(--ease-out);
+
+  background: color-mix(in oklch, var(--color-surface-1) 75%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--nav-rail-radius);
+  box-shadow: var(--shadow-lev-1);
+  overflow: hidden;
+}
+
+.nav-rail--open {
+  width: var(--nav-rail-expand-w);
+}
+
+.nav-rail__nav {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Shared nav-item base ── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.45rem;
+  border-radius: calc(var(--nav-rail-radius) - 4px);
+  border: none;
+  background: none;
+  color: var(--color-fg-muted);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+  white-space: nowrap;
+}
+
+.nav-item:hover:not(.nav-item--disabled) {
+  background: color-mix(in oklch, var(--color-surface-3) 40%, transparent);
+  color: var(--color-fg);
+}
+
+.nav-item--active {
+  background: color-mix(in oklch, var(--color-surface-3) 40%, transparent);
+  color: var(--color-fg);
+}
+
+.nav-item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Icon box ── */
+.nav-item__icon-box {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--nav-rail-radius) - 6px);
+  background: color-mix(in oklch, var(--color-surface-2) 60%, transparent);
+  transition: background var(--dur-1);
+}
+
+.nav-item:hover:not(.nav-item--disabled) .nav-item__icon-box {
+  background: color-mix(in oklch, var(--color-surface-3) 50%, transparent);
+}
+
+.nav-item__icon {
+  color: var(--color-fg-faint);
+}
+
+.nav-item--active .nav-item__icon,
+.nav-item:hover:not(.nav-item--disabled) .nav-item__icon {
+  color: var(--color-brand);
+}
+
+/* ── Label — hidden when rail is collapsed ── */
+.nav-item__label {
+  opacity: 0;
+  transition: opacity var(--dur-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-rail--open .nav-item__label {
+  opacity: 1;
+}
+
+/* ── Divider ── */
+.nav-rail__divider {
+  height: 1px;
+  background: var(--color-divider);
+  margin: 0.35rem 0;
+  opacity: 0.6;
+}

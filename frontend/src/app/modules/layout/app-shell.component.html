@@ -1,0 +1,17 @@
+<div class="shell">
+  <app-page-header
+    [title]="pageTitle"
+    [subtitle]="pageSubtitle"
+    [stats]="pageStats"
+    [userName]="userName"
+    (toggleTheme)="ui.toggleTheme()"
+    (toggleDensity)="ui.toggleDensity()"
+  ></app-page-header>
+
+  <div class="app-body">
+    <app-nav-rail></app-nav-rail>
+    <main class="app-main">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

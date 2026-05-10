@@ -1,0 +1,143 @@
+.page-header {
+  height: var(--app-header-h);
+  padding: 0 var(--page-pad);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.page-header__inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-surface-1) 70%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-lev-0);
+}
+
+/* ── Left ── */
+.page-header__left {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-header__tenant {
+  font-size: 0.68rem;
+  color: var(--color-fg-faint);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+.page-header__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.page-header__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-header__subtitle {
+  font-size: 0.75rem;
+  color: var(--color-fg-muted);
+}
+
+.page-header__stat-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-brand) 15%, transparent);
+  font-size: 0.68rem;
+  color: var(--color-fg-faint);
+}
+
+/* ── Actions ── */
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.page-header__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: var(--h-control);
+  padding: 0 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-surface-2) 50%, transparent);
+  color: var(--color-fg-muted);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+
+.page-header__btn:hover {
+  background: color-mix(in oklch, var(--color-surface-3) 40%, transparent);
+  color: var(--color-fg);
+}
+
+.page-header__btn-label {
+  font-size: 0.72rem;
+}
+
+/* ── User pill ── */
+.page-header__user-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--h-control);
+  padding: 0 0.6rem 0 0.4rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-surface-2) 50%, transparent);
+  cursor: pointer;
+  transition: background var(--dur-1);
+  font-family: var(--font-sans);
+}
+
+.page-header__user-pill:hover {
+  background: color-mix(in oklch, var(--color-surface-3) 40%, transparent);
+}
+
+.page-header__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.page-header__username {
+  font-size: 0.82rem;
+  color: var(--color-fg-muted);
+}
+
+.page-header__caret {
+  font-size: 0.65rem;
+  color: var(--color-fg-faint);
+}

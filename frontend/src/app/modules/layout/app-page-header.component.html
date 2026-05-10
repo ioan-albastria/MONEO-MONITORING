@@ -1,0 +1,48 @@
+<header class="page-header">
+  <div class="page-header__inner">
+
+    <!-- Left: title block -->
+    <div class="page-header__left">
+      <div class="page-header__tenant">{{ tenantName }}</div>
+      <div class="page-header__title-row">
+        <h1 class="page-header__title">{{ title }}</h1>
+        <span *ngIf="subtitle" class="page-header__subtitle">{{ subtitle }}</span>
+        <span
+          *ngFor="let stat of stats"
+          class="page-header__stat-badge"
+        >{{ stat }}</span>
+      </div>
+    </div>
+
+    <!-- Right: controls -->
+    <div class="page-header__actions">
+      <button
+        type="button"
+        class="page-header__btn"
+        (click)="toggleDensity.emit()"
+        title="Toggle density"
+      >
+        <span class="icon icon-muted">density_small</span>
+        <span class="page-header__btn-label">Density</span>
+      </button>
+
+      <button
+        type="button"
+        class="page-header__btn"
+        (click)="toggleTheme.emit()"
+        title="Toggle theme"
+      >
+        <span class="icon icon-muted">brightness_6</span>
+        <span class="page-header__btn-label">Theme</span>
+      </button>
+
+      <!-- User pill -->
+      <button type="button" class="page-header__user-pill" aria-label="User menu">
+        <span class="page-header__avatar">{{ userInitial }}</span>
+        <span class="page-header__username">{{ userName }}</span>
+        <span class="page-header__caret">▾</span>
+      </button>
+    </div>
+
+  </div>
+</header>

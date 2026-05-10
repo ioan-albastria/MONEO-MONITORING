@@ -1,0 +1,98 @@
+<div class="login-shell">
+  <div class="login-card">
+
+    <!-- Brand side -->
+    <div class="login-brand">
+      <div class="login-brand__glow login-brand__glow--top"></div>
+      <div class="login-brand__glow login-brand__glow--bottom"></div>
+      <div class="login-brand__content">
+        <div class="login-brand__logo">
+          <div class="login-brand__logo-icon">
+            <span style="font-size:1.2rem;font-weight:700;color:var(--color-brand)">M</span>
+          </div>
+          <div>
+            <p class="login-brand__label">IFM MONEO</p>
+            <p class="login-brand__name">Sensor Dashboard</p>
+          </div>
+        </div>
+        <div class="login-brand__hero">
+          <h1 class="login-brand__headline">Welcome back</h1>
+          <p class="login-brand__copy">
+            Monitor, configure and manage your IFM MONEO sensors from a single,
+            unified dashboard. Log in to access real-time readings and analytics.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form side -->
+    <div class="login-form-side">
+      <div class="login-form-inner">
+        <h2 class="login-form__title">Sign in</h2>
+        <p class="login-form__sub">Use your account credentials to continue.</p>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit($event)" novalidate>
+
+          <div *ngIf="loginError" class="login-form__error-banner">
+            <span class="icon icon-muted" style="color:var(--color-danger)">error</span>
+            {{ loginError }}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="username">Username</label>
+            <input
+              id="username"
+              class="form-input"
+              [class.form-input--error]="form.get('username')?.touched && form.get('username')?.invalid"
+              type="text"
+              formControlName="username"
+              autocomplete="username"
+              placeholder="admin"
+            />
+            <span *ngIf="form.get('username')?.touched && form.get('username')?.invalid" class="form-error-text">
+              Username is required.
+            </span>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="password">Password</label>
+            <div class="form-input-wrap">
+              <input
+                id="password"
+                class="form-input"
+                [class.form-input--error]="form.get('password')?.touched && form.get('password')?.invalid"
+                [type]="showPassword ? 'text' : 'password'"
+                formControlName="password"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="form-input-reveal"
+                (click)="showPassword = !showPassword"
+                tabindex="-1"
+              >{{ showPassword ? 'Hide' : 'Show' }}</button>
+            </div>
+            <span *ngIf="form.get('password')?.touched && form.get('password')?.invalid" class="form-error-text">
+              Password is required.
+            </span>
+          </div>
+
+          <button
+            type="submit"
+            class="btn-login"
+            [disabled]="loading"
+          >
+            <span *ngIf="loading" class="icon" style="animation:spin 0.8s linear infinite">progress_activity</span>
+            <span *ngIf="!loading">Sign in</span>
+          </button>
+
+        </form>
+
+        <p class="login-form__footer-note">
+          Access is restricted. Contact your administrator to request an account.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>

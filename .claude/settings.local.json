@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": ["Bash", "PowerShell"],
+    "deny": []
+  },
+  "commandHistory": {
+    "enabled": true,
+    "maxEntries": 100,
+    "commands": [  
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Work\\\\Albastria\\\\FMC250\\\\fmc250-monitoring\" -Force | Select-Object Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Directory\"}else{\"File\"}}} | Sort-Object Type, Name)",
+      "Bash(ng new *)",
+      "Bash(npm install *)",
+      "Bash(npx ng *)",
+      "Bash(node -e \"const p = require\\('./node_modules/apexcharts/package.json'\\); console.log\\('version:', p.version\\); console.log\\('exports:', JSON.stringify\\(p.exports, null, 2\\)\\)\")",
+      "Bash(node -e \"const p = require\\('./node_modules/ng-apexcharts/package.json'\\); console.log\\('version:', p.version\\); console.log\\('main:', p.main\\); console.log\\('module:', p.module\\); console.log\\('exports:', JSON.stringify\\(p.exports, null, 2\\)\\)\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Work\\\\Albastria\\\\fmc250-monitoring\\\\frontend\\\\src\\\\app\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)",
+      "PowerShell(Test-Path \"C:\\\\Work\\\\Albastria\\\\FMC250\\\\fmc250-monitoring\"; \\(Get-Item \"C:\\\\Work\\\\Albastria\\\\FMC250\\\\fmc250-monitoring\" -Force\\).PSIsContainer)",
+      "PowerShell([System.IO.Directory]::GetFileSystemEntries\\(\"C:\\\\Work\\\\Albastria\\\\FMC250\\\\fmc250-monitoring\"\\) | Select-Object -First 20)",
+      "Bash(Find-Item -Path \"C:\\\\Work\\\\Albastria\\\\FMC250\\\\MONEO-MONITORING\\\\backend\" -Name \"middleware*\" -o -Name \"auth*\")",
+      "Bash(Select-Object -First 10)",
+      "Bash(Get-Content -Path \"C:\\\\Work\\\\Albastria\\\\FMC250\\\\fmc250-monitoring\\\\frontend\\\\src\\\\app\\\\modules\\\\login\\\\login.css\")"
+    ]
+  }
+}

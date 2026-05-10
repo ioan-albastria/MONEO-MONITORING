@@ -1,0 +1,19 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--page-pad);
+  padding-left: calc(var(--nav-rail-w) + 1rem + var(--page-pad));
+  overflow: auto;
+}

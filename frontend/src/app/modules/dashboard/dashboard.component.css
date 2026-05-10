@@ -1,0 +1,50 @@
+.dashboard-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - var(--app-header-h) - 4rem);
+}
+
+.dashboard-placeholder__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2.5rem 3rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-lev-1);
+  text-align: center;
+  max-width: 480px;
+}
+
+.dashboard-placeholder__icon {
+  font-size: 2.5rem;
+  color: var(--color-brand);
+  margin-bottom: 0.25rem;
+}
+
+.dashboard-placeholder__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.dashboard-placeholder__body {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--color-fg-muted);
+}
+
+.dashboard-placeholder__meta {
+  margin-top: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-brand) 12%, var(--color-surface-2));
+  font-size: 0.78rem;
+  color: var(--color-fg-muted);
+}

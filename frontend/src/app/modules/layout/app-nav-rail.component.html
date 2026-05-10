@@ -1,0 +1,70 @@
+<aside
+  class="nav-rail"
+  [class.nav-rail--open]="navOpen"
+  (mouseenter)="navOpen = true"
+  (mouseleave)="navOpen = false"
+  aria-label="Primary navigation"
+>
+  <nav class="nav-rail__nav">
+    <ng-container *ngFor="let item of navItems">
+
+      <!-- Enabled item: real routerLink -->
+      <a
+        *ngIf="item.enabled"
+        [routerLink]="item.route"
+        routerLinkActive="nav-item--active"
+        class="nav-item"
+      >
+        <span class="nav-item__icon-box">
+          <span class="icon nav-item__icon" routerLinkActive="icon-active">{{ item.icon }}</span>
+        </span>
+        <span class="nav-item__label">{{ item.label }}</span>
+      </a>
+
+      <!-- Disabled item: button, aria-disabled -->
+      <button
+        *ngIf="!item.enabled"
+        type="button"
+        class="nav-item nav-item--disabled"
+        aria-disabled="true"
+        [title]="item.label + ' — Coming soon'"
+      >
+        <span class="nav-item__icon-box">
+          <span class="icon nav-item__icon">{{ item.icon }}</span>
+        </span>
+        <span class="nav-item__label">{{ item.label }}</span>
+      </button>
+
+    </ng-container>
+
+    <div class="nav-rail__divider"></div>
+
+    <button
+      type="button"
+      class="nav-item"
+      (click)="ui.toggleDensity()"
+      [title]="'Density: ' + ui.getCurrentDensity()"
+    >
+      <span class="nav-item__icon-box">
+        <span class="icon nav-item__icon">density_small</span>
+      </span>
+      <span class="nav-item__label">
+        {{ ui.getCurrentDensity() === 'density-compact' ? 'Compact' : 'Comfortable' }}
+      </span>
+    </button>
+
+    <button
+      type="button"
+      class="nav-item"
+      (click)="ui.toggleTheme()"
+      [title]="'Theme: ' + ui.getCurrentTheme()"
+    >
+      <span class="nav-item__icon-box">
+        <span class="icon nav-item__icon">brightness_6</span>
+      </span>
+      <span class="nav-item__label">
+        {{ ui.getCurrentTheme() === 'operational-dark' ? 'Dark' : 'Light' }}
+      </span>
+    </button>
+  </nav>
+</aside>

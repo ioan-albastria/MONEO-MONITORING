@@ -1,0 +1,94 @@
+/* ── Fonts loaded via index.html <link> tags ── */
+
+:root {
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Layout primitives */
+  --app-header-h: 72px;
+  --nav-rail-w: 56px;
+  --nav-rail-expand-w: 224px;
+  --nav-rail-radius: 12px;
+  --page-pad: 1rem;
+  --h-control: 2.5rem;
+  --icon-size: 20px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+
+  /* Motion */
+  --dur-1: 140ms;
+  --dur-2: 200ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Default = Operational Dark (Operational Green) */
+  --color-surface-0: oklch(0.17 0.02 255);
+  --color-surface-1: oklch(0.20 0.02 255);
+  --color-surface-2: oklch(0.24 0.02 255);
+  --color-surface-3: oklch(0.28 0.02 255);
+  --color-fg:        oklch(0.92 0.01 255);
+  --color-fg-muted:  oklch(0.78 0.01 255);
+  --color-fg-faint:  oklch(0.66 0.01 255);
+  --color-border:    oklch(0.34 0.02 255);
+  --color-divider:   oklch(0.28 0.02 255);
+  --color-brand:     oklch(0.72 0.12 165);
+  --color-brand-soft: oklch(0.72 0.12 165 / 0.48);
+  --color-brand-muted: oklch(0.60 0.08 165);
+  --color-success:   oklch(0.70 0.12 155);
+  --color-warning:   oklch(0.78 0.14  85);
+  --color-danger:    oklch(0.62 0.16  30);
+  --color-info:      oklch(0.72 0.10 220);
+
+  /* Shadows */
+  --shadow-lev-0: 0 0 0 1px color-mix(in oklch, var(--color-border) 50%, transparent);
+  --shadow-lev-1: 0 1px 1px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.18);
+  --shadow-lev-2: 0 2px 4px rgba(0,0,0,0.22), 0 8px 16px rgba(0,0,0,0.24);
+}
+
+html.theme-light {
+  --color-surface-0: oklch(0.98 0.005 255);
+  --color-surface-1: oklch(0.96 0.005 255);
+  --color-surface-2: oklch(0.94 0.005 255);
+  --color-surface-3: oklch(0.89 0.01  255);
+  --color-fg:        oklch(0.20 0.01 255);
+  --color-fg-muted:  oklch(0.36 0.01 255);
+  --color-fg-faint:  oklch(0.46 0.01 255);
+  --color-border:    oklch(0.84 0.01 255);
+  --color-divider:   oklch(0.90 0.01 255);
+  --shadow-lev-1:    0 1px 1px rgba(15,23,32,0.06), 0 4px 8px rgba(15,23,32,0.06);
+  --shadow-lev-2:    0 2px 4px rgba(15,23,32,0.08), 0 8px 16px rgba(15,23,32,0.10);
+}
+
+html.density-compact {
+  --app-header-h: 60px;
+  --nav-rail-w: 48px;
+  --nav-rail-expand-w: 188px;
+  --nav-rail-radius: 10px;
+  --page-pad: 0.5rem;
+  --h-control: 2.25rem;
+  --icon-size: 18px;
+}
+
+html, body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-surface-0);
+  color: var(--color-fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.icon {
+  font-family: 'Material Symbols Sharp';
+  font-weight: 500;
+  font-size: var(--icon-size);
+  line-height: 1;
+  user-select: none;
+}
+.icon-muted  { color: var(--color-fg-faint); }
+.icon-active { color: var(--color-brand); }
+
+* { box-sizing: border-box; }
