@@ -10,10 +10,12 @@ import {
   Output,
   SimpleChanges,
 } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { DashboardWidget } from '../../types/dashboard';
 import { WidgetSettings } from '../../types/widget';
 import { WidgetTone } from '../widgets/app-widgets-shell.component';
 import { SensorApiService } from '../../core/sensors/sensor-api.service';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AnalyticsResponse } from '../../types/analytics';
 import { SensorReading, SensorTimeSeriesData } from '../../types/sensor';
 
@@ -61,9 +63,11 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   private latestReading: SensorReading | null = null;
   private latestReadings: SensorTimeSeriesData | null = null;
   private themeObserver: MutationObserver | null = null;
+  private realtimeSub: Subscription | null = null;
 
   constructor(
     private readonly sensorApi: SensorApiService,
+    private readonly realtime: RealtimeService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
@@ -85,6 +89,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.themeObserver?.disconnect();
+    this.stopRealtime();
   }
 
   // ── Public getters ─────────────────────────────────────────────────────
@@ -136,6 +141,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   // ── Reload ─────────────────────────────────────────────────────────────
 
   async reload(): Promise<void> {
+    this.stopRealtime();
     const s = this.widget?.settings;
     if (!s?.sensor_ids?.length) {
       this.setEmpty('Configure sensors in widget settings.');
@@ -199,6 +205,11 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.gaugeMin  = s.gauge_min ?? 0;
     this.gaugeMax  = s.gauge_max ?? 100;
     this.applyGauge(reading);
+    this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
+      this.latestReading = live;
+      this.applyGauge(live);
+      this.cdr.markForCheck();
+    });
   }
 
   private async loadStatCard(s: WidgetSettings, version: number): Promise<void> {
@@ -216,6 +227,11 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.latestReadings = readings;
     this.statUnit = sensor.unit ?? '';
     this.applyStatCard(reading, readings);
+    this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
+      this.latestReading = live;
+      this.statValue = live.value;
+      this.cdr.markForCheck();
+    });
   }
 
   // ── Chart builders (called again on theme change without re-fetch) ─────
@@ -386,6 +402,11 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       return { from: from.toISOString(), to: to.toISOString() };
     }
     return { from: s.from!, to: s.to! };
+  }
+
+  private stopRealtime(): void {
+    this.realtimeSub?.unsubscribe();
+    this.realtimeSub = null;
   }
 
   private setEmpty(message: string): void {
