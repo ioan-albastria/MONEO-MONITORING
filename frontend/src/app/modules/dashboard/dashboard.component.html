@@ -1,13 +1,309 @@
-<div class="dashboard-placeholder">
-  <div class="dashboard-placeholder__card">
-    <span class="icon dashboard-placeholder__icon">dashboard</span>
-    <h2 class="dashboard-placeholder__title">Dashboard coming next session</h2>
-    <p class="dashboard-placeholder__body">
-      The app shell, auth, routing, and theme system are wired up.<br>
-      Phases 6, 8–12 (gridster, widgets, charts, realtime) are next.
-    </p>
-    <div class="dashboard-placeholder__meta">
-      Logged in as <strong>{{ auth.currentUser?.username }}</strong>
+<section class="dashboard-page">
+
+  <!-- ─── Toolbar ─────────────────────────────────────────────────────────── -->
+  <div class="dashboard-toolbar">
+    <div class="dashboard-toolbar__group">
+      <!-- Dashboard selector -->
+      <label class="dashboard-toolbar__field">
+        <select
+          class="dashboard-toolbar__select"
+          [value]="selectedDashboardId || ''"
+          (change)="selectDashboardById($any($event.target).value)"
+        >
+          <option value="" [disabled]="ownedDashboards.length > 0">Select dashboard</option>
+          <optgroup label="My dashboards" *ngIf="ownedDashboards.length">
+            <option
+              *ngFor="let d of ownedDashboards; trackBy: trackDashboard"
+              [value]="d.id"
+            >{{ d.name }}</option>
+          </optgroup>
+        </select>
+      </label>
+
+      <!-- New dashboard -->
+      <button
+        type="button"
+        class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
+        (click)="openCreator()"
+        title="New dashboard"
+        aria-label="New dashboard"
+      ><span class="icon" aria-hidden="true">add</span></button>
+
+      <!-- Public catalog -->
+      <button
+        type="button"
+        class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
+        (click)="openPublicCatalog()"
+        title="Public dashboards"
+        aria-label="Public dashboards"
+      ><span class="icon" aria-hidden="true">public</span></button>
+    </div>
+
+    <div class="dashboard-toolbar__group">
+      <!-- Edit dashboard name/desc -->
+      <button
+        type="button"
+        class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
+        (click)="openEditor()"
+        [disabled]="!canEditSelected"
+        title="Edit dashboard"
+        aria-label="Edit dashboard"
+      ><span class="icon" aria-hidden="true">edit</span></button>
+
+      <!-- Add widget (no-op until slice 3) -->
+      <button
+        type="button"
+        class="dashboard-toolbar__btn dashboard-toolbar__btn--accent dashboard-toolbar__btn--icon"
+        (click)="openWidgetCreator()"
+        [disabled]="!canEditSelected"
+        title="Add widget"
+        aria-label="Add widget"
+      ><span class="icon" aria-hidden="true">add_chart</span></button>
+
+      <!-- Delete dashboard -->
+      <button
+        type="button"
+        class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
+        (click)="deleteSelectedDashboard()"
+        [disabled]="!canEditSelected || saving"
+        title="Delete dashboard"
+        aria-label="Delete dashboard"
+      ><span class="icon" aria-hidden="true">delete</span></button>
     </div>
   </div>
-</div>
+
+  <!-- ─── Error banners ────────────────────────────────────────────────────── -->
+  <div class="dashboard-banner dashboard-banner--error" *ngIf="loadError">{{ loadError }}</div>
+  <div class="dashboard-banner dashboard-banner--warning" *ngIf="layoutError">{{ layoutError }}</div>
+
+  <!-- ─── Loading (no dashboard yet) ──────────────────────────────────────── -->
+  <div class="dashboard-loading" *ngIf="loading && !selectedDashboard">
+    <div class="dashboard-loading__card">
+      <span class="icon dashboard-loading__spinner" aria-hidden="true">progress_activity</span>
+      <div>
+        <div class="dashboard-loading__title">Loading dashboards</div>
+        <div class="dashboard-loading__copy">Pulling your saved layouts from the server.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Dashboard selected ───────────────────────────────────────────────── -->
+  <ng-container *ngIf="selectedDashboard as dashboard; else emptyState">
+    <div class="dashboard-grid-shell" [class.dashboard-grid-shell--loading]="loading">
+
+      <!-- Grid placeholder (gridster wired in slice 3) -->
+      <div class="dashboard-grid-placeholder">
+        <!-- widgets rendered here in slice 3 -->
+        <ng-container *ngFor="let widget of dashboard.widgets; trackBy: trackWidget">
+          <app-dashboard-widget
+            [widget]="widget"
+            [editable]="dashboard.is_owned"
+            (configure)="openWidgetEditor(widget)"
+            (remove)="deleteWidget(widget)"
+          ></app-dashboard-widget>
+        </ng-container>
+      </div>
+
+      <!-- Overlay loading spinner while refreshing -->
+      <div class="dashboard-overlay-loading" *ngIf="loading">
+        <div class="dashboard-loading__card">
+          <span class="icon dashboard-loading__spinner" aria-hidden="true">progress_activity</span>
+          <div>
+            <div class="dashboard-loading__title">Refreshing dashboard</div>
+            <div class="dashboard-loading__copy">Syncing widgets from the server.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty-state overlay (8.4) — no widgets yet -->
+      <div class="dashboard-empty-overlay" *ngIf="!dashboard.widgets.length && !loading">
+        <div class="dashboard-empty-overlay__card">
+          <div class="dashboard-empty-overlay__title">Start this dashboard with a widget</div>
+          <div class="dashboard-empty-overlay__copy">
+            Add an operational widget and the layout will persist automatically.
+          </div>
+          <button
+            type="button"
+            class="dashboard-toolbar__btn dashboard-toolbar__btn--accent"
+            (click)="openWidgetCreator()"
+            [disabled]="!dashboard.is_owned"
+          >
+            <span class="icon" aria-hidden="true">add_chart</span>
+            Add first widget
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ─── Empty state: no dashboards (8.4) ────────────────────────────────── -->
+  <ng-template #emptyState>
+    <div class="dashboard-empty-screen" *ngIf="!loading">
+      <div class="dashboard-empty-screen__eyebrow">Dashboards</div>
+      <div class="dashboard-empty-screen__title">No dashboards yet</div>
+      <div class="dashboard-empty-screen__copy">
+        Create a private dashboard for your own view, or browse the public catalog.
+      </div>
+      <div class="dashboard-empty-screen__actions">
+        <button
+          type="button"
+          class="dashboard-toolbar__btn dashboard-toolbar__btn--accent"
+          (click)="openCreator()"
+        >
+          <span class="icon" aria-hidden="true">add</span>
+          Create dashboard
+        </button>
+        <button
+          type="button"
+          class="dashboard-toolbar__btn"
+          (click)="openPublicCatalog()"
+        >
+          <span class="icon" aria-hidden="true">public</span>
+          Browse public dashboards
+        </button>
+      </div>
+    </div>
+  </ng-template>
+
+
+  <!-- ─── Dashboard editor modal (8.5) ────────────────────────────────────── -->
+  <div class="dashboard-modal" *ngIf="editorOpen">
+    <button type="button" class="dashboard-modal__backdrop" (click)="closeEditor()"></button>
+    <section class="dashboard-modal__panel">
+      <header class="dashboard-modal__header">
+        <div>
+          <div class="dashboard-modal__eyebrow">{{ editorMode === 'create' ? 'Create' : 'Edit' }}</div>
+          <div class="dashboard-modal__title">
+            {{ editorMode === 'create' ? 'New dashboard' : 'Update dashboard' }}
+          </div>
+        </div>
+        <button type="button" class="icon-btn" (click)="closeEditor()" title="Close">
+          <span class="icon icon-muted">close</span>
+        </button>
+      </header>
+
+      <div class="dashboard-modal__body">
+        <div class="dashboard-banner dashboard-banner--error" *ngIf="loadError">{{ loadError }}</div>
+
+        <label class="dashboard-form-field">
+          <span class="dashboard-toolbar__label">Name</span>
+          <input
+            class="dashboard-toolbar__input"
+            type="text"
+            [(ngModel)]="dashboardForm.name"
+            placeholder="e.g. Production sensors"
+          />
+        </label>
+
+        <label class="dashboard-form-field">
+          <span class="dashboard-toolbar__label">Description</span>
+          <textarea
+            class="dashboard-toolbar__textarea"
+            [(ngModel)]="dashboardForm.description"
+            placeholder="Optional description"
+          ></textarea>
+        </label>
+
+        <label class="dashboard-form-checkbox">
+          <input type="checkbox" [(ngModel)]="dashboardForm.is_public" />
+          <span>Make this dashboard public</span>
+        </label>
+      </div>
+
+      <footer class="dashboard-modal__footer">
+        <button type="button" class="dashboard-toolbar__btn" (click)="closeEditor()">Cancel</button>
+        <button
+          type="button"
+          class="dashboard-toolbar__btn dashboard-toolbar__btn--accent"
+          (click)="saveDashboard()"
+          [disabled]="saving"
+        >
+          {{ saving ? 'Saving…' : 'Save dashboard' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+
+
+  <!-- ─── Public catalog modal (8.6) ──────────────────────────────────────── -->
+  <div class="dashboard-modal" *ngIf="publicCatalogOpen">
+    <button type="button" class="dashboard-modal__backdrop" (click)="closePublicCatalog()"></button>
+    <section class="dashboard-modal__panel dashboard-modal__panel--wide">
+      <header class="dashboard-modal__header">
+        <div>
+          <div class="dashboard-modal__eyebrow">Shared dashboards</div>
+          <div class="dashboard-modal__title">Public dashboard catalog</div>
+        </div>
+        <button type="button" class="icon-btn" (click)="closePublicCatalog()" title="Close">
+          <span class="icon icon-muted">close</span>
+        </button>
+      </header>
+
+      <div class="dashboard-modal__body">
+        <div class="dashboard-banner dashboard-banner--error" *ngIf="publicError">{{ publicError }}</div>
+
+        <div class="dashboard-widget__state" *ngIf="publicLoading">
+          Loading public dashboards…
+        </div>
+
+        <div class="dashboard-public-list" *ngIf="!publicLoading && publicDashboards.length">
+          <article class="dashboard-public-card" *ngFor="let item of publicDashboards">
+            <div>
+              <div class="dashboard-public-card__title">{{ item.name }}</div>
+              <div class="dashboard-public-card__copy">
+                {{ item.description || 'No description provided.' }}
+              </div>
+              <div class="dashboard-public-card__meta">
+                {{ item.widget_count }} widgets
+                &bull;
+                {{ item.is_owned ? 'Owned by you' : 'Shared dashboard' }}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="dashboard-toolbar__btn"
+              (click)="openPublicDashboard(item.id)"
+            >
+              <span class="icon" aria-hidden="true">open_in_new</span>
+              Open
+            </button>
+          </article>
+        </div>
+
+        <div class="dashboard-widget__state" *ngIf="!publicLoading && !publicDashboards.length">
+          No public dashboards are available yet.
+        </div>
+      </div>
+
+      <footer class="dashboard-modal__footer">
+        <button type="button" class="dashboard-toolbar__btn" (click)="closePublicCatalog()">Close</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <!-- ─── Widget editor modal stub (8.7 — slice 3) ────────────────────────── -->
+  <div class="dashboard-modal" *ngIf="widgetEditorOpen">
+    <button type="button" class="dashboard-modal__backdrop" (click)="closeWidgetEditor()"></button>
+    <section class="dashboard-modal__panel dashboard-modal__panel--wide">
+      <header class="dashboard-modal__header">
+        <div>
+          <div class="dashboard-modal__eyebrow">{{ widgetEditorMode === 'create' ? 'Add widget' : 'Edit widget' }}</div>
+          <div class="dashboard-modal__title">Widget editor — coming in slice 3</div>
+        </div>
+        <button type="button" class="icon-btn" (click)="closeWidgetEditor()" title="Close">
+          <span class="icon icon-muted">close</span>
+        </button>
+      </header>
+      <div class="dashboard-modal__body">
+        <p style="color:var(--color-fg-muted);font-size:13px">
+          Widget type picker, sensor multi-select, and time range controls will be implemented in slice 3.
+        </p>
+      </div>
+      <footer class="dashboard-modal__footer">
+        <button type="button" class="dashboard-toolbar__btn" (click)="closeWidgetEditor()">Close</button>
+      </footer>
+    </section>
+  </div>
+
+</section>
