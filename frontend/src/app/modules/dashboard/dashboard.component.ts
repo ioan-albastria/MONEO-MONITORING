@@ -4,7 +4,15 @@ import {
   OnDestroy,
   OnInit,
 } from '@angular/core';
+import {
+  GridsterConfig,
+  GridsterItem,
+  GridType,
+  CompactType,
+  DisplayGrid,
+} from 'angular-gridster2';
 import { DashboardApiService } from './dashboard-api.service';
+import { SensorApiService } from '../../core/sensors/sensor-api.service';
 import { PageHeaderStateService } from '../../core/ui/page-header-state.service';
 import {
   Dashboard,
@@ -13,9 +21,12 @@ import {
   DashboardUpdate,
   DashboardWidget,
   DashboardWidgetLayoutItem,
+  DashboardWidgetType,
 } from '../../types/dashboard';
+import { DashboardWidgetCreate, DashboardWidgetUpdate, WidgetSettings } from '../../types/widget';
+import { Sensor } from '../../types/sensor';
 
-// --- local form model ---
+// ── Local form models ──────────────────────────────────────────────────────
 
 type DashboardFormModel = {
   name: string;
@@ -23,7 +34,38 @@ type DashboardFormModel = {
   is_public: boolean;
 };
 
-// --- component ---
+type WidgetFormModel = {
+  type: DashboardWidgetType;
+  title: string;
+  subtitle: string;
+  sensorIds: number[];
+  timeMode: 'relative' | 'absolute';
+  timeRangeHours: number;
+  from: string;
+  to: string;
+  gaugeMin: number;
+  gaugeMax: number;
+};
+
+// ── Widget catalog ─────────────────────────────────────────────────────────
+
+interface WidgetCatalogItem {
+  type: DashboardWidgetType;
+  label: string;
+  description: string;
+  defaultCols: number;
+  defaultRows: number;
+  defaultSettings: WidgetSettings;
+}
+
+// ── Grid item ──────────────────────────────────────────────────────────────
+
+interface GridItem {
+  gridsterItem: GridsterItem;
+  widget: DashboardWidget;
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'app-dashboard',
@@ -32,10 +74,12 @@ type DashboardFormModel = {
   styleUrl: './dashboard.component.css',
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+
   private readonly selectedDashboardStorageKey = 'dashboard.selectedId';
   private destroyed = false;
 
-  // --- Phase 8.1 state ---
+  // ── Phase 8.1 state ────────────────────────────────────────────────────
+
   ownedDashboards: DashboardSummary[] = [];
   publicDashboards: DashboardSummary[] = [];
   selectedDashboardId: number | null = null;
@@ -48,26 +92,78 @@ export class DashboardComponent implements OnInit, OnDestroy {
   publicLoading = false;
   saving = false;
 
+  // ── Dashboard editor ───────────────────────────────────────────────────
+
   editorOpen = false;
   editorMode: 'create' | 'edit' = 'create';
-  dashboardForm: DashboardFormModel = this.emptyForm();
+  dashboardForm: DashboardFormModel = this.emptyDashboardForm();
+
+  // ── Public catalog ─────────────────────────────────────────────────────
 
   publicCatalogOpen = false;
 
-  // widget editor — slate 3 no-ops
-  widgetEditorOpen = false;
-  widgetEditorMode: 'create' | 'edit' = 'create';
-  editingWidget: DashboardWidget | null = null;
+  // ── Gridster (Phase 8.3) ───────────────────────────────────────────────
 
   editMode = false;
+  gridItems: GridItem[] = [];
+  gridOptions: GridsterConfig = this.buildGridOptions();
 
   private layoutTimer: ReturnType<typeof setTimeout> | null = null;
   private layoutInFlight = false;
   private layoutQueued = false;
   private suppressLayout = false;
 
+  // ── Widget catalog (Phase 9) ───────────────────────────────────────────
+
+  readonly widgetCatalog: WidgetCatalogItem[] = [
+    {
+      type: 'line_chart',
+      label: 'Line Chart',
+      description: 'Time-series readings for one or more sensors over a window.',
+      defaultCols: 12,
+      defaultRows: 5,
+      defaultSettings: { sensor_ids: [], time_range_hours: 24, aggregated: true, bucket_minutes: 60, show_legend: true },
+    },
+    {
+      type: 'bar_chart',
+      label: 'Bar Chart',
+      description: 'Aggregated values per sensor (avg / min / max in a bucket).',
+      defaultCols: 8,
+      defaultRows: 5,
+      defaultSettings: { sensor_ids: [], time_range_hours: 24, aggregated: true, bucket_minutes: 60 },
+    },
+    {
+      type: 'gauge',
+      label: 'Gauge',
+      description: 'Live circular gauge for the most recent reading of one sensor.',
+      defaultCols: 4,
+      defaultRows: 4,
+      defaultSettings: { sensor_ids: [], gauge_min: 0, gauge_max: 100 },
+    },
+    {
+      type: 'stat_card',
+      label: 'Stat Card',
+      description: 'Single big number with trend label, live-updating.',
+      defaultCols: 4,
+      defaultRows: 3,
+      defaultSettings: { sensor_ids: [] },
+    },
+  ];
+
+  // ── Widget editor (Phase 8.7) ──────────────────────────────────────────
+
+  widgetEditorOpen = false;
+  widgetEditorMode: 'create' | 'edit' = 'create';
+  editingWidget: DashboardWidget | null = null;
+  widgetForm: WidgetFormModel = this.emptyWidgetForm();
+  widgetError: string | null = null;
+  widgetSaving = false;
+  availableSensors: Sensor[] = [];
+  sensorsLoading = false;
+
   constructor(
     private readonly api: DashboardApiService,
+    private readonly sensorApi: SensorApiService,
     private readonly pageHeaderState: PageHeaderStateService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
@@ -82,7 +178,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pageHeaderState.clear();
   }
 
-  // --- computed getters ---
+  // ── Computed ───────────────────────────────────────────────────────────
 
   get canEditSelected(): boolean {
     return !!this.selectedDashboard?.is_owned;
@@ -90,8 +186,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   trackDashboard(_: number, d: DashboardSummary): number { return d.id; }
   trackWidget(_: number, w: DashboardWidget): number { return w.id; }
+  trackGridItem(_: number, gi: GridItem): number { return gi.widget.id; }
 
-  // --- dashboard selection ---
+  // ── Dashboard selection ────────────────────────────────────────────────
 
   async selectDashboardById(rawValue: string | number): Promise<void> {
     const nextId = Number(rawValue);
@@ -99,6 +196,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.selectedDashboardId = null;
       this.selectedDashboard = null;
       this.isOwnedSelected = false;
+      this.gridItems = [];
       this.persistSelectedId(null);
       this.syncPageHeader();
       this.refreshView();
@@ -112,6 +210,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     try {
       this.selectedDashboard = await this.api.getDashboard(nextId);
       this.isOwnedSelected = this.selectedDashboard.is_owned;
+      this.buildGridItems();
       this.syncPageHeader();
       this.refreshView();
     } catch {
@@ -120,11 +219,63 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --- dashboard editor ---
+  // ── Edit mode toggle ───────────────────────────────────────────────────
+
+  toggleEditMode(): void {
+    if (!this.canEditSelected) return;
+    this.editMode = !this.editMode;
+    this.gridOptions = {
+      ...this.gridOptions,
+      draggable: { ...this.gridOptions.draggable, enabled: this.editMode },
+      resizable: { ...this.gridOptions.resizable, enabled: this.editMode },
+    };
+    this.gridOptions.api?.optionsChanged?.();
+    this.refreshView();
+  }
+
+  // ── Layout persistence ─────────────────────────────────────────────────
+
+  queueLayoutPersistence(): void {
+    if (!this.canEditSelected || this.suppressLayout) return;
+    this.layoutQueued = true;
+    if (this.layoutTimer) clearTimeout(this.layoutTimer);
+    this.layoutTimer = setTimeout(() => {
+      this.layoutTimer = null;
+      void this.flushLayout();
+    }, 320);
+  }
+
+  private async flushLayout(): Promise<void> {
+    const d = this.selectedDashboard;
+    if (!d?.is_owned || !this.layoutQueued) return;
+    if (this.layoutInFlight) return;
+
+    this.layoutQueued = false;
+    this.layoutInFlight = true;
+    this.layoutError = null;
+
+    try {
+      const items: DashboardWidgetLayoutItem[] = this.gridItems.map(({ gridsterItem, widget }) => ({
+        id: widget.id,
+        x: gridsterItem['x'] ?? 0,
+        y: gridsterItem['y'] ?? 0,
+        cols: gridsterItem['cols'] ?? 1,
+        rows: gridsterItem['rows'] ?? 1,
+      }));
+      await this.api.saveLayout(d.id, items);
+    } catch (err: unknown) {
+      this.layoutError = err instanceof Error ? err.message : 'Failed to save layout.';
+    } finally {
+      this.layoutInFlight = false;
+      if (this.layoutQueued) void this.flushLayout();
+    }
+  }
+
+  // ── Dashboard editor ───────────────────────────────────────────────────
 
   openCreator(): void {
     this.editorMode = 'create';
-    this.dashboardForm = this.emptyForm();
+    this.dashboardForm = this.emptyDashboardForm();
     this.loadError = null;
     this.editorOpen = true;
   }
@@ -193,7 +344,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --- public catalog ---
+  // ── Public catalog ─────────────────────────────────────────────────────
 
   async openPublicCatalog(): Promise<void> {
     this.publicCatalogOpen = true;
@@ -213,25 +364,99 @@ export class DashboardComponent implements OnInit, OnDestroy {
     await this.selectDashboardById(id);
   }
 
-  // --- widget editor (no-op stubs — slice 3) ---
+  // ── Widget editor ──────────────────────────────────────────────────────
 
   openWidgetCreator(): void {
     if (!this.selectedDashboard?.is_owned) return;
     this.widgetEditorMode = 'create';
     this.editingWidget = null;
+    this.widgetForm = this.emptyWidgetForm();
+    this.widgetError = null;
     this.widgetEditorOpen = true;
+    void this.loadSensors();
   }
 
   openWidgetEditor(widget: DashboardWidget): void {
     if (!this.selectedDashboard?.is_owned) return;
     this.widgetEditorMode = 'edit';
     this.editingWidget = widget;
+    const s = widget.settings ?? {};
+    this.widgetForm = {
+      type: widget.widget_type,
+      title: widget.title ?? '',
+      subtitle: widget.subtitle ?? '',
+      sensorIds: [...(s.sensor_ids ?? [])],
+      timeMode: (s.time_range_hours ?? 0) > 0 ? 'relative' : 'absolute',
+      timeRangeHours: s.time_range_hours ?? 24,
+      from: s.from ?? '',
+      to: s.to ?? '',
+      gaugeMin: s.gauge_min ?? 0,
+      gaugeMax: s.gauge_max ?? 100,
+    };
+    this.widgetError = null;
     this.widgetEditorOpen = true;
+    void this.loadSensors();
   }
 
   closeWidgetEditor(): void {
     this.widgetEditorOpen = false;
     this.editingWidget = null;
+  }
+
+  selectWidgetType(type: DashboardWidgetType): void {
+    this.widgetForm = { ...this.widgetForm, type };
+  }
+
+  async saveWidget(): Promise<void> {
+    if (this.widgetSaving) return;
+
+    if (!this.widgetForm.sensorIds.length) {
+      this.widgetError = 'Select at least one sensor.';
+      return;
+    }
+
+    this.widgetSaving = true;
+    this.widgetError = null;
+
+    try {
+      const d = this.selectedDashboard!;
+      const settings = this.buildWidgetSettings(this.widgetForm);
+
+      if (this.widgetEditorMode === 'create') {
+        const catalog = this.widgetCatalog.find(c => c.type === this.widgetForm.type)!;
+        const nextY = this.computeNextY();
+        const payload: DashboardWidgetCreate = {
+          widget_type: this.widgetForm.type,
+          title: this.widgetForm.title.trim() || undefined,
+          subtitle: this.widgetForm.subtitle.trim() || undefined,
+          x: 0,
+          y: nextY,
+          cols: catalog.defaultCols,
+          rows: catalog.defaultRows,
+          settings,
+        };
+        await this.api.createWidget(d.id, payload);
+      } else {
+        const payload: DashboardWidgetUpdate = {
+          title: this.widgetForm.title.trim() || undefined,
+          subtitle: this.widgetForm.subtitle.trim() || undefined,
+          settings,
+        };
+        await this.api.updateWidget(this.editingWidget!.id, payload);
+      }
+
+      this.widgetEditorOpen = false;
+      this.editingWidget = null;
+      this.selectedDashboard = await this.api.getDashboard(d.id);
+      this.isOwnedSelected = this.selectedDashboard.is_owned;
+      this.buildGridItems();
+      this.syncPageHeader();
+      this.refreshView();
+    } catch (err: unknown) {
+      this.widgetError = err instanceof Error ? err.message : 'Failed to save widget.';
+    } finally {
+      this.widgetSaving = false;
+    }
   }
 
   async deleteWidget(widget: DashboardWidget): Promise<void> {
@@ -244,6 +469,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     try {
       await this.api.deleteWidget(widget.id);
       this.selectedDashboard = await this.api.getDashboard(d.id);
+      this.isOwnedSelected = this.selectedDashboard.is_owned;
+      this.buildGridItems();
       this.syncPageHeader();
       this.refreshView();
     } catch (err: unknown) {
@@ -253,41 +480,78 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --- layout persistence (gridster callbacks — wired in slice 3) ---
+  // ── Private helpers ────────────────────────────────────────────────────
 
-  queueLayoutPersistence(): void {
-    if (!this.canEditSelected || this.suppressLayout) return;
-    this.layoutQueued = true;
-    if (this.layoutTimer) clearTimeout(this.layoutTimer);
-    this.layoutTimer = setTimeout(() => {
-      this.layoutTimer = null;
-      void this.flushLayout();
-    }, 320);
+  private buildGridOptions(): GridsterConfig {
+    return {
+      gridType: GridType.Fixed,
+      fixedColWidth: 64,
+      fixedRowHeight: 64,
+      margin: 12,
+      outerMargin: true,
+      cols: 24,
+      draggable: {
+        enabled: false,
+        ignoreContentClass: 'gridster-item-content',
+        dragHandleClass: 'dashboard-widget-drag-handle',
+      },
+      resizable: { enabled: false },
+      pushItems: true,
+      compactType: CompactType.None,
+      displayGrid: DisplayGrid.None,
+      itemChangeCallback: () => this.queueLayoutPersistence(),
+      itemResizeCallback: () => this.queueLayoutPersistence(),
+    };
   }
 
-  private async flushLayout(): Promise<void> {
-    const d = this.selectedDashboard;
-    if (!d?.is_owned || !this.layoutQueued) return;
-    if (this.layoutInFlight) return;
+  private buildGridItems(): void {
+    this.suppressLayout = true;
+    this.gridItems = (this.selectedDashboard?.widgets ?? []).map(w => ({
+      gridsterItem: { x: w.x, y: w.y, cols: w.cols, rows: w.rows } as GridsterItem,
+      widget: w,
+    }));
+    setTimeout(() => { this.suppressLayout = false; }, 0);
+  }
 
-    this.layoutQueued = false;
-    this.layoutInFlight = true;
-    this.layoutError = null;
+  private computeNextY(): number {
+    if (!this.gridItems.length) return 0;
+    return Math.max(...this.gridItems.map(gi =>
+      (gi.gridsterItem['y'] ?? 0) + (gi.gridsterItem['rows'] ?? 1)
+    ));
+  }
 
+  private buildWidgetSettings(form: WidgetFormModel): WidgetSettings {
+    const s: WidgetSettings = { sensor_ids: [...form.sensorIds] };
+    if (form.timeMode === 'relative') {
+      s.time_range_hours = form.timeRangeHours;
+    } else {
+      s.from = form.from;
+      s.to = form.to;
+    }
+    if (form.type === 'gauge') {
+      s.gauge_min = form.gaugeMin;
+      s.gauge_max = form.gaugeMax;
+    }
+    if (form.type === 'line_chart' || form.type === 'bar_chart') {
+      s.aggregated = true;
+      s.bucket_minutes = 60;
+    }
+    return s;
+  }
+
+  private async loadSensors(): Promise<void> {
+    if (this.availableSensors.length) return;
+    this.sensorsLoading = true;
+    this.refreshView();
     try {
-      const items: DashboardWidgetLayoutItem[] = d.widgets.map((w) => ({
-        id: w.id, x: w.x, y: w.y, cols: w.cols, rows: w.rows,
-      }));
-      await this.api.saveLayout(d.id, items);
-    } catch (err: unknown) {
-      this.layoutError = err instanceof Error ? err.message : 'Failed to save layout.';
+      this.availableSensors = await this.sensorApi.listSensors();
+    } catch {
+      // Non-fatal: sensor list stays empty, user sees empty multi-select
     } finally {
-      this.layoutInFlight = false;
-      if (this.layoutQueued) void this.flushLayout();
+      this.sensorsLoading = false;
+      this.refreshView();
     }
   }
-
-  // --- private helpers ---
 
   private async loadDashboards(preferredId?: number): Promise<void> {
     this.loading = true;
@@ -302,11 +566,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.api.listPublicDashboards(),
       ]);
 
-      this.ownedDashboards = owned.map((d) => ({ ...d, is_owned: true }));
-      const ownedIds = new Set(owned.map((d) => d.id));
-      this.publicDashboards = pub.map((d) => ({ ...d, is_owned: ownedIds.has(d.id) }));
+      this.ownedDashboards = owned.map(d => ({ ...d, is_owned: true }));
+      const ownedIds = new Set(owned.map(d => d.id));
+      this.publicDashboards = pub.map(d => ({ ...d, is_owned: ownedIds.has(d.id) }));
 
-      const allIds = new Set([...owned.map((d) => d.id), ...pub.map((d) => d.id)]);
+      const allIds = new Set([...owned.map(d => d.id), ...pub.map(d => d.id)]);
       const restoredId = preferredId ?? this.restoreSelectedId();
       const nextId = restoredId && allIds.has(restoredId) ? restoredId
         : owned[0]?.id ?? null;
@@ -317,9 +581,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (nextId) {
         this.selectedDashboard = await this.api.getDashboard(nextId);
         this.isOwnedSelected = this.selectedDashboard.is_owned;
+        this.buildGridItems();
       } else {
         this.selectedDashboard = null;
         this.isOwnedSelected = false;
+        this.gridItems = [];
       }
       this.syncPageHeader();
     } catch (err: unknown) {
@@ -329,6 +595,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.selectedDashboard = null;
       this.selectedDashboardId = null;
       this.isOwnedSelected = false;
+      this.gridItems = [];
       this.syncPageHeader();
     } finally {
       this.loading = false;
@@ -343,8 +610,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.refreshView();
     try {
       const pub = await this.api.listPublicDashboards();
-      const ownedIds = new Set(this.ownedDashboards.map((d) => d.id));
-      this.publicDashboards = pub.map((d) => ({ ...d, is_owned: ownedIds.has(d.id) }));
+      const ownedIds = new Set(this.ownedDashboards.map(d => d.id));
+      this.publicDashboards = pub.map(d => ({ ...d, is_owned: ownedIds.has(d.id) }));
     } catch (err: unknown) {
       this.publicError = err instanceof Error ? err.message : 'Failed to load public dashboards.';
     } finally {
@@ -372,8 +639,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private emptyForm(): DashboardFormModel {
+  private emptyDashboardForm(): DashboardFormModel {
     return { name: '', description: '', is_public: false };
+  }
+
+  private emptyWidgetForm(): WidgetFormModel {
+    return {
+      type: 'line_chart',
+      title: '',
+      subtitle: '',
+      sensorIds: [],
+      timeMode: 'relative',
+      timeRangeHours: 24,
+      from: '',
+      to: '',
+      gaugeMin: 0,
+      gaugeMax: 100,
+    };
   }
 
   private restoreSelectedId(): number | null {

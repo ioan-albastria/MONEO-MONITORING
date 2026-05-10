@@ -1,0 +1,51 @@
+<section class="widget-shell" [attr.data-chrome]="chromeMode" [attr.data-tone]="tone">
+
+  <!-- Tone bar -->
+  <div class="widget-shell__tone-bar"></div>
+
+  <!-- Header / drag handle -->
+  <header class="widget-shell__header dashboard-widget-drag-handle">
+    <div class="widget-shell__header-content">
+      <div class="widget-shell__header-left">
+        <div class="widget-shell__title-row">
+          <h3 class="widget-shell__title">{{ title }}</h3>
+          <ng-content select="[widgetBadge]"></ng-content>
+        </div>
+        <p *ngIf="subtitle" class="widget-shell__subtitle">{{ subtitle }}</p>
+      </div>
+      <div class="widget-shell__header-actions gridster-item-content">
+        <ng-content select="[widgetActions]"></ng-content>
+        <button
+          type="button"
+          class="icon-btn"
+          [attr.aria-label]="'Widget controls: ' + chromeMode"
+          (click)="cycleChromeMode()"
+          title="Toggle widget controls"
+        >
+          <span class="icon" [class.icon-muted]="chromeMode === 'off'">nest_wifi_router</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="widget-shell__body">
+    <ng-content></ng-content>
+  </div>
+
+  <!-- Chrome bar (hover overlay) -->
+  <div class="widget-shell__chrome-bar">
+    <div class="widget-shell__chrome-inner">
+      <div class="widget-shell__meta">
+        <ng-content select="[widgetMeta]"></ng-content>
+      </div>
+      <div class="widget-shell__chrome-actions gridster-item-content">
+        <ng-content select="[widgetChrome]"></ng-content>
+        <button type="button" class="icon-btn" title="Hide controls" (click)="chromeMode = 'off'">
+          <span class="icon icon-muted">visibility_off</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

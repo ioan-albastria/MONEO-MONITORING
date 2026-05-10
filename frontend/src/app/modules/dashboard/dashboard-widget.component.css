@@ -1,10 +1,50 @@
-.widget-stub {
+.widget-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-surface-1) 70%, transparent);
+  color: var(--color-fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.widget-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   height: 100%;
+  gap: 6px;
+}
+
+.widget-placeholder__icon {
+  font-size: 32px;
   color: var(--color-fg-faint);
+  opacity: 0.4;
+}
+
+.widget-placeholder__type {
   font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fg-muted);
+}
+
+.widget-placeholder__note {
+  font-size: 11px;
+  color: var(--color-fg-faint);
+}
+
+.widget-chrome-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dashboard-widget__chrome-separator {
+  width: 1px;
+  height: 14px;
+  background: var(--color-border);
+  margin: 0 2px;
 }

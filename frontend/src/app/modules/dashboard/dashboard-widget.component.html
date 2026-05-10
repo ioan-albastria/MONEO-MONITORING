@@ -1,4 +1,51 @@
-<div class="widget-stub">
-  <span class="icon">widgets</span>
-  <span class="widget-stub__type">{{ widget.widget_type }}</span>
-</div>
+<app-widget-shell
+  style="display:block;height:100%"
+  [title]="title"
+  [subtitle]="subtitle"
+  [tone]="tone"
+>
+  <!-- Badge slot -->
+  <div widgetBadge class="widget-badge">{{ badgeText }}</div>
+
+  <!-- Header action: refresh (always visible, no-op stub) -->
+  <div widgetActions>
+    <button type="button" class="icon-btn" title="Refresh widget" (click)="$event.stopPropagation()">
+      <span class="icon icon-muted">refresh</span>
+    </button>
+  </div>
+
+  <!-- Placeholder body -->
+  <div class="widget-placeholder">
+    <span class="icon widget-placeholder__icon">{{ placeholderIcon }}</span>
+    <div class="widget-placeholder__type">{{ widget.widget_type }}</div>
+    <div class="widget-placeholder__note">chart rendering lands in slice 4</div>
+  </div>
+
+  <!-- Chrome bar — left meta -->
+  <div widgetMeta>{{ metaText }}</div>
+
+  <!-- Chrome bar — right actions -->
+  <div widgetChrome class="widget-chrome-actions">
+    <button type="button" class="icon-btn" title="Refresh widget" (click)="$event.stopPropagation()">
+      <span class="icon icon-muted">refresh</span>
+    </button>
+    <button
+      type="button"
+      class="icon-btn"
+      title="Configure widget"
+      (click)="configure.emit()"
+      [disabled]="!editable"
+    >
+      <span class="icon icon-muted">tune</span>
+    </button>
+    <button
+      type="button"
+      class="icon-btn"
+      title="Remove widget"
+      (click)="remove.emit()"
+      [disabled]="!editable"
+    >
+      <span class="icon icon-muted">delete</span>
+    </button>
+  </div>
+</app-widget-shell>

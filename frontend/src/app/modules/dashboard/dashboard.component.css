@@ -417,6 +417,193 @@
   color: var(--color-fg-muted);
 }
 
+/* ── Active edit button state ── */
+.dashboard-toolbar__btn--active {
+  background: color-mix(in oklch, var(--color-brand) 18%, var(--color-surface-1));
+  color: var(--color-brand);
+  border-color: color-mix(in oklch, var(--color-brand) 30%, var(--color-border));
+}
+
+/* ── Gridster ── */
+.dashboard-gridster {
+  width: 100% !important;
+  min-height: 100%;
+  background: transparent !important;
+}
+
+/* Give gridster items their height from the grid cell */
+gridster-item {
+  overflow: hidden;
+}
+
+/* Edit mode: highlight grid shell with a brand tint border */
+.dashboard-grid-shell--edit {
+  border-color: color-mix(in oklch, var(--color-brand) 32%, var(--color-border));
+}
+
+/* Edit mode banner */
+.dashboard-edit-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-brand);
+  background: color-mix(in oklch, var(--color-brand) 8%, var(--color-surface-1));
+  border-bottom: 1px solid color-mix(in oklch, var(--color-brand) 20%, var(--color-border));
+}
+
+/* ── Widget editor modal ── */
+.dashboard-modal__panel--xl {
+  width: min(920px, calc(100vw - 24px));
+}
+
+.dashboard-modal__body--scroll {
+  overflow-y: auto;
+}
+
+.widget-editor-section {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+  background: color-mix(in oklch, var(--color-surface-0) 52%, transparent);
+}
+
+.widget-editor-section__eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-fg-faint);
+}
+
+.widget-editor-section__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widget-editor-section__required {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-fg-faint);
+}
+
+/* 2-col picker grid */
+.widget-picker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.widget-picker-card {
+  position: relative;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+  background: color-mix(in oklch, var(--color-surface-1) 60%, transparent);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.widget-picker-card:hover {
+  border-color: color-mix(in oklch, var(--color-brand) 28%, var(--color-border));
+  background: color-mix(in oklch, var(--color-surface-2) 72%, transparent);
+}
+
+.widget-picker-card--selected {
+  border-color: color-mix(in oklch, var(--color-brand) 52%, var(--color-border));
+  background: color-mix(in oklch, var(--color-brand) 10%, var(--color-surface-1));
+}
+
+.widget-picker-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.widget-picker-card__desc {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-fg-muted);
+}
+
+.widget-picker-card__pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-brand) 18%, var(--color-surface-1));
+  color: var(--color-brand);
+  border: 1px solid color-mix(in oklch, var(--color-brand) 28%, transparent);
+}
+
+/* Multi-select */
+.dashboard-toolbar__select--multi {
+  min-height: 160px;
+  padding: 6px;
+  font-size: 13px;
+}
+
+.dashboard-toolbar__select--multi option {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* Time range toggle */
+.widget-editor-time-toggle {
+  display: flex;
+  gap: 16px;
+}
+
+.widget-editor-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+}
+
+/* Form row (two columns) */
+.widget-editor-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboard-form-field--flex {
+  flex: 1;
+  min-width: 160px;
+}
+
+.dashboard-toolbar__input--sm {
+  width: 100px;
+}
+
+.dashboard-toolbar__label--opt {
+  font-weight: 400;
+  opacity: 0.7;
+  font-size: 10px;
+}
+
+.widget-editor-hint {
+  font-size: 11px;
+  color: var(--color-fg-faint);
+  line-height: 1.4;
+}
+
 /* ── Responsive ── */
 @media (max-width: 960px) {
   .dashboard-public-card {
