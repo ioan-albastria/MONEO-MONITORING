@@ -195,19 +195,33 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   private async loadGauge(s: WidgetSettings, version: number): Promise<void> {
     const sensorId = s.sensor_ids![0];
-    const [reading, sensor] = await Promise.all([
-      this.sensorApi.getLatest(sensorId),
-      this.sensorApi.getSensor(sensorId),
-    ]);
+    const sensor = await this.sensorApi.getSensor(sensorId);
     if (version !== this.loadVersion) return;
-    this.latestReading = reading;
+
     this.gaugeUnit = sensor.unit ?? '';
     this.gaugeMin  = s.gauge_min ?? 0;
     this.gaugeMax  = s.gauge_max ?? 100;
-    this.applyGauge(reading);
+
+    // 404 = no readings yet → empty state, not error
+    let reading: SensorReading | null = null;
+    try {
+      reading = await this.sensorApi.getLatest(sensorId);
+    } catch (err: unknown) {
+      if ((err as any)?.status !== 404) throw err;
+    }
+    if (version !== this.loadVersion) return;
+
+    if (reading) {
+      this.latestReading = reading;
+      this.applyGauge(reading);
+    } else {
+      this.setEmpty('Waiting for first reading…');
+    }
+
+    // Subscribe regardless — live readings will switch empty → gauge
     this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
       this.latestReading = live;
-      this.applyGauge(live);
+      this.applyGauge(live);      // applyGauge sets chartType='gauge', hiding empty overlay
       this.cdr.markForCheck();
     });
   }
@@ -217,16 +231,32 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     const now      = new Date();
     const readFrom = new Date(now.getTime() - 2 * 3600_000);
 
-    const [reading, readings, sensor] = await Promise.all([
-      this.sensorApi.getLatest(sensorId),
+    const [readings, sensor] = await Promise.all([
       this.sensorApi.getReadings(sensorId, readFrom.toISOString(), now.toISOString()),
       this.sensorApi.getSensor(sensorId),
     ]);
     if (version !== this.loadVersion) return;
-    this.latestReading  = reading;
-    this.latestReadings = readings;
+
     this.statUnit = sensor.unit ?? '';
-    this.applyStatCard(reading, readings);
+
+    // 404 = no readings yet → empty state, not error
+    let reading: SensorReading | null = null;
+    try {
+      reading = await this.sensorApi.getLatest(sensorId);
+    } catch (err: unknown) {
+      if ((err as any)?.status !== 404) throw err;
+    }
+    if (version !== this.loadVersion) return;
+
+    if (reading) {
+      this.latestReading  = reading;
+      this.latestReadings = readings;
+      this.applyStatCard(reading, readings);
+    } else {
+      this.setEmpty('Waiting for first reading…');
+    }
+
+    // Subscribe regardless — live readings will switch empty → stat card
     this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
       this.latestReading = live;
       this.statValue = live.value;

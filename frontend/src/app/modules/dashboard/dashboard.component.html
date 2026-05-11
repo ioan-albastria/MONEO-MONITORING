@@ -8,6 +8,7 @@
           class="dashboard-toolbar__select"
           [value]="selectedDashboardId || ''"
           (change)="selectDashboardById($any($event.target).value)"
+          (focus)="onSelectFocus()"
         >
           <option value="" [disabled]="ownedDashboards.length > 0">Select dashboard</option>
           <!-- Transient entry when a public (non-owned) dashboard is active -->

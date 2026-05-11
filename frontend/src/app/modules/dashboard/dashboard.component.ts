@@ -1,6 +1,7 @@
 import {
   ChangeDetectorRef,
   Component,
+  HostListener,
   OnDestroy,
   OnInit,
 } from '@angular/core';
@@ -14,6 +15,7 @@ import {
 import { DashboardApiService } from './dashboard-api.service';
 import { SensorApiService } from '../../core/sensors/sensor-api.service';
 import { PageHeaderStateService } from '../../core/ui/page-header-state.service';
+import { AuthService } from '../../core/auth/auth.service';
 import {
   Dashboard,
   DashboardCreate,
@@ -77,6 +79,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private readonly selectedDashboardStorageKey = 'dashboard.selectedId';
   private destroyed = false;
+  private lastSelectFocusMs = 0;
 
   // ── Phase 8.1 state ────────────────────────────────────────────────────
 
@@ -166,6 +169,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private readonly sensorApi: SensorApiService,
     private readonly pageHeaderState: PageHeaderStateService,
     private readonly cdr: ChangeDetectorRef,
+    private readonly auth: AuthService,
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -176,6 +180,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroyed = true;
     if (this.layoutTimer) clearTimeout(this.layoutTimer);
     this.pageHeaderState.clear();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.publicCatalogOpen) { this.closePublicCatalog(); return; }
+    if (this.editorOpen) { this.closeEditor(); return; }
+    if (this.widgetEditorOpen) { this.closeWidgetEditor(); return; }
   }
 
   // ── Computed ───────────────────────────────────────────────────────────
@@ -190,6 +201,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Dashboard selection ────────────────────────────────────────────────
 
+  async onSelectFocus(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastSelectFocusMs < 1500) return;
+    this.lastSelectFocusMs = now;
+    try {
+      const owned = await this.api.listDashboards();
+      this.ownedDashboards = owned.map(d => ({ ...d, is_owned: true }));
+      this.refreshView();
+    } catch { /* best-effort refresh */ }
+  }
+
   async selectDashboardById(rawValue: string | number): Promise<void> {
     const nextId = Number(rawValue);
     if (!Number.isFinite(nextId) || nextId <= 0) {
@@ -203,12 +225,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const isKnown = this.ownedDashboards.some(d => d.id === nextId)
+      || this.publicDashboards.some(d => d.id === nextId);
+
+    if (!isKnown) {
+      // Dashboard not yet in any local list (e.g. just created via API in a test).
+      // Refresh the full lists so the <option> appears in the DOM before Angular
+      // re-evaluates [value], preventing the browser from resetting the select.
+      await this.loadDashboards(nextId);
+      return;
+    }
+
     this.selectedDashboardId = nextId;
+    this.selectedDashboard = null;
+    this.isOwnedSelected = false;
+    this.gridItems = [];
     this.persistSelectedId(nextId);
     this.refreshView();
 
     try {
-      this.selectedDashboard = await this.api.getDashboard(nextId);
+      this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(nextId));
       this.isOwnedSelected = this.selectedDashboard.is_owned;
       this.buildGridItems();
       this.syncPageHeader();
@@ -447,7 +483,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       this.widgetEditorOpen = false;
       this.editingWidget = null;
-      this.selectedDashboard = await this.api.getDashboard(d.id);
+      this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(d.id));
       this.isOwnedSelected = this.selectedDashboard.is_owned;
       this.buildGridItems();
       this.syncPageHeader();
@@ -468,7 +504,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadError = null;
     try {
       await this.api.deleteWidget(widget.id);
-      this.selectedDashboard = await this.api.getDashboard(d.id);
+      this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(d.id));
       this.isOwnedSelected = this.selectedDashboard.is_owned;
       this.buildGridItems();
       this.syncPageHeader();
@@ -481,6 +517,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────
+
+  private stampOwnership(dashboard: Dashboard): Dashboard {
+    const uid = this.auth.currentUser?.id;
+    const isOwned = this.ownedDashboards.some(d => d.id === dashboard.id)
+      || (uid != null && String(dashboard.owner_id) === String(uid));
+    return { ...dashboard, is_owned: isOwned || !!dashboard.is_owned };
+  }
 
   private buildGridOptions(): GridsterConfig {
     return {
@@ -579,7 +622,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.persistSelectedId(nextId);
 
       if (nextId) {
-        this.selectedDashboard = await this.api.getDashboard(nextId);
+        this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(nextId));
         this.isOwnedSelected = this.selectedDashboard.is_owned;
         this.buildGridItems();
       } else {
