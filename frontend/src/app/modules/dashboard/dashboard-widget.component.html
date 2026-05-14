@@ -3,6 +3,8 @@
   [title]="title"
   [subtitle]="subtitle"
   [tone]="tone"
+  [status]="widgetStatus"
+  [theme]="currentTheme"
 >
   <!-- Badge slot -->
   <div
@@ -60,7 +62,7 @@
     <!-- Gauge dial -->
     <div *ngIf="!loading && !error && chartType === 'gauge'" class="dashboard-gauge-grid">
       <div class="dashboard-gauge-card__dial"
-           [style.--gauge-pct]="gaugePercent"
+           [style.--gauge-progress]="gaugePercent + '%'"
            [style.--gauge-color]="gaugeColor">
         <div class="dashboard-gauge-card__dial-inner">
           <span class="dashboard-gauge-card__dial-value">

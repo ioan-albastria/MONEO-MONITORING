@@ -13,7 +13,7 @@ import {
 import { Subscription } from 'rxjs';
 import { DashboardWidget } from '../../types/dashboard';
 import { WidgetSettings } from '../../types/widget';
-import { WidgetTone } from '../widgets/app-widgets-shell.component';
+import { WidgetTone, WidgetStatus } from '../widgets/app-widgets-shell.component';
 import { SensorApiService } from '../../core/sensors/sensor-api.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AnalyticsResponse } from '../../types/analytics';
@@ -40,6 +40,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   emptyMessage = '';
   chartType: 'apex' | 'gauge' | 'stat' | null = null;
   chartConfig: any = null;
+  widgetStatus: WidgetStatus = 'ok';
+  currentTheme: 'light' | 'dark' = document.documentElement.classList.contains('theme-light') ? 'light' : 'dark';
 
   // ── Gauge ──────────────────────────────────────────────────────────────
   gaugeValue: number | null = null;
@@ -260,6 +262,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
       this.latestReading = live;
       this.statValue = live.value;
+      this.widgetStatus = this.computeStatus();
       this.cdr.markForCheck();
     });
   }
@@ -350,10 +353,26 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       percent = Math.max(0, Math.min(100,
         ((value - this.gaugeMin) / (this.gaugeMax - this.gaugeMin)) * 100));
     }
-    this.chartType   = 'gauge';
-    this.gaugeValue  = value;
+    this.chartType    = 'gauge';
+    this.gaugeValue   = value;
     this.gaugePercent = Math.round(percent);
-    this.gaugeTone   = percent >= 95 ? 'danger' : percent >= 80 ? 'warning' : 'normal';
+    this.gaugeTone    = percent >= 95 ? 'danger' : percent >= 80 ? 'warning' : 'normal';
+    this.widgetStatus = this.computeStatus();
+  }
+
+  private computeStatus(): WidgetStatus {
+    const type = this.widget.widget_type;
+    // Charts have no live reading stream — always ok
+    if (type === 'line_chart' || type === 'bar_chart') return 'ok';
+    // Guard null/missing timestamp (WS messages may carry null)
+    if (!this.latestReading || !this.latestReading.timestamp) return 'stale';
+    const age = Date.now() - new Date(this.latestReading.timestamp).getTime();
+    if (age > 30_000) return 'stale';
+    if (type === 'gauge') {
+      if (this.gaugePercent >= 95) return 'crit';
+      if (this.gaugePercent >= 80) return 'warn';
+    }
+    return 'ok';
   }
 
   private applyStatCard(reading: SensorReading, readings: SensorTimeSeriesData): void {
@@ -395,6 +414,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       this.statSparklineConfig = null;
     }
 
+    this.widgetStatus = this.computeStatus();
     if (value === null) this.setEmpty('No recent reading available.');
   }
 
@@ -402,6 +422,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   private observeTheme(): void {
     this.themeObserver = new MutationObserver(() => {
+      // Track theme for shell ambient tinting — update before early-return guard
+      this.currentTheme = document.documentElement.classList.contains('theme-light') ? 'light' : 'dark';
       if (!this.widget || this.loading) return;
       switch (this.widget.widget_type) {
         case 'line_chart':
@@ -440,10 +462,11 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private setEmpty(message: string): void {
-    this.loading   = false;
-    this.error     = null;
-    this.chartType = null;
+    this.loading      = false;
+    this.error        = null;
+    this.chartType    = null;
     this.emptyMessage = message;
+    this.widgetStatus = 'stale';
     this.cdr.markForCheck();
   }
 

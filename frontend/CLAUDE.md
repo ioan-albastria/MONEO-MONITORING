@@ -114,13 +114,15 @@ interface WidgetSettings {
 ```
 
 **Shell (chrome wrapper):** `frontend/src/app/modules/widgets/app-widgets-shell.component.ts`
-- Selector: `<app-widget-shell>`; inputs: `title`, `subtitle`, `loading`, `tone`, `chromeMode`
+- Selector: `<app-widget-shell>`; inputs: `title`, `subtitle`, `loading`, `tone`, `chromeMode`, `status: WidgetStatus`, `theme: 'light'|'dark'`
 - `cycleChromeMode()` toggles chrome between `'hover'` and `'off'`
+- **Ambient tinting:** `status` + `theme` drive three CSS custom properties (`--tone-tint`, `--tone-edge`, `--tone-text`) computed in `_computeTokens()`, memoized per `{status, theme}` key. Subtle intensity hard-coded; medium/strong constants kept for future preference UI. Hex palette and alpha ramps are at the top of the TS file.
 
 **Renderer:** `frontend/src/app/modules/dashboard/dashboard-widget.component.ts`
 - Selector: `<app-dashboard-widget>`; required input: `widget: DashboardWidget`; input: `editable`
 - Outputs: `configure` (EventEmitter), `remove` (EventEmitter)
 - Fetches data on init, re-fetches on theme change (MutationObserver on `<html>`)
+- `widgetStatus: WidgetStatus` computed by `computeStatus()` on every data tick; `currentTheme` updated in the same MutationObserver; both passed to shell as inputs.
 
 **Data flow per type:**
 
@@ -203,9 +205,10 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 
 | # | Spec said | Reality | Source |
 |---|---|---|---|
-| 1 | Gauge CSS variable `--gauge-progress` | Component emits `--gauge-pct` and `--gauge-color`; conic-gradient dial does not render correctly | STYLE_PATCH_REPORT.md |
-| 2 | Stat card has layout CSS | Classes `widget-stat`, `widget-stat__value`, `widget-stat__delta` exist in template but no CSS rules match them — content renders unstyled | STYLE_PATCH_REPORT.md |
+| 1 | Gauge CSS variable `--gauge-progress` | **Fixed.** Was emitting `--gauge-pct` (unitless); now emits `--gauge-progress` with `%` unit — conic-gradient dial renders correctly. | ambient-tinting retrofit |
+| 2 | Stat card has layout CSS | **Fixed.** Added `.widget-stat`, `.widget-stat__value`, `.widget-stat__delta` etc. rules to `dashboard-widget.component.css`; `.widget-stat__value` uses `color: var(--tone-text)`. | ambient-tinting retrofit |
 | 3 | WebSocket auth via `?token=<jwt>` query param | **Implemented.** Was missing on both sides; fixed — frontend appends token, backend validates before `accept()` | FRONTEND_REBUILD_INSTRUCTIONS.md |
+| 4 | Ambient status tinting | **Implemented.** `AppWidgetsShellComponent` accepts `status: WidgetStatus` + `theme` inputs; computes `--tone-tint` / `--tone-edge` / `--tone-text` per status. Subtle intensity hard-coded; medium/strong constants in shell TS for future preference UI. No pulse animations. | ambient-tinting retrofit |
 
 ## Gotchas
 
@@ -231,6 +234,8 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 | REST calls for sensor data | `core/sensors/sensor-api.service.ts` |
 | Gauge CSS conic-gradient render | `modules/dashboard/dashboard-widget.component.ts` `applyGauge()` ~line 346 |
 | Stat card sparkline / delta | `modules/dashboard/dashboard-widget.component.ts` `applyStatCard()` ~line 359 |
+| Ambient tinting hex palette + alpha ramps | `modules/widgets/app-widgets-shell.component.ts` — `TONE_HEX`, `TINT_SUBTLE`, `EDGE_ALPHA`, `TEXT_LIGHT/DARK` |
+| Widget status derivation | `modules/dashboard/dashboard-widget.component.ts` `computeStatus()` |
 | Theme/density service | `core/ui/ui-preferences.service.ts` |
 | CSS design tokens (all) | `src/styles.css` `@theme` block |
 | Light-mode colour overrides | `src/styles.css` `:root.theme-light` |

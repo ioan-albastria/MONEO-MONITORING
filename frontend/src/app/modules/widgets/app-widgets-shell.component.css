@@ -1,1 +1,24 @@
-/* styles moved to Tailwind utility classes in template */
+/*
+  Ambient status tinting — three CSS custom properties driven by [style.X] bindings
+  set on <section> from the TS component. background-image layers over Tailwind's
+  bg-surface-2/65 background-color (separate CSS property — no conflict).
+*/
+
+:host section {
+  background-image: linear-gradient(
+    0deg,
+    var(--tone-tint, transparent),
+    var(--tone-tint, transparent)
+  );
+  border-color: var(--tone-edge, var(--color-border));
+  color: var(--tone-text, var(--color-fg));
+  transition:
+    background-image 180ms var(--ease-out, ease),
+    border-color     180ms var(--ease-out, ease),
+    color            180ms var(--ease-out, ease);
+}
+
+/* Restore focus-ring border colour over the tinted default */
+:host section:focus-within {
+  border-color: color-mix(in oklch, var(--color-brand) 25%, var(--color-border));
+}
