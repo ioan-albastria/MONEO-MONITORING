@@ -62,10 +62,10 @@ frontend/src/app/
    - If no token → `router.navigate(['/login'])`.
 5. Guard applied to protected routes in `frontend/src/app/app-routing.module.ts` via `canMatch: [AuthGuard]`.
 
-**Spec deviation:** The rebuild spec requires WebSocket auth via `?token=<jwt>` query param.
-**Neither side implements this.** `RealtimeService.buildStream()` (line 46) constructs the URL
-with no query string; `websocket_routes.py` calls `websocket.accept()` unconditionally with
-no token check. WebSocket connections are completely unauthenticated.
+**WebSocket auth:** Token is appended as `?token=<jwt>` query param (browsers cannot send
+custom headers on WS upgrade). `RealtimeService` reads the token via `auth.getToken()` and
+completes the stream immediately if no token is present. The backend validates the token
+before calling `websocket.accept()` — see `backend/routes/websocket_routes.py`.
 
 ## Dashboard module
 
@@ -205,7 +205,7 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 |---|---|---|---|
 | 1 | Gauge CSS variable `--gauge-progress` | Component emits `--gauge-pct` and `--gauge-color`; conic-gradient dial does not render correctly | STYLE_PATCH_REPORT.md |
 | 2 | Stat card has layout CSS | Classes `widget-stat`, `widget-stat__value`, `widget-stat__delta` exist in template but no CSS rules match them — content renders unstyled | STYLE_PATCH_REPORT.md |
-| 3 | WebSocket auth via `?token=<jwt>` query param | **Not implemented on either side.** Frontend sends no token (`realtime.service.ts:46`); backend accepts all connections unconditionally (`websocket_routes.py:24`) | FRONTEND_REBUILD_INSTRUCTIONS.md |
+| 3 | WebSocket auth via `?token=<jwt>` query param | **Implemented.** Was missing on both sides; fixed — frontend appends token, backend validates before `accept()` | FRONTEND_REBUILD_INSTRUCTIONS.md |
 
 ## Gotchas
 

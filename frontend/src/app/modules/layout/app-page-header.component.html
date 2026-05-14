@@ -1,4 +1,4 @@
-<header class="mx-[var(--page-pad)] h-[var(--app-header-h)] mb-2">
+<header class="relative z-30 mx-[var(--page-pad)] h-[var(--app-header-h)] mb-2">
   <div
     class="w-full rounded-xl border border-border
             bg-surface-1/70 backdrop-blur-md
@@ -75,7 +75,7 @@
         <!-- User menu dropdown -->
         <div
           *ngIf="isMenuOpen"
-          class="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-surface-1 shadow-lg z-9999"
+          class="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-surface-1 shadow-lg z-[9999]"
         >
           <button
             type="button"

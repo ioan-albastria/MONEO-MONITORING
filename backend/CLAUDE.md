@@ -137,7 +137,7 @@ backend/
 ### WebSocket
 | Path | Auth | Purpose |
 |---|---|---|
-| `/ws/sensors/{sensor_id}` | **None** — unauthenticated | Live reading stream — pushes JSON every ~5s; `websocket.accept()` is unconditional (spec required `?token=` param but it was never implemented) |
+| `/ws/sensors/{sensor_id}` | `?token=<jwt>` query param | Live reading stream — pushes JSON every ~5s; token validated before `websocket.accept()`; closes with code 1008 on missing/invalid token |
 
 ## Data model
 

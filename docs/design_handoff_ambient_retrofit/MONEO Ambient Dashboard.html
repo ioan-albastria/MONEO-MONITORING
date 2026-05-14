@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MONEO — Ambient dashboard retrofit</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #f4f5f7;
+    --bg-card:   #ffffff;
+    --bg-chrome: #ffffff;
+    --bg-elev:   #f9fafb;
+    --line:      #e4e6eb;
+    --line-2:    #eceef1;
+    --ink:       #1d2024;
+    --ink-2:     #4b5058;
+    --muted:     #6b7079;
+    --soft:      #8a9099;
+    --accent:    #37c79a;   /* their primary green */
+    --accent-2:  #56b9ff;
+  }
+  html.dark {
+    --bg:        #0e1116;
+    --bg-card:   #181c22;
+    --bg-chrome: #14171c;
+    --bg-elev:   #1f2329;
+    --line:      #262b32;
+    --line-2:    #1f2329;
+    --ink:       #e6e8eb;
+    --ink-2:     #b5bac1;
+    --muted:     #8a9099;
+    --soft:      #6b7079;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    transition: background 240ms ease, color 240ms ease;
+  }
+
+  .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── Top bar ─────────────────────────────────────────────────── */
+  .topbar {
+    height: 52px;
+    background: var(--bg-chrome);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 18px;
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding-right: 14px; border-right: 1px solid var(--line); height: 28px; }
+  .logo {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, #37c79a, #2da37e);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .logo span {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1.5px #37c79a;
+    transform: rotate(45deg);
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-name { font-weight: 700; letter-spacing: -0.01em; font-size: 13.5px; }
+  .brand-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .crumbs .sep { color: var(--soft); }
+  .crumbs .cur { color: var(--ink); font-weight: 600; }
+  .crumbs .caret { font-size: 9px; color: var(--soft); margin-left: 2px; }
+
+  .spacer { flex: 1; }
+
+  .topchip {
+    height: 28px;
+    border: 1px solid var(--line);
+    background: var(--bg-card);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 0 10px;
+    font: inherit; font-size: 12px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .topchip:hover { border-color: var(--soft); }
+  .topchip.primary {
+    background: var(--ink);
+    color: var(--bg-card);
+    border-color: var(--ink);
+  }
+  html.dark .topchip.primary { background: var(--accent); color: #0e1116; border-color: var(--accent); }
+  .topchip.live {
+    color: var(--accent);
+    background: rgba(55,199,154,0.08);
+    border-color: rgba(55,199,154,0.32);
+  }
+  .topchip.live .pulse {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(55,199,154,0.5);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(55,199,154,0.5); }
+    70%  { box-shadow: 0 0 0 6px rgba(55,199,154,0); }
+    100% { box-shadow: 0 0 0 0 rgba(55,199,154,0); }
+  }
+  .iconbtn {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--bg-card);
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .iconbtn:hover { border-color: var(--soft); color: var(--ink); }
+
+  /* ── Canvas ──────────────────────────────────────────────────── */
+  .canvas {
+    flex: 1;
+    padding: 20px 24px 80px;
+    overflow-x: auto;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .legend-strip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 12px;
+    width: max-content;
+    max-width: 100%;
+  }
+  .legend-strip .lg-title {
+    font-weight: 600;
+    color: var(--ink);
+    padding-right: 8px;
+    border-right: 1px solid var(--line);
+    margin-right: 4px;
+  }
+  .legend-strip .lg-note {
+    margin-left: 8px;
+    padding-left: 12px;
+    border-left: 1px solid var(--line);
+    color: var(--muted);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+  }
+  .swatch {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .swatch .sw-bar {
+    width: 2px; height: 16px; border-radius: 1px;
+  }
+  .swatch .sw-label { color: var(--ink-2); }
+
+  /* ── Grid (mimics angular-gridster2 GridType.Fixed 24col × 64px) */
+  .grid {
+    display: grid;
+    gap: 8px;
+    /* sized inline */
+  }
+  .cell { min-width: 0; min-height: 0; display: flex; }
+
+  /* ── Widget shell ────────────────────────────────────────────── */
+  .widget {
+    position: relative;
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 180ms ease, background-color 180ms ease;
+    /* background + border applied inline via --tone-tint / --tone-edge */
+  }
+  .widget .tone-bar {
+    position: absolute;
+    left: 0; top: 8px; bottom: 8px;
+    width: 2px;
+    background: var(--tone-color);
+    border-radius: 0 1px 1px 0;
+    opacity: 0.85;
+  }
+  .widget-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px 6px 16px;
+    position: relative; z-index: 1;
+  }
+  .widget-title {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    min-width: 0;
+    flex: 1;
+  }
+  .widget-title > span:nth-child(2) {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+  .widget-title .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .widget-title .sensor-ids {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    color: var(--soft);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .widget-chrome {
+    display: flex; align-items: center; gap: 4px;
+    opacity: 0;
+    transform: translateX(4px);
+    transition: opacity 140ms ease, transform 140ms ease;
+    pointer-events: none;
+  }
+  .widget-chrome.shown {
+    opacity: 1; transform: none; pointer-events: auto;
+  }
+  .chrome-btn {
+    height: 22px; min-width: 22px;
+    padding: 0 6px;
+    border-radius: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font: inherit; font-size: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .chrome-btn:hover { background: rgba(0,0,0,0.04); color: var(--ink); }
+  html.dark .chrome-btn:hover { background: rgba(255,255,255,0.06); }
+  .chrome-btn.primary {
+    background: var(--ink);
+    color: var(--bg-card);
+    border-color: var(--ink);
+    padding: 0 10px;
+    height: 22px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  html.dark .chrome-btn.primary { background: var(--accent); color: #0e1116; border-color: var(--accent); }
+  .chrome-btn.drag-handle { cursor: grab; letter-spacing: -2px; }
+
+  .widget-body {
+    flex: 1; min-height: 0;
+    padding: 4px 14px 6px 16px;
+    display: flex; flex-direction: column;
+  }
+  .widget-foot {
+    padding: 6px 14px 10px 16px;
+    border-top: 1px solid rgba(0,0,0,0.04);
+    margin-top: 4px;
+  }
+  html.dark .widget-foot { border-top-color: rgba(255,255,255,0.04); }
+  .legend-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+    font-size: 10.5px;
+    color: var(--ink-2);
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+  .legend-item i {
+    width: 8px; height: 2px; border-radius: 1px;
+  }
+
+  .freshness {
+    position: absolute;
+    bottom: 8px; right: 12px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .freshness .pulse {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .widget-foot ~ .freshness { display: none; }
+
+  /* ── Stat card body ─────────────────────────────────────────── */
+  .stat-body {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+  }
+  .stat-num {
+    display: flex; align-items: baseline; gap: 4px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-top: 2px;
+  }
+  .stat-num .num {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .stat-num .unit {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .stat-meta {
+    display: flex; gap: 8px; align-items: baseline;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .stat-meta .delta { font-weight: 600; }
+  .stat-spark { margin-top: 8px; margin-left: -2px; margin-right: -2px; flex-shrink: 0; }
+
+  /* ── Dev note ───────────────────────────────────────────────── */
+  .devnote {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 20px;
+    font-size: 12.5px;
+  }
+  .dn-head {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .dn-tag {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    background: var(--ink);
+    color: var(--bg-card);
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+  html.dark .dn-tag { background: var(--accent); color: #0e1116; }
+  .dn-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .dn-col h4 {
+    margin: 0 0 6px;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .dn-col pre {
+    background: var(--bg-elev);
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 0;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    overflow: auto;
+    white-space: pre-wrap;
+  }
+  .dn-foot {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .dn-foot code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    background: var(--bg-elev);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  /* Min responsive: allow horizontal scroll of the grid on narrow viewports */
+  @media (max-width: 1400px) {
+    .dn-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React + Babel (pinned per house rules) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="widgets.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

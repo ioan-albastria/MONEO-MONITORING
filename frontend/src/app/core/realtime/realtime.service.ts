@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Observable, share } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
+import { AuthService } from '../auth/auth.service';
 import { SensorReading } from '../../types/sensor';
 
 interface WsMessage {
@@ -13,6 +14,8 @@ interface WsMessage {
 @Injectable({ providedIn: 'root' })
 export class RealtimeService implements OnDestroy {
   private readonly streams = new Map<number, Observable<SensorReading>>();
+
+  constructor(private auth: AuthService) {}
 
   subscribe(sensorId: number): Observable<SensorReading> {
     if (!this.streams.has(sensorId)) {
@@ -27,6 +30,12 @@ export class RealtimeService implements OnDestroy {
 
   private buildStream(sensorId: number): Observable<SensorReading> {
     return new Observable<SensorReading>(subscriber => {
+      const token = this.auth.getToken();
+      if (!token) {
+        subscriber.complete();
+        return;
+      }
+
       let closed = false;
       let delay = 1_000;
       let timer: ReturnType<typeof setTimeout> | null = null;
@@ -43,7 +52,7 @@ export class RealtimeService implements OnDestroy {
         if (closed) return;
         const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         ws = webSocket<WsMessage>({
-          url: `${proto}//${window.location.host}/ws/sensors/${sensorId}`,
+          url: `${proto}//${window.location.host}/ws/sensors/${sensorId}?token=${token}`,
           openObserver: { next: () => { delay = 1_000; } },
         });
         ws.subscribe({

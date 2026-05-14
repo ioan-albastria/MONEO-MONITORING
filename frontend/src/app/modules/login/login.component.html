@@ -1,100 +1,145 @@
-<div class="flex min-h-screen items-center justify-center px-4 bg-surface-0">
-  <div class="panel-card w-full max-w-5xl overflow-hidden grid md:grid-cols-[1.2fr_1fr]">
+<div class="login-page">
 
-    <!-- Brand side -->
-    <div class="relative hidden md:flex flex-col justify-end p-10 bg-linear-to-br from-brand/20 via-surface-0 to-brand-muted/20 overflow-hidden">
-      <div class="pointer-events-none absolute -top-10 -left-10 h-48 w-48 rounded-full bg-brand/30 blur-3xl"></div>
-      <div class="pointer-events-none absolute -bottom-16 -right-10 h-56 w-56 rounded-full bg-brand-muted/25 blur-3xl"></div>
-      <div class="relative z-10 flex flex-col gap-8">
-        <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-1/80 border border-border">
-            <span class="text-brand text-xl font-semibold">M</span>
-          </div>
-          <div>
-            <p class="text-xs uppercase tracking-[0.18em] text-fg-faint">IFM MONEO</p>
-            <p class="text-base font-semibold text-fg">Sensor Dashboard</p>
-          </div>
+  <!-- ── Header bar ─────────────────────────────────────────────── -->
+  <header class="login-header">
+    <div class="login-header__brand">
+      <div class="login-header__logo">
+        <span class="icon" style="font-size:1.25rem;color:var(--color-brand)">sensors</span>
+      </div>
+      <div>
+        <p class="login-header__app-name">IFM MONEO</p>
+        <p class="login-header__app-sub">Sensor Dashboard</p>
+      </div>
+    </div>
+    <div class="login-header__badge">
+      <span class="icon" style="font-size:1rem">lock</span>
+      Restricted access
+    </div>
+  </header>
+
+  <!-- ── Content ────────────────────────────────────────────────── -->
+  <main class="login-content">
+
+    <!-- Left: pitch -->
+    <div class="login-pitch">
+      <span class="login-pitch__tag">
+        <span class="icon" style="font-size:1rem">cloud</span>
+        API / Web
+      </span>
+
+      <div class="login-pitch__copy">
+        <h1 class="login-pitch__headline">
+          Operational access for live sensor monitoring.
+        </h1>
+        <p class="login-pitch__body">
+          Sign in to review sensor readings, configure dashboards, explore
+          time-series analytics, and monitor your IFM MONEO devices in real time.
+        </p>
+      </div>
+
+      <div class="login-features">
+        <div class="login-feature">
+          <span class="icon login-feature__icon">dashboard</span>
+          <p class="login-feature__title">Dashboards</p>
+          <p class="login-feature__desc">Private, public, and shared views</p>
         </div>
-        <div class="space-y-3">
-          <h1 class="text-3xl font-bold tracking-tight text-fg">Welcome back</h1>
-          <p class="text-sm text-fg-muted leading-relaxed">
-            Monitor, configure and manage your IFM MONEO sensors from a single,
-            unified dashboard. Log in to access real-time readings and analytics.
-          </p>
+        <div class="login-feature">
+          <span class="icon login-feature__icon">sensors</span>
+          <p class="login-feature__title">Sensors</p>
+          <p class="login-feature__desc">Live readings and device status</p>
+        </div>
+        <div class="login-feature">
+          <span class="icon login-feature__icon">analytics</span>
+          <p class="login-feature__title">Analytics</p>
+          <p class="login-feature__desc">Time-series and aggregations</p>
         </div>
       </div>
     </div>
 
-    <!-- Form side -->
-    <div class="panel-card-body flex items-center">
-      <div class="w-full space-y-6">
-        <div class="space-y-1">
-          <h2 class="text-2xl font-semibold tracking-tight text-fg">Sign in</h2>
-          <p class="text-sm text-fg-muted">Use your account credentials to continue.</p>
+    <!-- Right: form card -->
+    <div class="login-card">
+
+      <!-- Card header -->
+      <div class="login-card__header">
+        <div class="login-card__title-row">
+          <span class="icon" style="color:var(--color-brand)">login</span>
+          <h2 class="login-card__title">Sign in</h2>
         </div>
+        <p class="login-card__subtitle">Use your MONEO Monitoring account.</p>
+      </div>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit($event)" class="space-y-4" novalidate>
+      <!-- Error banner -->
+      <div *ngIf="loginError" class="login-error">
+        <span class="icon" style="font-size:1rem">error</span>
+        {{ loginError }}
+      </div>
 
-          <div *ngIf="loginError" class="input-error-text flex items-center gap-2 text-center">
-            <span class="icon" style="color:var(--color-danger)">error</span>
-            {{ loginError }}
-          </div>
+      <!-- Form -->
+      <form [formGroup]="form" (ngSubmit)="onSubmit($event)" class="login-form" novalidate>
 
-          <div class="space-y-1.5">
-            <label class="input-label" for="username">Username</label>
+        <!-- Username -->
+        <div class="login-field">
+          <label class="login-field__label" for="username">Username</label>
+          <div class="login-field__input-wrap">
+            <span class="icon login-field__icon-left">person</span>
             <input
               id="username"
-              class="text-input"
-              [class.border-danger]="form.get('username')?.touched && form.get('username')?.invalid"
               type="text"
               formControlName="username"
               autocomplete="username"
-              placeholder="admin"
+              class="login-input login-input--icon-left"
+              [class.login-input--error]="form.get('username')?.touched && form.get('username')?.invalid"
             />
-            <span *ngIf="form.get('username')?.touched && form.get('username')?.invalid" class="input-error-text">
-              Username is required.
-            </span>
           </div>
+          <span *ngIf="form.get('username')?.touched && form.get('username')?.invalid" class="login-field__error">
+            Username is required.
+          </span>
+        </div>
 
-          <div class="space-y-1.5">
-            <label class="input-label" for="password">Password</label>
-            <div class="relative">
-              <input
-                id="password"
-                class="text-input pr-12"
-                [class.border-danger]="form.get('password')?.touched && form.get('password')?.invalid"
-                [type]="showPassword ? 'text' : 'password'"
-                formControlName="password"
-                autocomplete="current-password"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-3 flex items-center text-xs font-medium text-fg-faint hover:text-fg-muted transition"
-                (click)="showPassword = !showPassword"
-                tabindex="-1"
-              >{{ showPassword ? 'Hide' : 'Show' }}</button>
-            </div>
-            <span *ngIf="form.get('password')?.touched && form.get('password')?.invalid" class="input-error-text">
-              Password is required.
-            </span>
+        <!-- Password -->
+        <div class="login-field">
+          <label class="login-field__label" for="password">Password</label>
+          <div class="login-field__input-wrap">
+            <span class="icon login-field__icon-left">key</span>
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="current-password"
+              class="login-input login-input--icon-left login-input--icon-right"
+              [class.login-input--error]="form.get('password')?.touched && form.get('password')?.invalid"
+            />
+            <button
+              type="button"
+              class="login-field__toggle"
+              (click)="showPassword = !showPassword"
+              tabindex="-1"
+            >
+              <span class="icon" style="font-size:1.1rem">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+            </button>
           </div>
+          <span *ngIf="form.get('password')?.touched && form.get('password')?.invalid" class="login-field__error">
+            Password is required.
+          </span>
+        </div>
 
-          <button
-            type="submit"
-            class="btn-primary w-full mt-2"
-            [disabled]="loading"
-          >
-            <span *ngIf="loading" class="icon" style="animation:spin 0.8s linear infinite">progress_activity</span>
-            <span *ngIf="!loading">Sign in</span>
-          </button>
+        <!-- Submit -->
+        <button type="submit" class="login-btn" [disabled]="loading">
+          <span *ngIf="loading" class="icon login-btn__spinner">progress_activity</span>
+          <ng-container *ngIf="!loading">
+            <span class="icon">login</span>
+            Sign in
+          </ng-container>
+        </button>
 
-        </form>
+      </form>
 
-        <p class="text-[0.7rem] text-fg-faint pt-2 text-center">
-          Access is restricted. Contact your administrator to request an account.
-        </p>
+      <!-- Footer note -->
+      <div class="login-card__footer">
+        Access is managed by your system administrator.
       </div>
-    </div>
 
-  </div>
+    </div>
+  </main>
+
 </div>
