@@ -70,4 +70,8 @@ export class AppShellComponent implements OnInit {
       }
     });
   }
+
+  logout(): void {
+    this.auth.logout();
+  }
 }

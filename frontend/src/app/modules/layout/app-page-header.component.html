@@ -1,47 +1,92 @@
-<header class="page-header">
-  <div class="page-header__inner">
+<header class="mx-[var(--page-pad)] h-[var(--app-header-h)] mb-2">
+  <div
+    class="w-full rounded-xl border border-border
+            bg-surface-1/70 backdrop-blur-md
+            shadow-[var(--shadow-header)]
+            px-4 py-2
+            flex items-center gap-3"
+  >
 
     <!-- Left: title block -->
-    <div class="page-header__left">
-      <div class="page-header__tenant">{{ tenantName }}</div>
-      <div class="page-header__title-row">
-        <h1 class="page-header__title">{{ title }}</h1>
-        <span *ngIf="subtitle" class="page-header__subtitle">{{ subtitle }}</span>
+    <div class="min-w-0 flex-1">
+      <div class="hidden sm:inline-flex items-center gap-2 text-xs text-fg-faint mb-0.5">{{ tenantName }}</div>
+      <div class="mt-1 flex items-center gap-2">
+        <h1 class="text-base font-semibold text-fg tracking-[var(--tracking-tight)] truncate">{{ title }}</h1>
+        <span *ngIf="subtitle" class="text-xs text-fg-muted">
+          {{ subtitle }}
+        </span>
         <span
           *ngFor="let stat of stats"
-          class="page-header__stat-badge"
+          class="inline-flex items-center rounded-full border border-border bg-brand/15 px-2 py-0.5 text-[11px] text-fg-faint"
         >{{ stat }}</span>
       </div>
     </div>
 
     <!-- Right: controls -->
-    <div class="page-header__actions">
+    <div class="flex items-center gap-2">
       <button
         type="button"
-        class="page-header__btn"
+        class="h-[var(--h-control-current)] px-3 rounded-xl
+                border border-border bg-surface-2/50
+                hover:bg-surface-3/40 transition
+                text-sm text-fg-muted hover:text-fg
+                flex items-center gap-2"
         (click)="toggleDensity.emit()"
         title="Toggle density"
       >
         <span class="icon icon-muted">density_small</span>
-        <span class="page-header__btn-label">Density</span>
+        <span class="text-xs">Density</span>
       </button>
 
       <button
         type="button"
-        class="page-header__btn"
+        class="h-[var(--h-control-current)] px-3 rounded-xl
+                border border-border bg-surface-2/50
+                hover:bg-surface-3/40 transition
+                text-sm text-fg-muted hover:text-fg
+                flex items-center gap-2"
         (click)="toggleTheme.emit()"
         title="Toggle theme"
       >
         <span class="icon icon-muted">brightness_6</span>
-        <span class="page-header__btn-label">Theme</span>
+        <span class="text-xs">Theme</span>
       </button>
 
       <!-- User pill -->
-      <button type="button" class="page-header__user-pill" aria-label="User menu">
-        <span class="page-header__avatar">{{ userInitial }}</span>
-        <span class="page-header__username">{{ userName }}</span>
-        <span class="page-header__caret">▾</span>
-      </button>
+      <div class="relative user-menu">
+        <button
+          type="button"
+          class="h-[var(--h-control-current)] pl-2 pr-3 rounded-xl
+                  border border-border bg-surface-2/50
+                  hover:bg-surface-3/40 transition
+                  flex items-center gap-2"
+          (click)="toggleMenu()"
+          aria-label="User menu"
+        >
+          <span
+            class="h-7 w-7 rounded-lg bg-brand-soft border border-border
+                    grid place-items-center text-sm text-fg"
+            title="User"
+          >{{ userInitial }}</span>
+          <span class="hidden sm:block text-sm text-fg-muted">{{ userName }}</span>
+          <span class="text-xs text-fg-faint">▾</span>
+        </button>
+
+        <!-- User menu dropdown -->
+        <div
+          *ngIf="isMenuOpen"
+          class="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-surface-1 shadow-lg z-9999"
+        >
+          <button
+            type="button"
+            class="w-full px-4 py-3 text-left text-sm text-fg-muted hover:bg-surface-2/50 hover:text-fg transition rounded-xl"
+            (click)="onLogout()"
+          >
+            <span class="icon icon-muted mr-2">logout</span>
+            Logout
+          </button>
+        </div>
+      </div>
     </div>
 
   </div>

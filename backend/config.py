@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost/moneo_monitoring"
     moneo_api_base_url: str = "https://ifm-ro-sales.w-eu.moneo.ifm/api/platform/v1"
-    moneo_api_key: str = "API+KEY+GOES+HERE"
+    moneo_api_key: str = "E2C7449CCD619EFA23C7B897A7135702129C1287C833C79DE75F7A02CD85EBD9-1"
     jwt_secret_key: str = "changeme"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_hours: int = 24

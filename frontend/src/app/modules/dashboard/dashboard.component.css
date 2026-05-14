@@ -6,14 +6,8 @@
 
 .dashboard-page {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  height: calc(100dvh - var(--app-header-h) - 1.5rem);
-  min-height: 0;
 }
 
-/* ── Shared surface style for toolbar / grid shell / empty screen ── */
 .dashboard-toolbar,
 .dashboard-grid-shell,
 .dashboard-empty-screen {
@@ -25,7 +19,6 @@
   box-shadow: var(--shadow-lev-1);
 }
 
-/* ── Toolbar ── */
 .dashboard-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -121,7 +114,6 @@
   font-size: 18px;
 }
 
-/* ── Banners ── */
 .dashboard-banner {
   padding: 10px 12px;
   border-radius: var(--radius-lg);
@@ -140,54 +132,6 @@
   color: color-mix(in oklch, var(--color-warning) 72%, var(--color-fg));
 }
 
-/* ── Loading card ── */
-.dashboard-loading {
-  display: grid;
-  place-items: center;
-  flex: 1;
-  min-height: 240px;
-  padding: 24px;
-}
-
-.dashboard-loading__card {
-  width: min(460px, 100%);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 14px;
-  border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in oklch, var(--color-brand) 22%, var(--color-border));
-  background:
-    linear-gradient(135deg, color-mix(in oklch, var(--color-brand) 10%, transparent), transparent 58%),
-    color-mix(in oklch, var(--color-surface-1) 88%, transparent);
-  padding: 18px 20px;
-  box-shadow: var(--shadow-lev-2);
-}
-
-.dashboard-loading__spinner {
-  font-size: 28px;
-  color: var(--color-brand);
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.dashboard-loading__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-fg);
-}
-
-.dashboard-loading__copy {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-fg-muted);
-}
-
-/* ── Grid shell ── */
 .dashboard-grid-shell {
   position: relative;
   flex: 1;
@@ -200,26 +144,6 @@
   opacity: 0.72;
 }
 
-/* Placeholder until gridster is wired in slice 3 */
-.dashboard-grid-placeholder {
-  min-height: 100%;
-  padding: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-content: flex-start;
-}
-
-/* Overlay loading inside the grid shell */
-.dashboard-overlay-loading {
-  position: absolute;
-  inset: 18px;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-
-/* ── Empty overlay (no widgets) ── */
 .dashboard-empty-overlay {
   position: absolute;
   inset: 18px;
@@ -254,16 +178,12 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--color-fg-muted);
-  margin-top: 6px;
 }
 
-/* ── Empty screen (no dashboards at all) ── */
 .dashboard-empty-screen {
   display: grid;
   gap: 10px;
   place-items: center;
-  flex: 1;
-  min-height: 240px;
 }
 
 .dashboard-empty-screen__eyebrow,
@@ -282,7 +202,6 @@
   justify-content: center;
 }
 
-/* ── Modal ── */
 .dashboard-modal {
   position: fixed;
   inset: 0;
@@ -298,7 +217,6 @@
   border: 0;
   background: rgba(7, 10, 14, 0.48);
   backdrop-filter: blur(10px);
-  cursor: default;
 }
 
 .dashboard-modal__panel {
@@ -349,7 +267,6 @@
   padding: 16px;
   display: grid;
   gap: 16px;
-  align-content: start;
 }
 
 .dashboard-form-checkbox {
@@ -360,7 +277,6 @@
   color: var(--color-fg-muted);
 }
 
-/* ── Public catalog list ── */
 .dashboard-public-list {
   display: grid;
   gap: 12px;
@@ -392,219 +308,23 @@
   color: var(--color-fg-muted);
 }
 
-/* ── Icon-only close button ── */
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  cursor: pointer;
+:host ::ng-deep gridster.dashboard-grid {
+  display: block;
+  min-width: 1836px;
+  min-height: 100% !important;
+  height: max-content !important;
+  overflow: visible !important;
 }
 
-.icon-btn:hover {
-  background: color-mix(in oklch, var(--color-surface-3) 60%, transparent);
+:host ::ng-deep gridster.dashboard-grid > .gridster,
+:host ::ng-deep gridster.dashboard-grid .gridster-container {
+  min-width: 100% !important;
+  min-height: 100% !important;
+  width: max-content !important;
+  height: max-content !important;
+  overflow: visible !important;
 }
 
-/* ── Widget state message ── */
-.dashboard-widget__state {
-  padding: 24px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--color-fg-muted);
-}
-
-/* ── Active edit button state ── */
-.dashboard-toolbar__btn--active {
-  background: color-mix(in oklch, var(--color-brand) 18%, var(--color-surface-1));
-  color: var(--color-brand);
-  border-color: color-mix(in oklch, var(--color-brand) 30%, var(--color-border));
-}
-
-/* ── Gridster ── */
-.dashboard-gridster {
-  width: 100% !important;
-  min-height: 100%;
-  background: transparent !important;
-}
-
-/* Give gridster items their height from the grid cell */
-gridster-item {
-  overflow: hidden;
-}
-
-/* Edit mode: highlight grid shell with a brand tint border */
-.dashboard-grid-shell--edit {
-  border-color: color-mix(in oklch, var(--color-brand) 32%, var(--color-border));
-}
-
-/* Edit mode banner */
-.dashboard-edit-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  color: var(--color-brand);
-  background: color-mix(in oklch, var(--color-brand) 8%, var(--color-surface-1));
-  border-bottom: 1px solid color-mix(in oklch, var(--color-brand) 20%, var(--color-border));
-}
-
-/* ── Widget editor modal ── */
-.dashboard-modal__panel--xl {
-  width: min(920px, calc(100vw - 24px));
-}
-
-.dashboard-modal__body--scroll {
-  overflow-y: auto;
-}
-
-.widget-editor-section {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
-  background: color-mix(in oklch, var(--color-surface-0) 52%, transparent);
-}
-
-.widget-editor-section__eyebrow {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-fg-faint);
-}
-
-.widget-editor-section__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-fg);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.widget-editor-section__required {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--color-fg-faint);
-}
-
-/* 2-col picker grid */
-.widget-picker-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.widget-picker-card {
-  position: relative;
-  padding: 14px;
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
-  background: color-mix(in oklch, var(--color-surface-1) 60%, transparent);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--dur-2) var(--ease-out),
-    background-color var(--dur-2) var(--ease-out);
-}
-
-.widget-picker-card:hover {
-  border-color: color-mix(in oklch, var(--color-brand) 28%, var(--color-border));
-  background: color-mix(in oklch, var(--color-surface-2) 72%, transparent);
-}
-
-.widget-picker-card--selected {
-  border-color: color-mix(in oklch, var(--color-brand) 52%, var(--color-border));
-  background: color-mix(in oklch, var(--color-brand) 10%, var(--color-surface-1));
-}
-
-.widget-picker-card__label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-fg);
-}
-
-.widget-picker-card__desc {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--color-fg-muted);
-}
-
-.widget-picker-card__pill {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in oklch, var(--color-brand) 18%, var(--color-surface-1));
-  color: var(--color-brand);
-  border: 1px solid color-mix(in oklch, var(--color-brand) 28%, transparent);
-}
-
-/* Multi-select */
-.dashboard-toolbar__select--multi {
-  min-height: 160px;
-  padding: 6px;
-  font-size: 13px;
-}
-
-.dashboard-toolbar__select--multi option {
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-/* Time range toggle */
-.widget-editor-time-toggle {
-  display: flex;
-  gap: 16px;
-}
-
-.widget-editor-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-fg-muted);
-  cursor: pointer;
-}
-
-/* Form row (two columns) */
-.widget-editor-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.dashboard-form-field--flex {
-  flex: 1;
-  min-width: 160px;
-}
-
-.dashboard-toolbar__input--sm {
-  width: 100px;
-}
-
-.dashboard-toolbar__label--opt {
-  font-weight: 400;
-  opacity: 0.7;
-  font-size: 10px;
-}
-
-.widget-editor-hint {
-  font-size: 11px;
-  color: var(--color-fg-faint);
-  line-height: 1.4;
-}
-
-/* ── Responsive ── */
 @media (max-width: 960px) {
   .dashboard-public-card {
     display: grid;

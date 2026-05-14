@@ -17,13 +17,13 @@ test.describe('CHART + CHROME', () => {
 
       const widget = page.locator('app-dashboard-widget').first();
       // Wait for loading to finish
-      await widget.locator('.widget-state-overlay').waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {});
+      await widget.locator('.dashboard-widget__state').waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {});
       await page.waitForTimeout(500);
 
       // Either chart renders OR empty state (no data) — both are valid outcomes, no JS error
       const hasChart = await widget.locator('apx-chart').count() > 0;
-      const hasEmpty = await widget.locator('.widget-state-overlay--empty').count() > 0;
-      const hasError = await widget.locator('.widget-state-overlay--error').count() > 0;
+      const hasEmpty = await widget.locator('.dashboard-widget__state').count() > 0;
+      const hasError = await widget.locator('.dashboard-widget__state--error').count() > 0;
 
       expect(hasError, 'Widget shows error overlay').toBe(false);
       expect(hasChart || hasEmpty, 'Widget shows neither chart nor empty state').toBe(true);
@@ -42,10 +42,10 @@ test.describe('CHART + CHROME', () => {
       await selectDashboard(page, id);
 
       const widget = page.locator('app-dashboard-widget').first();
-      await widget.locator('.widget-state-overlay').waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {});
+      await widget.locator('.dashboard-widget__state').waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {});
       await page.waitForTimeout(500);
 
-      const hasError = await widget.locator('.widget-state-overlay--error').count() > 0;
+      const hasError = await widget.locator('.dashboard-widget__state--error').count() > 0;
       expect(hasError, 'Bar chart widget shows error overlay').toBe(false);
     } finally {
       await dispose();
@@ -64,11 +64,11 @@ test.describe('CHART + CHROME', () => {
       const widget = page.locator('app-dashboard-widget').first();
       await page.waitForTimeout(4_000); // gauge fetches /latest + /sensor
 
-      const hasError = await widget.locator('.widget-state-overlay--error').count() > 0;
+      const hasError = await widget.locator('.dashboard-widget__state--error').count() > 0;
       expect(hasError, 'Gauge widget shows error overlay').toBe(false);
 
-      const hasDial = await widget.locator('.widget-gauge__dial').count() > 0;
-      const hasEmpty = await widget.locator('.widget-state-overlay--empty').count() > 0;
+      const hasDial = await widget.locator('.dashboard-gauge-card__dial').count() > 0;
+      const hasEmpty = await widget.locator('.dashboard-widget__state').count() > 0;
       expect(hasDial || hasEmpty, 'Gauge shows neither dial nor empty state').toBe(true);
     } finally {
       await dispose();
@@ -87,11 +87,11 @@ test.describe('CHART + CHROME', () => {
       const widget = page.locator('app-dashboard-widget').first();
       await page.waitForTimeout(4_000);
 
-      const hasError = await widget.locator('.widget-state-overlay--error').count() > 0;
+      const hasError = await widget.locator('.dashboard-widget__state--error').count() > 0;
       expect(hasError, 'Stat card shows error overlay').toBe(false);
 
       const hasStat  = await widget.locator('.widget-stat__value').count() > 0;
-      const hasEmpty = await widget.locator('.widget-state-overlay--empty').count() > 0;
+      const hasEmpty = await widget.locator('.dashboard-widget__state').count() > 0;
       expect(hasStat || hasEmpty, 'Stat card shows neither value nor empty state').toBe(true);
     } finally {
       await dispose();
@@ -122,7 +122,7 @@ test.describe('CHART + CHROME', () => {
       // Wait for load spinner to disappear
       await page.waitForTimeout(5_000);
 
-      const hasEmpty = await widget.locator('.widget-state-overlay--empty').count() > 0;
+      const hasEmpty = await widget.locator('.dashboard-widget__state').count() > 0;
       const hasChart = await widget.locator('apx-chart').count() > 0;
       // No data → empty state (or possibly chart with noData text)
       expect(hasEmpty || hasChart, 'Widget should show empty state or no-data chart').toBe(true);

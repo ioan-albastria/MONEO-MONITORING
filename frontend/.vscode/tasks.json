@@ -6,6 +6,10 @@
       "type": "npm",
       "script": "start",
       "isBackground": true,
+      "runOptions": {
+              "instanceLimit": 1,
+              "reevaluateOnRerun": true
+          },
       "problemMatcher": {
         "owner": "typescript",
         "pattern": "$tsc",

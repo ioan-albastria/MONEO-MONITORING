@@ -51,7 +51,7 @@ test.describe('EDIT', () => {
       const pencil = page.locator('button[aria-label="Toggle edit mode"]');
       await expect(pencil).not.toBeDisabled({ timeout: 5_000 });
       await pencil.click();
-      await expect(page.locator('.dashboard-edit-banner')).toBeVisible({ timeout: 3_000 });
+      await expect(page.locator('.dashboard-banner')).toBeVisible({ timeout: 3_000 });
       await expect(pencil).toHaveClass(/dashboard-toolbar__btn--active/, { timeout: 3_000 });
     } finally {
       await dispose();
@@ -123,11 +123,11 @@ test.describe('EDIT', () => {
 
       // Enter edit mode
       await pencil.click();
-      await expect(page.locator('.dashboard-edit-banner')).toBeVisible({ timeout: 3_000 });
+      await expect(page.locator('.dashboard-banner')).toBeVisible({ timeout: 3_000 });
 
       // Exit edit mode
       await pencil.click();
-      await expect(page.locator('.dashboard-edit-banner')).not.toBeVisible({ timeout: 3_000 });
+      await expect(page.locator('.dashboard-banner')).not.toBeVisible({ timeout: 3_000 });
       await expect(pencil).not.toHaveClass(/dashboard-toolbar__btn--active/, { timeout: 3_000 });
     } finally {
       await dispose();

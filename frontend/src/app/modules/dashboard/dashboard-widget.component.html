@@ -1,11 +1,14 @@
 <app-widget-shell
-  style="display:block;height:100%"
+  class="block h-full"
   [title]="title"
   [subtitle]="subtitle"
   [tone]="tone"
 >
   <!-- Badge slot -->
-  <div widgetBadge class="widget-badge">{{ badgeText }}</div>
+  <div
+    widgetBadge
+    class="text-[10px] px-2 py-0.5 rounded-[var(--radius-sm)] border border-border bg-surface-1/70 text-fg-faint uppercase tracking-[0.08em]"
+  >{{ badgeText }}</div>
 
   <!-- Header action: refresh -->
   <div widgetActions>
@@ -15,21 +18,22 @@
   </div>
 
   <!-- ── Widget body ──────────────────────────────────────────────────── -->
-  <div class="widget-body">
+  <div class="h-full min-h-0 relative">
 
     <!-- Loading spinner -->
-    <div *ngIf="loading" class="widget-state-overlay">
-      <div class="widget-spinner"></div>
+    <div *ngIf="loading" class="dashboard-widget__state">
+      <span class="icon text-brand dashboard-widget__spin" aria-hidden="true">progress_activity</span>
+      <span>Loading widget data...</span>
     </div>
 
     <!-- Error state -->
-    <div *ngIf="!loading && error" class="widget-state-overlay widget-state-overlay--error">
+    <div *ngIf="!loading && error" class="dashboard-widget__state dashboard-widget__state--error">
       <span class="icon">error_outline</span>
       <div class="widget-state__message">{{ error }}</div>
     </div>
 
     <!-- Empty state -->
-    <div *ngIf="!loading && !error && !chartType" class="widget-state-overlay widget-state-overlay--empty">
+    <div *ngIf="!loading && !error && !chartType" class="dashboard-widget__state">
       <span class="icon">sensors_off</span>
       <div class="widget-state__message">{{ emptyMessage || 'No data.' }}</div>
     </div>
@@ -37,7 +41,7 @@
     <!-- ApexCharts (line / bar) -->
     <apx-chart
       *ngIf="!loading && !error && chartType === 'apex' && chartConfig"
-      class="widget-apex"
+      class="block h-full"
       [series]="chartConfig.series"
       [chart]="chartConfig.chart"
       [colors]="chartConfig.colors"
@@ -54,18 +58,18 @@
     ></apx-chart>
 
     <!-- Gauge dial -->
-    <div *ngIf="!loading && !error && chartType === 'gauge'" class="widget-gauge">
-      <div class="widget-gauge__dial"
+    <div *ngIf="!loading && !error && chartType === 'gauge'" class="dashboard-gauge-grid">
+      <div class="dashboard-gauge-card__dial"
            [style.--gauge-pct]="gaugePercent"
            [style.--gauge-color]="gaugeColor">
-        <div class="widget-gauge__inner">
-          <span class="widget-gauge__value">
+        <div class="dashboard-gauge-card__dial-inner">
+          <span class="dashboard-gauge-card__dial-value">
             {{ gaugeValue !== null ? gaugeValue.toFixed(1) : '—' }}
           </span>
-          <span class="widget-gauge__unit">{{ gaugeUnit }}</span>
+          <span class="text-xs text-fg-faint mt-0.5">{{ gaugeUnit }}</span>
         </div>
       </div>
-      <div class="widget-gauge__range">
+      <div class="flex justify-between text-xs text-fg-faint mt-2">
         <span>{{ gaugeMin }}</span>
         <span>{{ gaugeMax }}</span>
       </div>
@@ -105,7 +109,7 @@
   <div widgetMeta>{{ metaText }}</div>
 
   <!-- Chrome bar — right actions -->
-  <div widgetChrome class="widget-chrome-actions">
+  <div widgetChrome class="flex items-center gap-1">
     <button type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
       <span class="icon icon-muted">refresh</span>
     </button>

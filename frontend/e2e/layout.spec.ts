@@ -18,7 +18,7 @@ test.describe('LAYOUT', () => {
       const pencil = page.locator('button[aria-label="Toggle edit mode"]');
       await expect(pencil).not.toBeDisabled({ timeout: 5_000 });
       await pencil.click();
-      await expect(page.locator('.dashboard-edit-banner')).toBeVisible({ timeout: 3_000 });
+      await expect(page.locator('.dashboard-banner')).toBeVisible({ timeout: 3_000 });
 
       // Capture layout POST requests
       const layoutRequests: string[] = [];
@@ -73,7 +73,7 @@ test.describe('LAYOUT', () => {
       const pencil = page.locator('button[aria-label="Toggle edit mode"]');
       await expect(pencil).not.toBeDisabled({ timeout: 5_000 });
       await pencil.click();
-      await expect(page.locator('.dashboard-edit-banner')).toBeVisible({ timeout: 3_000 });
+      await expect(page.locator('.dashboard-banner')).toBeVisible({ timeout: 3_000 });
 
       let capturedBody: unknown = null;
       await page.route(`**/api/dashboards/${id}/layout`, async (route) => {

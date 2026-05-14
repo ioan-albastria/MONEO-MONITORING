@@ -1,68 +1,98 @@
 <aside
-  class="nav-rail"
-  [class.nav-rail--open]="navOpen"
+  class="fixed left-2 top-1/2 -translate-y-1/2 z-40
+          w-[var(--nav-rail-w)] hover:w-[var(--nav-rail-expand-w)]
+          transition-all duration-[var(--dur-2)] ease-[var(--ease-out)]
+          rounded-[var(--nav-rail-radius)] border border-border
+          bg-surface-1/75 backdrop-blur-xl
+          shadow-[var(--shadow-lev-1)]
+          overflow-hidden"
   (mouseenter)="navOpen = true"
   (mouseleave)="navOpen = false"
   aria-label="Primary navigation"
 >
-  <nav class="nav-rail__nav">
+  <nav class="p-[var(--nav-rail-inner-pad)] flex flex-col gap-0.5">
     <ng-container *ngFor="let item of navItems">
 
       <!-- Enabled item: real routerLink -->
       <a
         *ngIf="item.enabled"
         [routerLink]="item.route"
-        routerLinkActive="nav-item--active"
-        class="nav-item"
+        routerLinkActive="bg-surface-3/40"
+        class="group flex items-center gap-[var(--nav-item-gap)] rounded-[var(--nav-item-radius)] px-[var(--nav-item-px)] py-[var(--nav-item-py)]
+                text-sm text-fg-muted hover:text-fg
+                hover:bg-surface-3/30
+                transition w-full"
       >
-        <span class="nav-item__icon-box">
-          <span class="icon nav-item__icon" routerLinkActive="icon-active">{{ item.icon }}</span>
+        <span class="grid place-items-center flex-shrink-0
+                        w-[var(--nav-icon-box)] h-[var(--nav-icon-box)]
+                        bg-surface-2/60 group-hover:bg-surface-3/40 transition">
+          <span class="icon icon-muted -m-0.5" routerLinkActive="icon-active">{{ item.icon }}</span>
         </span>
-        <span class="nav-item__label">{{ item.label }}</span>
+        <span class="whitespace-nowrap transition-opacity duration-150"
+              [class.opacity-0]="!navOpen"
+              [class.opacity-100]="navOpen">
+          {{ item.label }}
+        </span>
       </a>
 
       <!-- Disabled item: button, aria-disabled -->
       <button
         *ngIf="!item.enabled"
         type="button"
-        class="nav-item nav-item--disabled"
+        class="group flex items-center gap-[var(--nav-item-gap)] rounded-[var(--nav-item-radius)] px-[var(--nav-item-px)] py-[var(--nav-item-py)]
+                text-sm text-fg-muted
+                w-full opacity-45 cursor-not-allowed pointer-events-none"
         aria-disabled="true"
         [title]="item.label + ' — Coming soon'"
       >
-        <span class="nav-item__icon-box">
-          <span class="icon nav-item__icon">{{ item.icon }}</span>
+        <span class="grid place-items-center flex-shrink-0
+                        w-[var(--nav-icon-box)] h-[var(--nav-icon-box)]
+                        bg-surface-2/60 transition">
+          <span class="icon">{{ item.icon }}</span>
         </span>
-        <span class="nav-item__label">{{ item.label }}</span>
+        <span class="whitespace-nowrap transition-opacity duration-150"
+              [class.opacity-0]="!navOpen"
+              [class.opacity-100]="navOpen">
+          {{ item.label }}
+        </span>
       </button>
 
     </ng-container>
 
-    <div class="nav-rail__divider"></div>
+    <div class="my-2 h-px bg-divider/60"></div>
 
     <button
       type="button"
-      class="nav-item"
+      class="group flex items-center gap-[var(--nav-item-gap)] rounded-[var(--nav-item-radius)] px-[var(--nav-item-px)] py-[var(--nav-item-py)]
+              text-sm text-fg-muted hover:text-fg
+              hover:bg-surface-3/30 transition w-full"
       (click)="ui.toggleDensity()"
       [title]="'Density: ' + ui.getCurrentDensity()"
     >
-      <span class="nav-item__icon-box">
-        <span class="icon nav-item__icon">density_small</span>
+      <span class="grid place-items-center flex-shrink-0 w-[var(--nav-icon-box)] h-[var(--nav-icon-box)] -m-0.5">
+        <span class="icon icon-muted">density_small</span>
       </span>
-      <span class="nav-item__label">
+      <span class="whitespace-nowrap transition-opacity duration-150"
+            [class.opacity-0]="!navOpen"
+            [class.opacity-100]="navOpen">
         {{ ui.getCurrentDensity() === 'density-compact' ? 'Compact' : 'Comfortable' }}
       </span>
     </button>
 
     <button
       type="button"
-      class="nav-item"
+      class="group flex items-center gap-[var(--nav-item-gap)] rounded-[var(--nav-item-radius)] px-[var(--nav-item-px)] py-[var(--nav-item-py)]
+              text-sm text-fg-muted hover:text-fg
+              hover:bg-surface-3/30 transition w-full"
       (click)="ui.toggleTheme()"
       [title]="'Theme: ' + ui.getCurrentTheme()"
     >
-      <span class="nav-item__icon-box">
-        <span class="icon nav-item__icon">brightness_6</span>
+      <span class="grid place-items-center flex-shrink-0 w-[var(--nav-icon-box)] h-[var(--nav-icon-box)] -m-0.5">
+        <span class="icon icon-muted">brightness_6</span>
       </span>
-      <span class="nav-item__label">
+      <span class="whitespace-nowrap transition-opacity duration-150"
+            [class.opacity-0]="!navOpen"
+            [class.opacity-100]="navOpen">
         {{ ui.getCurrentTheme() === 'operational-dark' ? 'Dark' : 'Light' }}
       </span>
     </button>

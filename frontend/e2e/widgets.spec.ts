@@ -8,7 +8,7 @@ import {
 
 async function openWidgetEditor(page: import('@playwright/test').Page) {
   await page.click('button[aria-label="Add widget"]');
-  await page.waitForSelector('.dashboard-modal__panel--xl', { timeout: 5_000 });
+  await page.waitForSelector('.dashboard-modal__panel--wide', { timeout: 5_000 });
   // Wait for sensor list to load
   await page.waitForSelector('select[multiple]', { timeout: 8_000 });
 }
@@ -25,7 +25,7 @@ test.describe('WIDGET', () => {
       await selectDashboard(page, id);
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await page.click('button[aria-label="Add widget"]');
-      await expect(page.locator('.dashboard-modal__panel--xl')).toBeVisible({ timeout: 5_000 });
+      await expect(page.locator('.dashboard-modal__panel--wide')).toBeVisible({ timeout: 5_000 });
       const eyebrow = await page.locator('.dashboard-modal__eyebrow').first().textContent();
       expect(eyebrow?.trim()).toBe('Add widget');
     } finally {
@@ -42,10 +42,10 @@ test.describe('WIDGET', () => {
       await selectDashboard(page, id);
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
-      const card = page.locator('.widget-picker-card').filter({ hasText: 'Line Chart' });
+      const card = page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Line Chart' });
       await card.click();
-      await expect(card).toHaveClass(/widget-picker-card--selected/);
-      const pill = card.locator('.widget-picker-card__pill');
+      await expect(card).toHaveClass(/is-active/);
+      const pill = card.locator('.dashboard-widget-picker__status');
       await expect(pill).toHaveText('Selected');
     } finally {
       await page.keyboard.press('Escape').catch(() => {});
@@ -61,9 +61,9 @@ test.describe('WIDGET', () => {
       await selectDashboard(page, id);
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
-      const card = page.locator('.widget-picker-card').filter({ hasText: 'Bar Chart' });
+      const card = page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Bar Chart' });
       await card.click();
-      await expect(card).toHaveClass(/widget-picker-card--selected/);
+      await expect(card).toHaveClass(/is-active/);
     } finally {
       await page.keyboard.press('Escape').catch(() => {});
       await dispose();
@@ -78,9 +78,9 @@ test.describe('WIDGET', () => {
       await selectDashboard(page, id);
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
-      const card = page.locator('.widget-picker-card').filter({ hasText: 'Gauge' });
+      const card = page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Gauge' });
       await card.click();
-      await expect(card).toHaveClass(/widget-picker-card--selected/);
+      await expect(card).toHaveClass(/is-active/);
       // Gauge bounds section should be visible
       await expect(page.locator('text=Scale bounds')).toBeVisible({ timeout: 3_000 });
     } finally {
@@ -97,9 +97,9 @@ test.describe('WIDGET', () => {
       await selectDashboard(page, id);
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
-      const card = page.locator('.widget-picker-card').filter({ hasText: 'Stat Card' });
+      const card = page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Stat Card' });
       await card.click();
-      await expect(card).toHaveClass(/widget-picker-card--selected/);
+      await expect(card).toHaveClass(/is-active/);
     } finally {
       await page.keyboard.press('Escape').catch(() => {});
       await dispose();
@@ -155,12 +155,12 @@ test.describe('WIDGET', () => {
       await openWidgetEditor(page);
 
       // Line chart is default — bounds not visible
-      const lineCard = page.locator('.widget-picker-card').filter({ hasText: 'Line Chart' });
+      const lineCard = page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Line Chart' });
       await lineCard.click();
       await expect(page.locator('text=Scale bounds')).not.toBeVisible();
 
       // Switch to Gauge — bounds appear
-      const gaugeCard = page.locator('.widget-picker-card').filter({ hasText: 'Gauge' });
+      const gaugeCard = page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Gauge' });
       await gaugeCard.click();
       await expect(page.locator('text=Scale bounds')).toBeVisible({ timeout: 3_000 });
     } finally {
@@ -198,13 +198,13 @@ test.describe('WIDGET', () => {
       await openWidgetEditor(page);
 
       // Select Line Chart type
-      await page.locator('.widget-picker-card').filter({ hasText: 'Line Chart' }).click();
+      await page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Line Chart' }).click();
 
       // Select first sensor
       await page.locator('select[multiple] option').first().click();
 
       await page.click('button:has-text("Add widget"):not([disabled])');
-      await page.waitForSelector('.dashboard-modal__panel--xl', { state: 'hidden', timeout: 10_000 });
+      await page.waitForSelector('.dashboard-modal__panel--wide', { state: 'hidden', timeout: 10_000 });
       await page.waitForTimeout(1_500);
 
       await expect(page.locator('app-dashboard-widget').first()).toBeVisible({ timeout: 5_000 });
@@ -222,10 +222,10 @@ test.describe('WIDGET', () => {
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
 
-      await page.locator('.widget-picker-card').filter({ hasText: 'Bar Chart' }).click();
+      await page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Bar Chart' }).click();
       await page.locator('select[multiple] option').first().click();
       await page.click('button:has-text("Add widget"):not([disabled])');
-      await page.waitForSelector('.dashboard-modal__panel--xl', { state: 'hidden', timeout: 10_000 });
+      await page.waitForSelector('.dashboard-modal__panel--wide', { state: 'hidden', timeout: 10_000 });
       await page.waitForTimeout(1_500);
       await expect(page.locator('app-dashboard-widget').first()).toBeVisible({ timeout: 5_000 });
     } finally {
@@ -242,10 +242,10 @@ test.describe('WIDGET', () => {
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
 
-      await page.locator('.widget-picker-card').filter({ hasText: 'Gauge' }).click();
+      await page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Gauge' }).click();
       await page.locator('select[multiple] option').first().click();
       await page.click('button:has-text("Add widget"):not([disabled])');
-      await page.waitForSelector('.dashboard-modal__panel--xl', { state: 'hidden', timeout: 10_000 });
+      await page.waitForSelector('.dashboard-modal__panel--wide', { state: 'hidden', timeout: 10_000 });
       await page.waitForTimeout(1_500);
       await expect(page.locator('app-dashboard-widget').first()).toBeVisible({ timeout: 5_000 });
     } finally {
@@ -262,10 +262,10 @@ test.describe('WIDGET', () => {
       await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
       await openWidgetEditor(page);
 
-      await page.locator('.widget-picker-card').filter({ hasText: 'Stat Card' }).click();
+      await page.locator('.dashboard-widget-picker__card').filter({ hasText: 'Stat Card' }).click();
       await page.locator('select[multiple] option').first().click();
       await page.click('button:has-text("Add widget"):not([disabled])');
-      await page.waitForSelector('.dashboard-modal__panel--xl', { state: 'hidden', timeout: 10_000 });
+      await page.waitForSelector('.dashboard-modal__panel--wide', { state: 'hidden', timeout: 10_000 });
       await page.waitForTimeout(1_500);
       await expect(page.locator('app-dashboard-widget').first()).toBeVisible({ timeout: 5_000 });
     } finally {
@@ -294,7 +294,7 @@ test.describe('WIDGET', () => {
       await expect(configBtn).not.toBeDisabled({ timeout: 3_000 });
       await configBtn.click();
 
-      await page.waitForSelector('.dashboard-modal__panel--xl', { timeout: 5_000 });
+      await page.waitForSelector('.dashboard-modal__panel--wide', { timeout: 5_000 });
       const eyebrow = await page.locator('.dashboard-modal__eyebrow').first().textContent();
       expect(eyebrow?.trim()).toBe('Edit widget');
     } finally {

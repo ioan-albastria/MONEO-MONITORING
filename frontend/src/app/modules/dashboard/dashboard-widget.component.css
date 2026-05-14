@@ -1,221 +1,133 @@
-/* ── Badge ──────────────────────────────────────────────────────────────── */
-.widget-badge {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: color-mix(in oklch, var(--color-surface-1) 70%, transparent);
-  color: var(--color-fg-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-/* ── Body container ─────────────────────────────────────────────────────── */
-.widget-body {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: stretch;
-}
-
-/* ── State overlays (loading / error / empty) ───────────────────────────── */
-.widget-state-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  z-index: 2;
-}
-
-.widget-state-overlay .icon {
-  font-size: 28px;
-  color: var(--color-fg-faint);
-  opacity: 0.5;
-}
-
-.widget-state__message {
-  font-size: 12px;
-  color: var(--color-fg-muted);
-  text-align: center;
-  padding: 0 16px;
-}
-
-.widget-state-overlay--error .icon {
-  color: var(--color-danger);
-  opacity: 0.75;
-}
-
-/* ── Loading spinner ────────────────────────────────────────────────────── */
-.widget-spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-brand);
-  border-radius: 50%;
-  animation: widget-spin 0.7s linear infinite;
-}
-
-@keyframes widget-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── ApexCharts wrapper ─────────────────────────────────────────────────── */
-.widget-apex {
+:host {
   display: block;
-  width: 100%;
   height: 100%;
+  min-height: 0;
 }
 
-/* ── Gauge ──────────────────────────────────────────────────────────────── */
-.widget-gauge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  gap: 8px;
-}
-
-.widget-gauge__dial {
-  --gauge-pct: 0;
-  --gauge-color: var(--color-brand);
-  --dial-size: min(120px, 80%);
-
-  position: relative;
-  width: var(--dial-size);
-  height: var(--dial-size);
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--gauge-color) calc(var(--gauge-pct) * 1%),
-    var(--color-surface-2) calc(var(--gauge-pct) * 1%)
-  );
-  transition: background 0.4s ease;
-}
-
-.widget-gauge__inner {
-  position: absolute;
-  inset: 14%;
-  border-radius: 50%;
-  background: var(--color-surface-1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.widget-gauge__value {
-  font-size: clamp(18px, 3.5vw, 28px);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-fg);
-  line-height: 1;
-}
-
-.widget-gauge__unit {
-  font-size: 11px;
-  color: var(--color-fg-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.widget-gauge__range {
-  display: flex;
-  justify-content: space-between;
-  width: min(120px, 80%);
-  font-size: 10px;
-  color: var(--color-fg-faint);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Stat card ──────────────────────────────────────────────────────────── */
-.widget-stat {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  padding: 8px 12px;
-  gap: 12px;
-  box-sizing: border-box;
-}
-
-.widget-stat__left {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.widget-stat__value {
-  font-size: clamp(24px, 5vw, 42px);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  font-family: var(--font-mono, 'JetBrains Mono', 'Fira Mono', monospace);
-  color: var(--color-fg);
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.widget-stat__unit {
-  font-size: 0.5em;
-  font-weight: 400;
-  color: var(--color-fg-muted);
-  margin-left: 4px;
-}
-
-.widget-stat__delta {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--color-fg-muted);
-}
-
-.widget-stat__delta[data-dir="up"] { color: var(--color-success); }
-.widget-stat__delta[data-dir="down"] { color: var(--color-danger); }
-
-.widget-stat__arrow {
-  font-size: 10px;
-  line-height: 1;
-}
-
-.widget-stat__delta-label {
-  font-size: 10px;
-  color: var(--color-fg-faint);
-  margin-left: 2px;
-}
-
-.widget-stat__right {
-  flex: 0 0 auto;
-  width: 100px;
-  height: 64px;
-}
-
-.widget-stat__sparkline {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* ── Chrome bar actions ─────────────────────────────────────────────────── */
-.widget-chrome-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+:host ::ng-deep apx-chart,
+:host ::ng-deep .apexcharts-canvas,
+:host ::ng-deep .apexcharts-svg {
+  height: 100% !important;
 }
 
 .dashboard-widget__chrome-separator {
   width: 1px;
-  height: 14px;
-  background: var(--color-border);
-  margin: 0 2px;
+  height: 18px;
+  margin: 0 3px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-border) 76%, transparent);
+}
+
+.dashboard-widget__state {
+  height: 100%;
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 8px;
+  color: var(--color-fg-muted);
+  font-size: 12px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed color-mix(in oklch, var(--color-border) 72%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--color-brand) 8%, transparent), transparent 58%),
+    color-mix(in oklch, var(--color-surface-0) 58%, transparent);
+}
+
+.dashboard-widget__state--error {
+  color: var(--color-danger);
+  border-color: color-mix(in oklch, var(--color-danger) 28%, var(--color-border));
+}
+
+.dashboard-widget__spin {
+  animation: dashboard-widget-spin 1s linear infinite;
+}
+
+.dashboard-gauge-grid {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  container-type: size;
+}
+
+.dashboard-gauge-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklch, var(--color-border) 72%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--color-danger) 10%, transparent), transparent 58%),
+    color-mix(in oklch, var(--color-surface-0) 62%, transparent);
+}
+
+.dashboard-gauge-card__dial {
+  --gauge-progress: 0%;
+  /* Fit the largest circle that doesn't overflow in either axis */
+  width: min(100cqw, calc(100cqh - 28px));
+  height: min(100cqw, calc(100cqh - 28px));
+  flex-shrink: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, transparent 57%, rgba(0, 0, 0, 0.1) 58%, transparent 59%),
+    conic-gradient(
+      from 180deg,
+      color-mix(in oklch, var(--color-danger) 76%, transparent) 0 var(--gauge-progress),
+      color-mix(in oklch, var(--color-surface-3) 52%, transparent) var(--gauge-progress) 100%
+    );
+}
+
+.dashboard-gauge-card__dial-inner {
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: color-mix(in oklch, var(--color-surface-1) 86%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--color-border) 64%, transparent);
+}
+
+.dashboard-gauge-card__dial-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.dashboard-gauge-card__dial-scale {
+  font-size: 11px;
+  color: var(--color-fg-faint);
+}
+
+.dashboard-gauge-card__meta {
+  display: grid;
+  gap: 3px;
+  text-align: center;
+}
+
+.dashboard-gauge-card__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.dashboard-gauge-card__trip-count {
+  font-size: 11px;
+  color: var(--color-fg-faint);
+}
+
+@keyframes dashboard-widget-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }

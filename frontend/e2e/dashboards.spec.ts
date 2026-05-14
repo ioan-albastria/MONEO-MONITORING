@@ -183,11 +183,11 @@ test.describe('DASH', () => {
     const { id: id2, dispose: d2 } = await createTestDashboard(page, token, 'E2E-Switch-Beta');
     try {
       await selectDashboard(page, id1);
-      const title1 = await page.locator('.page-header__title').textContent();
+      const title1 = await page.locator('app-page-header h1').textContent();
       expect(title1).toContain('E2E-Switch-Alpha');
 
       await selectDashboard(page, id2);
-      const title2 = await page.locator('.page-header__title').textContent();
+      const title2 = await page.locator('app-page-header h1').textContent();
       expect(title2).toContain('E2E-Switch-Beta');
     } finally {
       await d1();

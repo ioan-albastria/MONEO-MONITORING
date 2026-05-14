@@ -1,4 +1,4 @@
-<section class="dashboard-page">
+<section class="dashboard-page canvas-view h-[calc(100dvh-var(--app-header-h)-1.5rem)] min-h-0 flex flex-col gap-3">
 
   <!-- ─── Toolbar ─────────────────────────────────────────────────────────── -->
   <div class="dashboard-toolbar">
@@ -73,12 +73,15 @@
   <div class="dashboard-banner dashboard-banner--warning" *ngIf="layoutError">{{ layoutError }}</div>
 
   <!-- ─── Loading ──────────────────────────────────────────────────────────── -->
-  <div class="dashboard-loading" *ngIf="loading && !selectedDashboard">
-    <div class="dashboard-loading__card">
-      <span class="icon dashboard-loading__spinner" aria-hidden="true">progress_activity</span>
+  <div class="flex-1 min-h-[240px] grid place-items-center p-6" *ngIf="loading && !selectedDashboard">
+    <div
+      class="w-full max-w-[460px] grid grid-cols-[auto_1fr] items-center gap-3.5 rounded-[var(--radius-xl)] border px-5 py-[18px] shadow-[var(--shadow-lev-2)]"
+      style="border-color:color-mix(in oklch,var(--color-brand) 22%,var(--color-border));background:linear-gradient(135deg,color-mix(in oklch,var(--color-brand) 10%,transparent),transparent 58%),color-mix(in oklch,var(--color-surface-1) 88%,transparent)"
+    >
+      <span class="icon text-[28px] text-brand animate-spin" aria-hidden="true">progress_activity</span>
       <div>
-        <div class="dashboard-loading__title">Loading dashboards</div>
-        <div class="dashboard-loading__copy">Pulling your saved layouts from the server.</div>
+        <div class="text-sm font-semibold text-fg">Loading dashboards</div>
+        <div class="mt-1 text-xs leading-[1.45] text-fg-muted">Pulling your saved layouts from the server.</div>
       </div>
     </div>
   </div>
@@ -88,16 +91,17 @@
     <div class="dashboard-grid-shell" [class.dashboard-grid-shell--edit]="editMode">
 
       <!-- Edit mode banner -->
-      <div class="dashboard-edit-banner" *ngIf="editMode">
+      <div class="dashboard-banner" *ngIf="editMode">
         <span class="icon" aria-hidden="true">drag_pan</span>
         Edit mode — drag and resize widgets. Click the pencil again to exit.
       </div>
 
       <!-- Gridster grid -->
-      <gridster [options]="gridOptions" class="dashboard-gridster">
+      <gridster [options]="gridOptions" class="dashboard-grid">
         <gridster-item
           *ngFor="let item of gridItems; trackBy: trackGridItem"
           [item]="item.gridsterItem"
+          class="p-0"
         >
           <app-dashboard-widget
             [widget]="item.widget"
@@ -109,17 +113,20 @@
       </gridster>
 
       <!-- Overlay: refreshing -->
-      <div class="dashboard-overlay-loading" *ngIf="loading">
-        <div class="dashboard-loading__card">
-          <span class="icon dashboard-loading__spinner" aria-hidden="true">progress_activity</span>
+      <div class="absolute inset-[18px] grid place-items-center p-3 pointer-events-none" *ngIf="loading">
+        <div
+          class="w-full max-w-[460px] grid grid-cols-[auto_1fr] items-center gap-3.5 rounded-[var(--radius-xl)] border px-5 py-[18px] shadow-[var(--shadow-lev-2)]"
+          style="border-color:color-mix(in oklch,var(--color-brand) 22%,var(--color-border));background:linear-gradient(135deg,color-mix(in oklch,var(--color-brand) 10%,transparent),transparent 58%),color-mix(in oklch,var(--color-surface-1) 88%,transparent)"
+        >
+          <span class="icon text-[28px] text-brand animate-spin" aria-hidden="true">progress_activity</span>
           <div>
-            <div class="dashboard-loading__title">Refreshing dashboard</div>
-            <div class="dashboard-loading__copy">Syncing widgets from the server.</div>
+            <div class="text-sm font-semibold text-fg">Refreshing dashboard</div>
+            <div class="mt-1 text-xs leading-[1.45] text-fg-muted">Syncing widgets from the server.</div>
           </div>
         </div>
       </div>
 
-      <!-- Empty-state overlay: no widgets (8.4) -->
+      <!-- Empty-state overlay: no widgets -->
       <div class="dashboard-empty-overlay" *ngIf="!dashboard.widgets.length && !loading">
         <div class="dashboard-empty-overlay__card">
           <div class="dashboard-empty-overlay__title">Start this dashboard with a widget</div>
@@ -138,7 +145,7 @@
     </div>
   </ng-container>
 
-  <!-- ─── Empty state: no dashboards (8.4) ────────────────────────────────── -->
+  <!-- ─── Empty state: no dashboards ──────────────────────────────────────── -->
   <ng-template #emptyState>
     <div class="dashboard-empty-screen" *ngIf="!loading">
       <div class="dashboard-empty-screen__eyebrow">Dashboards</div>
@@ -161,7 +168,7 @@
   </ng-template>
 
 
-  <!-- ─── Dashboard editor modal (8.5) ────────────────────────────────────── -->
+  <!-- ─── Dashboard editor modal ───────────────────────────────────────────── -->
   <div class="dashboard-modal" *ngIf="editorOpen">
     <button type="button" class="dashboard-modal__backdrop" (click)="closeEditor()"></button>
     <section class="dashboard-modal__panel">
@@ -204,7 +211,7 @@
   </div>
 
 
-  <!-- ─── Public catalog modal (8.6) ──────────────────────────────────────── -->
+  <!-- ─── Public catalog modal ─────────────────────────────────────────────── -->
   <div class="dashboard-modal" *ngIf="publicCatalogOpen">
     <button type="button" class="dashboard-modal__backdrop" (click)="closePublicCatalog()"></button>
     <section class="dashboard-modal__panel dashboard-modal__panel--wide">
@@ -246,10 +253,10 @@
   </div>
 
 
-  <!-- ─── Widget editor modal (8.7) ───────────────────────────────────────── -->
+  <!-- ─── Widget editor modal ──────────────────────────────────────────────── -->
   <div class="dashboard-modal" *ngIf="widgetEditorOpen">
     <button type="button" class="dashboard-modal__backdrop" (click)="closeWidgetEditor()"></button>
-    <section class="dashboard-modal__panel dashboard-modal__panel--xl">
+    <section class="dashboard-modal__panel dashboard-modal__panel--wide">
       <header class="dashboard-modal__header">
         <div>
           <div class="dashboard-modal__eyebrow">{{ widgetEditorMode === 'create' ? 'Add widget' : 'Edit widget' }}</div>
@@ -262,39 +269,39 @@
         </button>
       </header>
 
-      <div class="dashboard-modal__body dashboard-modal__body--scroll">
+      <div class="dashboard-modal__body dashboard-modal__body--widget">
         <div class="dashboard-banner dashboard-banner--error" *ngIf="widgetError">{{ widgetError }}</div>
 
         <!-- Section 1: Widget type picker -->
-        <div class="widget-editor-section">
-          <div class="widget-editor-section__eyebrow">Widget type</div>
-          <div class="widget-editor-section__title">Choose a visualization</div>
-          <div class="widget-picker-grid">
+        <div class="dashboard-editor-section">
+          <div class="dashboard-editor-section__eyebrow">Widget type</div>
+          <div class="dashboard-editor-section__title">Choose a visualization</div>
+          <div class="dashboard-widget-picker">
             <button
               *ngFor="let cat of widgetCatalog"
               type="button"
-              class="widget-picker-card"
-              [class.widget-picker-card--selected]="widgetForm.type === cat.type"
+              class="dashboard-widget-picker__card"
+              [class.is-active]="widgetForm.type === cat.type"
               (click)="selectWidgetType(cat.type)"
             >
-              <div class="widget-picker-card__label">{{ cat.label }}</div>
-              <div class="widget-picker-card__desc">{{ cat.description }}</div>
-              <div class="widget-picker-card__pill" *ngIf="widgetForm.type === cat.type">Selected</div>
+              <div class="dashboard-widget-picker__title">{{ cat.label }}</div>
+              <div class="dashboard-widget-picker__description">{{ cat.description }}</div>
+              <div class="dashboard-widget-picker__status" *ngIf="widgetForm.type === cat.type">Selected</div>
             </button>
           </div>
         </div>
 
         <!-- Optional title / subtitle -->
-        <div class="widget-editor-section">
-          <div class="widget-editor-section__eyebrow">Details</div>
-          <div class="widget-editor-row">
-            <label class="dashboard-form-field dashboard-form-field--flex">
-              <span class="dashboard-toolbar__label">Title <span class="dashboard-toolbar__label--opt">(optional)</span></span>
+        <div class="dashboard-editor-section">
+          <div class="dashboard-editor-section__eyebrow">Details</div>
+          <div class="dashboard-date-grid">
+            <label class="dashboard-form-field">
+              <span class="dashboard-toolbar__label">Title <span class="text-fg-faint">(optional)</span></span>
               <input class="dashboard-toolbar__input" type="text" [(ngModel)]="widgetForm.title"
                 placeholder="Leave blank to use widget type name" />
             </label>
-            <label class="dashboard-form-field dashboard-form-field--flex">
-              <span class="dashboard-toolbar__label">Subtitle <span class="dashboard-toolbar__label--opt">(optional)</span></span>
+            <label class="dashboard-form-field">
+              <span class="dashboard-toolbar__label">Subtitle <span class="text-fg-faint">(optional)</span></span>
               <input class="dashboard-toolbar__input" type="text" [(ngModel)]="widgetForm.subtitle"
                 placeholder="Short description" />
             </label>
@@ -302,11 +309,11 @@
         </div>
 
         <!-- Section 2: Sensor multi-select -->
-        <div class="widget-editor-section">
-          <div class="widget-editor-section__eyebrow">Data</div>
-          <div class="widget-editor-section__title">
+        <div class="dashboard-editor-section">
+          <div class="dashboard-editor-section__eyebrow">Data</div>
+          <div class="dashboard-editor-section__title">
             Sensors
-            <span class="widget-editor-section__required">required — pick at least one</span>
+            <span class="text-xs text-fg-faint">required — pick at least one</span>
           </div>
           <div class="dashboard-widget__state" *ngIf="sensorsLoading">Loading sensors…</div>
           <select
@@ -320,30 +327,30 @@
               {{ s.name }}{{ s.unit ? ' (' + s.unit + ')' : '' }}
             </option>
           </select>
-          <div class="widget-editor-hint" *ngIf="!sensorsLoading && !availableSensors.length">
+          <div class="dashboard-editor-section__hint" *ngIf="!sensorsLoading && !availableSensors.length">
             No sensors available. Check the backend has sensor data.
           </div>
-          <div class="widget-editor-hint" *ngIf="!sensorsLoading && availableSensors.length">
+          <div class="dashboard-editor-section__hint" *ngIf="!sensorsLoading && availableSensors.length">
             Hold Ctrl / Cmd to select multiple sensors.
           </div>
         </div>
 
         <!-- Section 3: Time range -->
-        <div class="widget-editor-section">
-          <div class="widget-editor-section__eyebrow">Time window</div>
-          <div class="widget-editor-section__title">Time Range</div>
-          <div class="widget-editor-time-toggle">
-            <label class="widget-editor-radio">
+        <div class="dashboard-editor-section">
+          <div class="dashboard-editor-section__eyebrow">Time window</div>
+          <div class="dashboard-editor-section__title">Time Range</div>
+          <div class="flex gap-4 mb-2">
+            <label class="flex items-center gap-2 text-sm text-fg-muted">
               <input type="radio" name="timeMode" value="relative" [(ngModel)]="widgetForm.timeMode" />
               <span>Last X hours</span>
             </label>
-            <label class="widget-editor-radio">
+            <label class="flex items-center gap-2 text-sm text-fg-muted">
               <input type="radio" name="timeMode" value="absolute" [(ngModel)]="widgetForm.timeMode" />
               <span>From / To</span>
             </label>
           </div>
 
-          <div class="widget-editor-row" *ngIf="widgetForm.timeMode === 'relative'">
+          <div class="dashboard-date-grid" *ngIf="widgetForm.timeMode === 'relative'">
             <label class="dashboard-form-field">
               <span class="dashboard-toolbar__label">Hours</span>
               <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number"
@@ -351,24 +358,24 @@
             </label>
           </div>
 
-          <div class="widget-editor-row" *ngIf="widgetForm.timeMode === 'absolute'">
-            <label class="dashboard-form-field dashboard-form-field--flex">
+          <div class="dashboard-date-grid" *ngIf="widgetForm.timeMode === 'absolute'">
+            <label class="dashboard-form-field">
               <span class="dashboard-toolbar__label">From</span>
-              <input class="dashboard-toolbar__input" type="datetime-local" [(ngModel)]="widgetForm.from" />
+              <input class="dashboard-toolbar__input dashboard-toolbar__input--date" type="datetime-local" [(ngModel)]="widgetForm.from" />
             </label>
-            <label class="dashboard-form-field dashboard-form-field--flex">
+            <label class="dashboard-form-field">
               <span class="dashboard-toolbar__label">To</span>
-              <input class="dashboard-toolbar__input" type="datetime-local" [(ngModel)]="widgetForm.to" />
+              <input class="dashboard-toolbar__input dashboard-toolbar__input--date" type="datetime-local" [(ngModel)]="widgetForm.to" />
             </label>
           </div>
-          <div class="widget-editor-hint">Used to query sensor readings.</div>
+          <div class="dashboard-editor-section__hint">Used to query sensor readings.</div>
         </div>
 
         <!-- Section 4: Gauge bounds (gauge type only) -->
-        <div class="widget-editor-section" *ngIf="widgetForm.type === 'gauge'">
-          <div class="widget-editor-section__eyebrow">Gauge</div>
-          <div class="widget-editor-section__title">Scale bounds</div>
-          <div class="widget-editor-row">
+        <div class="dashboard-editor-section" *ngIf="widgetForm.type === 'gauge'">
+          <div class="dashboard-editor-section__eyebrow">Gauge</div>
+          <div class="dashboard-editor-section__title">Scale bounds</div>
+          <div class="dashboard-date-grid">
             <label class="dashboard-form-field">
               <span class="dashboard-toolbar__label">Min</span>
               <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number"

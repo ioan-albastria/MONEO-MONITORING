@@ -69,7 +69,7 @@ test.describe('RT', () => {
       await page.waitForTimeout(3_000);
 
       // Capture initial gauge value
-      const gaugeEl = page.locator('.widget-gauge__value').first();
+      const gaugeEl = page.locator('.dashboard-gauge-card__dial-value').first();
       const hasGauge = await gaugeEl.count() > 0;
 
       if (!hasGauge) {

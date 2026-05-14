@@ -16,9 +16,9 @@ test.describe('AUTH', () => {
     await page.goto('/login');
     await page.fill('#username', ADMIN_USER);
     await page.fill('#password', 'wrong_password_xyz');
-    await page.click('button.btn-login');
-    await page.waitForSelector('.login-form__error-banner', { timeout: 8_000 });
-    const banner = await page.locator('.login-form__error-banner').textContent();
+    await page.click('button[type="submit"]');
+    await page.waitForSelector('.input-error-text', { timeout: 8_000 });
+    const banner = await page.locator('.input-error-text').textContent();
     expect(banner).toBeTruthy();
     expect(page.url()).toContain('/login');
     const token = await page.evaluate(() => localStorage.getItem('auth_token'));

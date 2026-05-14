@@ -30,7 +30,7 @@ export async function loginUI(page: Page): Promise<void> {
   await page.goto('/login');
   await page.fill('#username', ADMIN_USER);
   await page.fill('#password', ADMIN_PASS);
-  await page.click('button.btn-login');
+  await page.click('button[type="submit"]');
   await page.waitForURL('**/dashboard', { timeout: 15_000 });
 }
 
