@@ -1,11 +1,16 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
+  HostBinding,
   Input,
   OnChanges,
+  OnDestroy,
+  OnInit,
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { interval, Subscription } from 'rxjs';
 
 export type WidgetTone      = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 export type WidgetChromeMode = 'hover' | 'off';
@@ -66,7 +71,7 @@ interface ToneTokens { tint: string; edge: string; text: string; }
   styleUrl: './app-widgets-shell.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppWidgetsShellComponent implements OnChanges {
+export class AppWidgetsShellComponent implements OnChanges, OnInit, OnDestroy {
   @Input() title    = 'Widget';
   @Input() subtitle?: string;
   @Input() loading  = false;
@@ -75,6 +80,9 @@ export class AppWidgetsShellComponent implements OnChanges {
   @Input() status: WidgetStatus    = 'ok';
   @Input() theme: 'light' | 'dark' = 'dark';
 
+  @Input() freshAt: string | null = null;
+  @Input() expectedIntervalSeconds = 300;
+
   // Consumed by template [style.X] bindings
   toneTint = 'transparent';
   toneEdge = 'transparent';
@@ -82,11 +90,33 @@ export class AppWidgetsShellComponent implements OnChanges {
 
   // At most 8 entries per instance (4 statuses × 2 themes)
   private readonly _cache = new Map<ToneKey, ToneTokens>();
+  private _freshnessTick: Subscription | null = null;
+
+  constructor(private readonly cdr: ChangeDetectorRef) {}
+
+  @HostBinding('attr.data-state')
+  get stateAttr(): string { return this.freshnessState; }
+
+  get freshnessState(): 'fresh' | 'stale' | 'offline' | 'unknown' {
+    if (!this.freshAt) return 'unknown';
+    const age = (Date.now() - new Date(this.freshAt).getTime()) / 1000;
+    if (age < this.expectedIntervalSeconds)          return 'fresh';
+    if (age < this.expectedIntervalSeconds * 5)     return 'stale';
+    return 'offline';
+  }
+
+  ngOnInit(): void {
+    this._freshnessTick = interval(5_000).subscribe(() => this.cdr.markForCheck());
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['status'] || changes['theme']) {
       this._applyTokens();
     }
+  }
+
+  ngOnDestroy(): void {
+    this._freshnessTick?.unsubscribe();
   }
 
   cycleChromeMode(): void {

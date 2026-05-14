@@ -1,11 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from alembic.config import Config as AlembicConfig
+from alembic import command as alembic_command
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from DAL import SessionLocal, init_db
+from DAL import SessionLocal
 from routes.auth_routes import auth_router
 from routes.dashboard_routes import dashboard_router
 from routes.widget_routes import widget_router
@@ -27,8 +30,17 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # ── Startup ──────────────────────────────────────────────────────────────
-    logger.info("Initialising database …")
-    init_db()
+    if settings.auto_migrate:
+        logger.info("Running Alembic migrations …")
+        try:
+            alembic_cfg = AlembicConfig(str(Path(__file__).parent / "alembic.ini"))
+            alembic_command.upgrade(alembic_cfg, "head")
+            logger.info("Alembic migrations complete.")
+        except Exception:
+            logger.exception("Alembic migration failed — aborting startup.")
+            raise
+    else:
+        logger.info("auto_migrate=False — skipping migrations.")
 
     logger.info("Seeding admin user …")
     db = SessionLocal()

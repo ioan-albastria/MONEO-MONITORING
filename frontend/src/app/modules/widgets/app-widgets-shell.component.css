@@ -22,3 +22,15 @@
 :host section:focus-within {
   border-color: color-mix(in oklch, var(--color-brand) 25%, var(--color-border));
 }
+
+.widget-freshness {
+  font-size: 0.7rem;
+  color: var(--color-fg-faint);
+  padding: 2px var(--page-pad, 0.75rem) 4px;
+  transition: color var(--dur-1, 120ms);
+}
+.widget-freshness[data-state="stale"]   { color: var(--color-warning); }
+.widget-freshness[data-state="offline"] { color: var(--color-danger);  }
+
+/* Desaturate body content when data is offline */
+:host([data-state="offline"]) .widget-body { opacity: 0.55; filter: saturate(0.3); }

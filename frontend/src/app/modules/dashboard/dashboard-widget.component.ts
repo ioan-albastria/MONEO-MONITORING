@@ -17,7 +17,7 @@ import { WidgetTone, WidgetStatus } from '../widgets/app-widgets-shell.component
 import { SensorApiService } from '../../core/sensors/sensor-api.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AnalyticsResponse } from '../../types/analytics';
-import { SensorReading, SensorTimeSeriesData } from '../../types/sensor';
+import { Sensor, SensorReading, SensorTimeSeriesData } from '../../types/sensor';
 
 const PALETTE = ['#37c79a', '#56b9ff', '#ffbf47', '#ff7a59', '#9b8cff', '#5ed3c6'];
 
@@ -43,6 +43,10 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   widgetStatus: WidgetStatus = 'ok';
   currentTheme: 'light' | 'dark' = document.documentElement.classList.contains('theme-light') ? 'light' : 'dark';
 
+  // ── Freshness ──────────────────────────────────────────────────────────
+  freshAt: string | null = null;
+  expectedIntervalSeconds = 300;
+
   // ── Gauge ──────────────────────────────────────────────────────────────
   gaugeValue: number | null = null;
   gaugeUnit  = '';
@@ -66,6 +70,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   private latestReadings: SensorTimeSeriesData | null = null;
   private themeObserver: MutationObserver | null = null;
   private realtimeSub: Subscription | null = null;
+  private sensors: Sensor[] = [];
 
   constructor(
     private readonly sensorApi: SensorApiService,
@@ -75,6 +80,11 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnInit(): void {
     this.observeTheme();
+    void this.sensorApi.listSensors().then(all => {
+      this.sensors = all;
+      this.updateExpectedInterval();
+      this.cdr.markForCheck();
+    });
     void this.reload();
   }
 
@@ -144,6 +154,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   async reload(): Promise<void> {
     this.stopRealtime();
+    this.updateExpectedInterval();
     const s = this.widget?.settings;
     if (!s?.sensor_ids?.length) {
       this.setEmpty('Configure sensors in widget settings.');
@@ -182,6 +193,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     });
     if (version !== this.loadVersion) return;
     this.latestAnalytics = resp;
+    this.freshAt = this.maxTimestamp(resp);
     this.applyLineChart(resp, s);
   }
 
@@ -192,6 +204,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     });
     if (version !== this.loadVersion) return;
     this.latestAnalytics = resp;
+    this.freshAt = this.maxTimestamp(resp);
     this.applyBarChart(resp);
   }
 
@@ -215,6 +228,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
     if (reading) {
       this.latestReading = reading;
+      this.freshAt = reading.timestamp ?? null;
       this.applyGauge(reading);
     } else {
       this.setEmpty('Waiting for first reading…');
@@ -223,6 +237,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     // Subscribe regardless — live readings will switch empty → gauge
     this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
       this.latestReading = live;
+      this.freshAt = live.timestamp ?? null;
       this.applyGauge(live);      // applyGauge sets chartType='gauge', hiding empty overlay
       this.cdr.markForCheck();
     });
@@ -253,6 +268,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     if (reading) {
       this.latestReading  = reading;
       this.latestReadings = readings;
+      this.freshAt = reading.timestamp ?? null;
       this.applyStatCard(reading, readings);
     } else {
       this.setEmpty('Waiting for first reading…');
@@ -261,6 +277,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     // Subscribe regardless — live readings will switch empty → stat card
     this.realtimeSub = this.realtime.subscribe(sensorId).subscribe(live => {
       this.latestReading = live;
+      this.freshAt = live.timestamp ?? null;
       this.statValue = live.value;
       this.widgetStatus = this.computeStatus();
       this.cdr.markForCheck();
@@ -468,6 +485,21 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.emptyMessage = message;
     this.widgetStatus = 'stale';
     this.cdr.markForCheck();
+  }
+
+  private maxTimestamp(resp: AnalyticsResponse | null): string | null {
+    if (!resp) return null;
+    const all = resp.data.flatMap(s => s.points.map((p: any) => p.timestamp as string));
+    return all.length ? all.reduce((a, b) => (a > b ? a : b)) : null;
+  }
+
+  private updateExpectedInterval(): void {
+    const ids = this.widget?.settings?.sensor_ids ?? [];
+    const filtered = this.sensors.filter(s => ids.includes(s.id));
+    const values = filtered
+      .map(s => s.expected_poll_seconds)
+      .filter((v): v is number => v !== null && v !== undefined);
+    this.expectedIntervalSeconds = values.length ? Math.min(...values) : 300;
   }
 
   private readTheme() {

@@ -114,14 +114,17 @@ interface WidgetSettings {
 ```
 
 **Shell (chrome wrapper):** `frontend/src/app/modules/widgets/app-widgets-shell.component.ts`
-- Selector: `<app-widget-shell>`; inputs: `title`, `subtitle`, `loading`, `tone`, `chromeMode`, `status: WidgetStatus`, `theme: 'light'|'dark'`
+- Selector: `<app-widget-shell>`; inputs: `title`, `subtitle`, `loading`, `tone`, `chromeMode`, `status: WidgetStatus`, `theme: 'light'|'dark'`, `freshAt: string|null`, `expectedIntervalSeconds: number` (default 300)
 - `cycleChromeMode()` toggles chrome between `'hover'` and `'off'`
 - **Ambient tinting:** `status` + `theme` drive three CSS custom properties (`--tone-tint`, `--tone-edge`, `--tone-text`) computed in `_computeTokens()`, memoized per `{status, theme}` key. Subtle intensity hard-coded; medium/strong constants kept for future preference UI. Hex palette and alpha ramps are at the top of the TS file.
+- **Data freshness:** `freshAt` + `expectedIntervalSeconds` drive a `freshnessState` getter (`'fresh'|'stale'|'offline'|'unknown'`). A 5-second `interval()` calls `cdr.markForCheck()` so the footer text updates without extra HTTP calls. `@HostBinding('attr.data-state')` exposes `freshnessState` on the host element (used by the offline desaturation CSS rule). A `<footer *ngIf="freshAt !== null">` renders the `relativeTime` pipe output in muted text.
+- **`RelativeTimePipe`** (`relative-time.pipe.ts`, declared + exported in `WidgetsModule`): pure pipe; thresholds: <90s → "Xs ago", <5400s → "X min ago", <86400s → "Xh ago", else "Xd ago". null → "N/A".
 
 **Renderer:** `frontend/src/app/modules/dashboard/dashboard-widget.component.ts`
 - Selector: `<app-dashboard-widget>`; required input: `widget: DashboardWidget`; input: `editable`
 - Outputs: `configure` (EventEmitter), `remove` (EventEmitter)
 - Fetches data on init, re-fetches on theme change (MutationObserver on `<html>`)
+- Loads all sensors via `sensorApi.listSensors()` once on init (cached in `this.sensors`). Computes `expectedIntervalSeconds` = min non-null `expected_poll_seconds` across the widget's sensors (fallback 300). Sets `freshAt` after every data load and realtime tick: max timestamp across analytics points for line/bar; `latestReading.timestamp` for gauge/stat_card.
 - `widgetStatus: WidgetStatus` computed by `computeStatus()` on every data tick; `currentTheme` updated in the same MutationObserver; both passed to shell as inputs.
 
 **Data flow per type:**
@@ -214,6 +217,8 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 
 - **Gridster column width depends on container width**, not a fixed pixel value — `GridType.Fixed` means the *cell* is 64px, but the dashboard wrapper must be wide enough to fit 24 columns + gutters or the grid will overflow.
 - **Theme re-render is driven by `MutationObserver`** watching `<html>` class changes, not an RxJS observable. Chart options are rebuilt from scratch on every toggle — do not diff them.
+- **`@HostBinding('attr.data-state')` on `AppWidgetsShellComponent`** sets `data-state` on the `<app-widget-shell>` host element. The CSS rule `:host([data-state="offline"]) .widget-body` desaturates the body when data goes offline. `data-state` is distinct from `data-chrome` and `data-tone` — no conflict. The `.widget-body` class is on the body `<div>` inside the shell template.
+- **`RelativeTimePipe` is pure** — it won't re-evaluate automatically when time passes. The shell component drives re-evaluation via a 5-second `interval()` subscription that calls `cdr.markForCheck()`. Do not make the pipe impure to solve this.
 - **`dashboard.component.ts` is 724 lines** — widget catalog, modal state, gridster config, layout persistence, and dashboard CRUD all live here. Navigate by line number comments when editing.
 - **`NgApexchartsModule`** must be in the `imports` of `DashboardModule`, not the root module — it is only used inside the dashboard feature.
 - **Edit/Add widget buttons** were reported as a known bug (EDIT-01, EDIT-02): they should not be disabled for owned dashboards, but tests were written to expect them enabled. If they appear disabled, investigate `editMode` state and ownership check logic in `dashboard.component.ts`.

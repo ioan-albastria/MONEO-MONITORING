@@ -27,4 +27,15 @@ class Sensor(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    # ── Slice 1 additions ──────────────────────────────────────────────────
+    expected_poll_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    normal_min:   Mapped[float | None] = mapped_column(Float, nullable=True)
+    normal_max:   Mapped[float | None] = mapped_column(Float, nullable=True)
+    warning_min:  Mapped[float | None] = mapped_column(Float, nullable=True)
+    warning_max:  Mapped[float | None] = mapped_column(Float, nullable=True)
+    critical_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    critical_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ranges_source: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
+
     readings = relationship("SensorReading", back_populates="sensor", cascade="all, delete-orphan")

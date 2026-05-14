@@ -44,6 +44,16 @@ every 5 minutes; frontend consumes the results via REST + WebSocket.
   version control operations.
 - **No worktrees.** Edit directly in the main repo.
 
+## Migrations (Slice 1)
+
+Schema is now managed by **Alembic** (`backend/alembic.ini`, `backend/migrations/`).
+`Base.metadata.create_all()` has been removed from app startup; the app runs
+`alembic upgrade head` on boot when `settings.auto_migrate = True` (default).
+The `backend/tests/conftest.py` SQLite fixture still uses `Base.metadata.create_all()`
+directly — do not add Alembic there.
+Migration files: `0001_initial_schema.py` (no-op baseline) and `0002_sensor_extensions.py`
+(adds 9 sensor columns).
+
 ## Reference documents
 
 | File | Purpose |

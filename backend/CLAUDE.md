@@ -23,12 +23,28 @@ API, and streams live sensor values to connected WebSocket clients.
 The frontend was built against this contract. Even additive changes (new fields, new routes) require
 sign-off because they may imply schema migrations.
 
+## Migrations (Slice 1)
+
+Schema is managed by **Alembic** (`backend/alembic.ini`, `backend/migrations/`).
+- `migrations/env.py` — reads DB URL from `config.settings.database_url`; imports all models for autogenerate.
+- `migrations/versions/0001_initial_schema.py` — no-op baseline (tables pre-existed).
+- `migrations/versions/0002_sensor_extensions.py` — adds 9 new sensor columns.
+- `Settings.auto_migrate: bool = True` — when True, `main.py` lifespan runs `alembic upgrade head` on startup.
+- `init_db()` in `DAL/db_context.py` is preserved for use in `tests/conftest.py` (SQLite in-memory fixtures only).
+
 ## Folder structure
 
 ```
 backend/
+├── alembic.ini                # Alembic config (script_location=migrations, blank sqlalchemy.url)
+├── migrations/
+│   ├── env.py                 # Reads DB URL from config; imports all model modules
+│   ├── script.py.mako         # Standard Alembic version template
+│   └── versions/
+│       ├── 0001_initial_schema.py    # No-op baseline
+│       └── 0002_sensor_extensions.py # Adds 9 sensor columns
 ├── DAL/
-│   ├── db_context.py          # Engine, SessionLocal, init_db(), Base
+│   ├── db_context.py          # Engine, SessionLocal, init_db() (tests only), Base
 │   └── models/
 │       ├── user.py            # User (credentials, is_active)
 │       ├── dashboard.py       # Dashboard (owner_id FK, is_public)
@@ -146,12 +162,14 @@ backend/
 | `users` | `id`, `username` (unique), `email` (unique), `hashed_password`, `is_active` | ← dashboards |
 | `dashboards` | `id`, `owner_id` (FK users), `name`, `is_public` | → owner, ← widgets |
 | `dashboard_widgets` | `id`, `dashboard_id` (FK, cascade delete), `widget_type`, `x/y/cols/rows`, `settings` (JSON) | → dashboard |
-| `sensors` | `id`, `moneo_sensor_id` (unique), `name`, `unit`, `asset_id` (nullable FK), `is_active`, `metadata` (JSON) | ← readings, ← alert_configs |
+| `sensors` | `id`, `moneo_sensor_id` (unique), `name`, `unit`, `asset_id` (nullable FK), `is_active`, `metadata` (JSON), `expected_poll_seconds` (nullable int), `last_seen_at` (nullable timestamptz), `normal_min/max`, `warning_min/max`, `critical_min/max` (all nullable float), `ranges_source` (varchar 20, default 'manual') | ← readings, ← alert_configs |
 | `sensor_readings` | `id`, `sensor_id` (FK), `value`, `timestamp` | → sensor — indexed on `(sensor_id, timestamp)` |
 | `assets` | `id`, `moneo_asset_id` (unique), `name`, `location`, `latitude`, `longitude`, `metadata` (JSON) | ← sensors |
 | `alert_configs` | `id`, `sensor_id` (FK), `threshold_value`, `comparison_type`, `is_active` | → sensor |
 
-Tables created on startup via `Base.metadata.create_all()` in `DAL/db_context.py`.
+Tables are managed by Alembic migrations (see Migrations section above). On startup, `main.py` runs `alembic upgrade head` when `settings.auto_migrate=True`.
+
+**SensorRead** (`routes/response_models/sensor.py`) exposes: `id`, `moneo_sensor_id`, `name`, `description`, `sensor_type`, `unit`, `asset_id`, `min_value`, `max_value`, `is_active`, `created_at`, `expected_poll_seconds` (nullable), `last_seen_at` (nullable). The six range-bound columns and `ranges_source` are schema-only (Slice 2 opens the API surface for them).
 
 ## Upstream MONEO API
 
@@ -165,7 +183,7 @@ Tables created on startup via `Base.metadata.create_all()` in `DAL/db_context.py
 - Sent as: `Authorization: Bearer {moneo_api_key}` on every upstream request
 
 **Polling schedule:**
-- `poll_latest_readings()` — every 300s (`SENSOR_POLL_INTERVAL_SECONDS`); deduplicates by timestamp
+- `poll_latest_readings()` — every 300s (`SENSOR_POLL_INTERVAL_SECONDS`); deduplicates by timestamp; sets `sensor.last_seen_at = timestamp` inside the same transaction on each new reading
 - `sync_sensor_metadata()` — on startup + every 6h; upserts `Asset` + `Sensor` rows from MONEO `/nodes`
 
 **Proxy routes** (`/api/moneo/*`) pass raw MONEO responses to the frontend. 502 on upstream failure.

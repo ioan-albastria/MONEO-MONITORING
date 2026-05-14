@@ -15,6 +15,8 @@ class SensorRead(BaseModel):
     max_value: Optional[float] = None
     is_active: bool
     created_at: datetime
+    expected_poll_seconds: Optional[int] = None
+    last_seen_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

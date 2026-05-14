@@ -50,6 +50,7 @@ class MoneoPoller:
                     status=reading_data.get("status", "ok"),
                 )
                 db.add(reading)
+                sensor.last_seen_at = timestamp
                 new_readings += 1
 
             db.commit()

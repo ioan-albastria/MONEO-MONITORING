@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     jwt_access_token_expire_hours: int = 24
     redis_url: str = "redis://localhost:6379"
     sensor_poll_interval_seconds: int = 300
+    auto_migrate: bool = True
     debug: bool = False
     allowed_origins: list[str] = ["http://localhost:4200", "http://localhost:3000"]
     seed_admin_username: str = "admin"
