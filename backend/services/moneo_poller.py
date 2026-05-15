@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, timezone
 
 from DAL import SessionLocal, Sensor, SensorReading, Asset
+from config import settings
+from services.alert_evaluator import AlertEvaluator
 from services.moneo_api_client import MoneoApiClient
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,9 @@ class MoneoPoller:
                 db.add(reading)
                 sensor.last_seen_at = timestamp
                 new_readings += 1
+
+                if settings.alert_evaluation_enabled:
+                    AlertEvaluator().evaluate(db, sensor, reading)
 
             db.commit()
             logger.info("Poll complete: %d new readings from %d sensors", new_readings, len(sensors))

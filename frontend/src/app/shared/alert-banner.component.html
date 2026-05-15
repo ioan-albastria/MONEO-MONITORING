@@ -1,0 +1,8 @@
+<div class="alert-banner" *ngIf="hasActive" role="status" aria-live="polite">
+  <span class="icon alert-banner__icon">notifications_active</span>
+  <span class="alert-banner__text">
+    <strong>{{ critCount }} active alert{{ critCount !== 1 ? 's' : '' }}</strong>
+    require{{ critCount !== 1 ? '' : 's' }} attention.
+  </span>
+  <a routerLink="/alerts" class="alert-banner__link">View all →</a>
+</div>

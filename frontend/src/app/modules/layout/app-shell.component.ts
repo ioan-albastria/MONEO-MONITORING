@@ -35,6 +35,7 @@ export class AppShellComponent implements OnInit {
 
   private readonly routeTitles: Record<string, { title: string; subtitle: string }> = {
     '/dashboard': { title: 'Dashboard',  subtitle: 'Sensor Overview' },
+    '/alerts':    { title: 'Alerts',     subtitle: 'Active Events & Rules' },
     '/live':      { title: 'Live View',  subtitle: 'Realtime Tracking' },
     '/trips':     { title: 'Trips',      subtitle: '' },
     '/vehicles':  { title: 'Vehicles',   subtitle: '' },

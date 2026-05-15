@@ -12,7 +12,9 @@
   <div class="flex-1 min-h-0 flex">
     <app-nav-rail></app-nav-rail>
     <main class="flex-1 min-w-0 p-[var(--page-pad)] overflow-auto">
+      <app-alert-banner></app-alert-banner>
       <router-outlet></router-outlet>
     </main>
   </div>
+  <app-toast-host></app-toast-host>
 </div>

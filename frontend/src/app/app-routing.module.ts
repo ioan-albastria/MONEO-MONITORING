@@ -18,6 +18,10 @@ const routes: Routes = [
         path: 'dashboard',
         loadChildren: () => import('./modules/dashboard/dashboard.module').then(m => m.DashboardModule),
       },
+      {
+        path: 'alerts',
+        loadChildren: () => import('./modules/alerts/alerts.module').then(m => m.AlertsModule),
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

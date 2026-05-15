@@ -4,6 +4,19 @@
   min-height: 0;
 }
 
+.dashboard-ranges-grid {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.dashboard-ranges-grid__label {
+  font-size: 0.8125rem;
+  color: var(--color-fg-muted);
+}
+
 .dashboard-page {
   position: relative;
 }
@@ -314,6 +327,16 @@
   min-height: 100% !important;
   height: max-content !important;
   overflow: visible !important;
+}
+
+/* Fade gridster grid lines from harsh white to a subtle border colour */
+:host ::ng-deep gridster.dashboard-grid .gridster-column {
+  border-left-color: color-mix(in oklch, var(--color-border) 50%, transparent);
+  border-right-color: color-mix(in oklch, var(--color-border) 50%, transparent);
+}
+:host ::ng-deep gridster.dashboard-grid .gridster-row {
+  border-top-color: color-mix(in oklch, var(--color-border) 50%, transparent);
+  border-bottom-color: color-mix(in oklch, var(--color-border) 50%, transparent);
 }
 
 :host ::ng-deep gridster.dashboard-grid > .gridster,

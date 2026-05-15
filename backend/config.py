@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     sensor_poll_interval_seconds: int = 300
     auto_migrate: bool = True
+    alert_evaluation_enabled: bool = True
     debug: bool = False
     allowed_origins: list[str] = ["http://localhost:4200", "http://localhost:3000"]
     seed_admin_username: str = "admin"

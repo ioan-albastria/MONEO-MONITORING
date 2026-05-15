@@ -40,4 +40,8 @@ export class SensorApiService {
     if (opts.bucket_minutes) params = params.set('bucket_minutes', String(opts.bucket_minutes));
     return firstValueFrom(this.http.get<AnalyticsResponse>('/api/analytics', { params }));
   }
+
+  updateRanges(id: number, body: Partial<import('../../types/sensor').Sensor>): Promise<import('../../types/sensor').Sensor> {
+    return firstValueFrom(this.http.put<import('../../types/sensor').Sensor>(`/api/sensors/${id}/ranges`, body));
+  }
 }

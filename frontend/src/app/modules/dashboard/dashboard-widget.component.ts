@@ -82,6 +82,9 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   private themeObserver: MutationObserver | null = null;
   private realtimeSub: Subscription | null = null;
   private sensors: Sensor[] = [];
+  /** Resolved time-window bounds (ms) for pinning the line-chart X axis. */
+  private chartFrom: number | null = null;
+  private chartTo:   number | null = null;
 
   constructor(
     private readonly sensorApi: SensorApiService,
@@ -122,9 +125,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   get subtitle(): string {
-    const ids = this.widget.settings?.sensor_ids ?? [];
-    if (ids.length === 1) return '1 sensor';
-    return ids.length > 1 ? `${ids.length} sensors` : '';
+    return this.widget.subtitle?.trim() || '';
   }
 
   get badgeText(): string {
@@ -193,6 +194,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   private async loadLineChart(s: WidgetSettings, version: number): Promise<void> {
     const { from, to } = this.resolveWindow(s);
+    this.chartFrom = new Date(from).getTime();
+    this.chartTo   = new Date(to).getTime();
     const resp = await this.sensorApi.getAnalytics(s.sensor_ids!, from, to, {
       aggregated: s.aggregated, bucket_minutes: s.bucket_minutes,
     });
@@ -307,11 +310,9 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       }))
       .filter(sr => sr.data.length > 0);
 
-    if (!series.length) { this.setEmpty('No readings in this window.'); return; }
-
     this.chartType  = 'apex';
     this.chartConfig = {
-      series,
+      series: series.length ? series : [{ name: '', data: [] }],
       chart: {
         type: 'line', height: '100%', toolbar: { show: false },
         zoom: { enabled: true, type: 'x', autoScaleYaxis: true },
@@ -322,10 +323,15 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       dataLabels: { enabled: false },
       stroke: { curve: 'smooth', width: 2.5 },
       grid: { borderColor: theme.border, strokeDashArray: 4 },
-      xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
+      xaxis: {
+        type: 'datetime',
+        min: this.chartFrom ?? undefined,
+        max: this.chartTo   ?? undefined,
+        labels: { datetimeUTC: false },
+      },
       yaxis: { labels: { formatter: (v: number) => v.toFixed(1) } },
       legend: {
-        show: s.show_legend !== false,
+        show: s.show_legend !== false && series.length > 0,
         position: 'top', horizontalAlign: 'left',
         labels: { colors: theme.fgMuted },
       },
@@ -384,10 +390,15 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   private applyGauge(reading: SensorReading, sensor?: Sensor | null): void {
     const value = reading?.value ?? null;
+
+    // Guard: invalid or equal range — fall back to 0-100 so the dial renders
+    const gMin = this.gaugeMin;
+    const gMax = this.gaugeMax <= gMin ? gMin + 100 : this.gaugeMax;
+
     let percent = 0;
     if (value !== null) {
       percent = Math.max(0, Math.min(100,
-        ((value - this.gaugeMin) / (this.gaugeMax - this.gaugeMin)) * 100));
+        ((value - gMin) / (gMax - gMin)) * 100));
     }
 
     const tier = sensor ? statusOf(value ?? 0, sensor) : 'unknown';
@@ -396,13 +407,17 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       this.gaugeTone    = tier === 'critical' ? 'danger' : tier === 'warning' ? 'warning' : 'normal';
       this.gaugeColor   = STATUS_COLOR_HEX[tier];
     } else {
-      // Fallback: percentage heuristic (no bounds configured)
-      this.gaugeTone    = percent >= 95 ? 'danger' : percent >= 80 ? 'warning' : 'normal';
-      this.gaugeColor   = this.gaugeTone === 'danger'
-        ? STATUS_COLOR_HEX.critical
-        : this.gaugeTone === 'warning'
-        ? STATUS_COLOR_HEX.warning
-        : STATUS_COLOR_HEX.normal;
+      // Fallback heuristic (no sensor bounds configured)
+      if (value !== null && value > gMax) {
+        // Overshoot: value exceeds the configured max — show vivid critical red immediately
+        this.gaugeColor = STATUS_COLOR_HEX.critical;
+        this.gaugeTone  = 'danger';
+      } else {
+        this.gaugeTone  = percent >= 95 ? 'danger' : percent >= 80 ? 'warning' : 'normal';
+        this.gaugeColor = this.gaugeTone === 'danger'  ? STATUS_COLOR_HEX.critical
+          : this.gaugeTone === 'warning' ? STATUS_COLOR_HEX.warning
+          : STATUS_COLOR_HEX.normal;
+      }
     }
 
     this.chartType      = 'gauge';
@@ -562,11 +577,23 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     return tier.charAt(0).toUpperCase() + tier.slice(1);
   }
 
-  // ── Stub: ranges editor ────────────────────────────────────────────────
+  // ── Color helpers ──────────────────────────────────────────────────────
+
+  private lerpHex(a: string, b: string, t: number): string {
+    const tc = Math.max(0, Math.min(1, t));  // clamp to [0,1] — prevents negative channels
+    const n1 = parseInt(a.slice(1), 16);
+    const n2 = parseInt(b.slice(1), 16);
+    const ch = (shift: number) => {
+      const v = Math.round(((n1 >> shift) & 0xff) + (((n2 >> shift) & 0xff) - ((n1 >> shift) & 0xff)) * tc);
+      return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+    };
+    return `#${ch(16)}${ch(8)}${ch(0)}`;
+  }
+
+  // ── Ranges editor ──────────────────────────────────────────────────────
 
   openRangesEditor(): void {
-    // TODO Slice 3: open a dialog/drawer for range editing
-    console.log('ranges editor — coming in Slice 3');
+    this.configure.emit();
   }
 
   // ── Theme observation ──────────────────────────────────────────────────

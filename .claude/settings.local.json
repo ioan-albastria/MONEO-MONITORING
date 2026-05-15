@@ -1,12 +1,17 @@
 {
   "permissions": {
-    "allow": ["Bash", "PowerShell"],
+    "allow": [
+      "Bash",
+      "PowerShell",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_Preview__preview_start"
+    ],
     "deny": []
   },
   "commandHistory": {
     "enabled": true,
     "maxEntries": 100,
-    "commands": [  
+    "commands": [
       "PowerShell(Get-ChildItem -Path \"c:\\\\Work\\\\Albastria\\\\FMC250\\\\fmc250-monitoring\" -Force | Select-Object Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Directory\"}else{\"File\"}}} | Sort-Object Type, Name)",
       "Bash(ng new *)",
       "Bash(npm install *)",

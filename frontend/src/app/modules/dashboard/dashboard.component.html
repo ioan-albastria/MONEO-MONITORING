@@ -270,7 +270,6 @@
       </header>
 
       <div class="dashboard-modal__body dashboard-modal__body--widget">
-        <div class="dashboard-banner dashboard-banner--error" *ngIf="widgetError">{{ widgetError }}</div>
 
         <!-- Section 1: Widget type picker -->
         <div class="dashboard-editor-section">
@@ -388,9 +387,33 @@
             </label>
           </div>
         </div>
+
+        <!-- Section 5: Sensor ranges (single-sensor widgets only) -->
+        <div class="dashboard-editor-section" *ngIf="widgetForm.sensorIds.length === 1">
+          <div class="dashboard-editor-section__eyebrow">Status thresholds</div>
+          <div class="dashboard-editor-section__title">Sensor ranges</div>
+          <div class="dashboard-editor-section__hint">
+            Enter the upper limit of each severity band. Values up to Normal are green,
+            up to Warning are amber, above Warning are red. Leave blank to disable status colouring.
+          </div>
+          <div class="dashboard-ranges-grid">
+            <span class="dashboard-ranges-grid__label">Normal up to</span>
+            <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number" step="any"
+              placeholder="—" [(ngModel)]="widgetForm.normalMax" name="normalMax" />
+
+            <span class="dashboard-ranges-grid__label">Warning up to</span>
+            <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number" step="any"
+              placeholder="—" [(ngModel)]="widgetForm.warningMax" name="warningMax" />
+
+            <span class="dashboard-ranges-grid__label">Critical up to</span>
+            <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number" step="any"
+              placeholder="—" [(ngModel)]="widgetForm.criticalMax" name="criticalMax" />
+          </div>
+        </div>
       </div>
 
       <footer class="dashboard-modal__footer">
+        <div class="dashboard-banner dashboard-banner--error" *ngIf="widgetError" style="flex:1;margin-right:8px">{{ widgetError }}</div>
         <button type="button" class="dashboard-toolbar__btn" (click)="closeWidgetEditor()">Cancel</button>
         <button type="button" class="dashboard-toolbar__btn dashboard-toolbar__btn--accent"
           (click)="saveWidget()" [disabled]="widgetSaving">
@@ -399,5 +422,6 @@
       </footer>
     </section>
   </div>
+
 
 </section>

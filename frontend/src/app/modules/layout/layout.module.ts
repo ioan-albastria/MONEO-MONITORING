@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { AppShellComponent } from './app-shell.component';
 import { AppPageHeaderComponent } from './app-page-header.component';
 import { AppNavRailComponent } from './app-nav-rail.component';
+import { SharedModule } from '../../shared/shared.module';
 
 @NgModule({
   declarations: [
@@ -11,7 +12,7 @@ import { AppNavRailComponent } from './app-nav-rail.component';
     AppPageHeaderComponent,
     AppNavRailComponent,
   ],
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, SharedModule],
   exports: [AppShellComponent],
 })
 export class LayoutModule {}

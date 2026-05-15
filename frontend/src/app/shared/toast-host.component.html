@@ -1,0 +1,18 @@
+<div class="toast-host">
+  <div
+    *ngFor="let toast of toasts"
+    class="toast"
+    [attr.data-severity]="toast.severity"
+    role="alert"
+  >
+    <span class="toast__message">{{ toast.message }}</span>
+    <button
+      type="button"
+      class="toast__close"
+      (click)="dismiss(toast.id)"
+      aria-label="Dismiss"
+    >
+      <span class="icon">close</span>
+    </button>
+  </div>
+</div>

@@ -40,7 +40,10 @@
           <h3 class="min-w-0 truncate text-sm font-medium text-fg">{{ title }}</h3>
           <ng-content select="[widgetBadge]"></ng-content>
         </div>
-        <p *ngIf="subtitle" class="mt-0.5 text-xs text-fg-muted truncate">{{ subtitle }}</p>
+        <div class="mt-0.5 text-[10px] text-fg-faint truncate leading-none">
+          <ng-content select="[widgetHeaderMeta]"></ng-content>
+        </div>
+        <p *ngIf="subtitle" class="mt-1 text-xs text-fg-muted truncate">{{ subtitle }}</p>
       </div>
       <div class="gridster-item-content flex items-center gap-1">
         <ng-content select="[widgetActions]"></ng-content>
@@ -65,7 +68,7 @@
 
   <!-- Body -->
   <div
-    class="widget-body flex-1 min-h-0
+    class="widget-body flex-1 min-h-0 flex flex-col
            px-[var(--pad-widget-current)]
            py-[var(--pad-widget-current)]"
   >

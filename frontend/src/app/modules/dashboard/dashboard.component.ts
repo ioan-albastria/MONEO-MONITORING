@@ -47,6 +47,9 @@ type WidgetFormModel = {
   to: string;
   gaugeMin: number;
   gaugeMax: number;
+  normalMax:   number | null;
+  warningMax:  number | null;
+  criticalMax: number | null;
 };
 
 // ── Widget catalog ─────────────────────────────────────────────────────────
@@ -164,6 +167,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   availableSensors: Sensor[] = [];
   sensorsLoading = false;
 
+
   constructor(
     private readonly api: DashboardApiService,
     private readonly sensorApi: SensorApiService,
@@ -264,6 +268,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ...this.gridOptions,
       draggable: { ...this.gridOptions.draggable, enabled: this.editMode },
       resizable: { ...this.gridOptions.resizable, enabled: this.editMode },
+      displayGrid: this.editMode ? DisplayGrid.Always : DisplayGrid.None,
     };
     this.gridOptions.api?.optionsChanged?.();
     this.refreshView();
@@ -412,12 +417,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     void this.loadSensors();
   }
 
-  openWidgetEditor(widget: DashboardWidget): void {
+  async openWidgetEditor(widget: DashboardWidget): Promise<void> {
     if (!this.selectedDashboard?.is_owned) return;
     this.widgetEditorMode = 'edit';
     this.editingWidget = widget;
     const s = widget.settings ?? {};
     this.widgetForm = {
+      ...this.emptyWidgetForm(),
       type: widget.widget_type,
       title: widget.title ?? '',
       subtitle: widget.subtitle ?? '',
@@ -431,7 +437,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
     this.widgetError = null;
     this.widgetEditorOpen = true;
-    void this.loadSensors();
+    await this.loadSensors();
+    this.populateRangesFromSensor();
+    this.refreshView();
   }
 
   closeWidgetEditor(): void {
@@ -448,6 +456,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (!this.widgetForm.sensorIds.length) {
       this.widgetError = 'Select at least one sensor.';
+      return;
+    }
+
+    // Coerce to number — Angular may return "" for cleared number inputs at runtime
+    const toNum = (v: number | null): number | null => {
+      if (v === null || v === ('' as unknown as null)) return null;
+      const n = Number(v);
+      return isNaN(n) ? null : n;
+    };
+
+    const gMin = toNum(this.widgetForm.gaugeMin);
+    const gMax = toNum(this.widgetForm.gaugeMax);
+    if (gMin !== null && gMax !== null && gMin >= gMax) {
+      this.widgetError = 'Gauge max must be greater than gauge min.';
+      return;
+    }
+
+    const nMax = toNum(this.widgetForm.normalMax);
+    const wMax = toNum(this.widgetForm.warningMax);
+    const cMax = toNum(this.widgetForm.criticalMax);
+    if (nMax !== null && wMax !== null && nMax >= wMax) {
+      this.widgetError = 'Warning threshold must be greater than Normal.';
+      return;
+    }
+    if (wMax !== null && cMax !== null && wMax >= cMax) {
+      this.widgetError = 'Critical threshold must be greater than Warning.';
+      return;
+    }
+    if (nMax !== null && cMax !== null && wMax === null && nMax >= cMax) {
+      this.widgetError = 'Critical threshold must be greater than Normal.';
       return;
     }
 
@@ -479,6 +517,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
           settings,
         };
         await this.api.updateWidget(this.editingWidget!.id, payload);
+      }
+
+      if (this.widgetForm.sensorIds.length === 1) {
+        try {
+          const updated = await this.sensorApi.updateRanges(this.widgetForm.sensorIds[0], {
+            normal_max:   nMax,
+            warning_max:  wMax,
+            critical_max: cMax,
+          });
+          // Bust the stale sensor cache so re-opening the editor shows saved values
+          const idx = this.availableSensors.findIndex(s => s.id === updated.id);
+          if (idx >= 0) this.availableSensors[idx] = updated;
+        } catch { /* non-fatal: widget saved, ranges silently skipped */ }
       }
 
       this.widgetEditorOpen = false;
@@ -550,7 +601,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private buildGridItems(): void {
     this.suppressLayout = true;
     this.gridItems = (this.selectedDashboard?.widgets ?? []).map(w => ({
-      gridsterItem: { x: w.x, y: w.y, cols: w.cols, rows: w.rows } as GridsterItem,
+      gridsterItem: {
+        x: w.x, y: w.y, cols: w.cols, rows: w.rows,
+        minItemCols: 3,
+        minItemRows: 3,
+      } as GridsterItem,
       widget: w,
     }));
     setTimeout(() => { this.suppressLayout = false; }, 0);
@@ -698,7 +753,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
       to: '',
       gaugeMin: 0,
       gaugeMax: 100,
+      normalMax:   null,
+      warningMax:  null,
+      criticalMax: null,
     };
+  }
+
+  private populateRangesFromSensor(): void {
+    if (this.widgetForm.sensorIds.length !== 1) return;
+    const sensor = this.availableSensors.find(s => s.id === this.widgetForm.sensorIds[0]);
+    if (!sensor) return;
+    this.widgetForm.normalMax   = sensor.normal_max;
+    this.widgetForm.warningMax  = sensor.warning_max;
+    this.widgetForm.criticalMax = sensor.critical_max;
   }
 
   private restoreSelectedId(): number | null {

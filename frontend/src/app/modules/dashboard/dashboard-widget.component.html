@@ -8,24 +8,13 @@
   [freshAt]="freshAt"
   [expectedIntervalSeconds]="expectedIntervalSeconds"
 >
-  <!-- Badge slot -->
-  <div
-    widgetBadge
-    class="text-[10px] px-2 py-0.5 rounded-[var(--radius-sm)] border border-border bg-surface-1/70 text-fg-faint uppercase tracking-[0.08em]"
-  >{{ badgeText }}</div>
+  <!-- Always-visible reload button in header -->
+  <button widgetActions type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
+    <span class="icon icon-muted">refresh</span>
+  </button>
 
-  <!-- Header action: refresh -->
-  <div widgetActions>
-    <button type="button" class="icon-btn" title="Refresh widget" (click)="$event.stopPropagation(); reload()">
-      <span class="icon icon-muted">refresh</span>
-    </button>
-  </div>
-
-  <!-- ── Widget body ──────────────────────────────────────────────────── -->
-  <div class="h-full min-h-0 relative">
-
-    <!-- Loading spinner -->
-    <div *ngIf="loading" class="dashboard-widget__state">
+  <!-- Loading spinner -->
+  <div *ngIf="loading" class="dashboard-widget__state">
       <span class="icon text-brand dashboard-widget__spin" aria-hidden="true">progress_activity</span>
       <span>Loading widget data...</span>
     </div>
@@ -45,7 +34,7 @@
     <!-- ApexCharts (line / bar) -->
     <apx-chart
       *ngIf="!loading && !error && chartType === 'apex' && chartConfig"
-      class="block h-full"
+      class="block flex-1 min-h-0"
       [series]="chartConfig.series"
       [chart]="chartConfig.chart"
       [colors]="chartConfig.colors"
@@ -75,9 +64,9 @@
           <span class="text-xs text-fg-faint mt-0.5">{{ gaugeUnit }}</span>
         </div>
       </div>
-      <div class="flex justify-between text-xs text-fg-faint mt-2">
-        <span>{{ gaugeMin }}</span>
-        <span>{{ gaugeMax }}</span>
+      <div class="gauge-scale-row">
+        <span>min <strong>{{ gaugeMin }}</strong></span>
+        <span>max <strong>{{ gaugeMax }}</strong></span>
       </div>
     </div>
 
@@ -115,26 +104,14 @@
       </div>
     </div>
 
-  </div>
+  <!-- Header meta — sensor count + time window shown under the title -->
+  <div widgetHeaderMeta>{{ metaText }}</div>
 
-  <!-- Chrome bar — left meta -->
-  <div widgetMeta>{{ metaText }}</div>
+  <!-- Chrome bar — left meta (kept empty; label is now in header) -->
+  <div widgetMeta></div>
 
   <!-- Chrome bar — right actions -->
   <div widgetChrome class="flex items-center gap-1">
-    <button type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
-      <span class="icon icon-muted">refresh</span>
-    </button>
-    <!-- Quick-edit ranges: visible only for single-sensor widgets in edit mode -->
-    <button
-      type="button"
-      class="icon-btn"
-      title="Edit sensor ranges"
-      *ngIf="editable && activeSensor && (widget.settings?.sensor_ids?.length === 1)"
-      (click)="openRangesEditor()"
-    >
-      <span class="icon icon-muted">tune</span>
-    </button>
     <button
       type="button"
       class="icon-btn"

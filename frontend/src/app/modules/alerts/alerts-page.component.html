@@ -1,0 +1,27 @@
+<div class="alerts-page">
+  <div class="alerts-page__tabs" role="tablist">
+    <button
+      type="button"
+      role="tab"
+      [class.is-active]="activeTab === 'events'"
+      [attr.aria-selected]="activeTab === 'events'"
+      (click)="activeTab = 'events'"
+    >
+      Active Events
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [class.is-active]="activeTab === 'rules'"
+      [attr.aria-selected]="activeTab === 'rules'"
+      (click)="activeTab = 'rules'"
+    >
+      Rules
+    </button>
+  </div>
+
+  <div class="alerts-page__body">
+    <app-alerts-list *ngIf="activeTab === 'events'"></app-alerts-list>
+    <app-alert-rules-list *ngIf="activeTab === 'rules'"></app-alert-rules-list>
+  </div>
+</div>

@@ -19,7 +19,7 @@
 }
 
 .dashboard-widget__state {
-  height: 100%;
+  flex: 1 1 0%;
   min-height: 160px;
   display: grid;
   place-items: center;
@@ -44,7 +44,7 @@
 }
 
 .dashboard-gauge-grid {
-  height: 100%;
+  flex: 1 1 0%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -77,23 +77,22 @@
   place-items: center;
   /* Default single-colour sweep; overridden by [style.background] when range zones are configured */
   background:
-    radial-gradient(circle at center, transparent 57%, rgba(0, 0, 0, 0.1) 58%, transparent 59%),
     conic-gradient(
       from 180deg,
-      color-mix(in oklch, var(--gauge-color) 76%, transparent) 0 var(--gauge-progress),
-      color-mix(in oklch, var(--color-surface-3) 52%, transparent) var(--gauge-progress) 100%
+      var(--gauge-color) 0 var(--gauge-progress),
+      color-mix(in oklch, var(--color-fg) 14%, var(--color-border)) var(--gauge-progress) 100%
     );
 }
 
 .dashboard-gauge-card__dial-inner {
-  width: calc(100% - 24px);
-  height: calc(100% - 24px);
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
   border-radius: 999px;
   display: grid;
   place-items: center;
   text-align: center;
-  background: color-mix(in oklch, var(--color-surface-1) 86%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--color-border) 64%, transparent);
+  background: var(--color-surface-1);
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .dashboard-gauge-card__dial-value {
@@ -105,6 +104,21 @@
 .dashboard-gauge-card__dial-scale {
   font-size: 11px;
   color: var(--color-fg-faint);
+}
+
+.gauge-scale-row {
+  display: flex;
+  justify-content: space-between;
+  width: min(100cqw, calc(100cqh - 28px));
+  font-size: 11px;
+  color: var(--color-fg-faint);
+  margin-top: 2px;
+  padding: 0 2px;
+}
+
+.gauge-scale-row strong {
+  font-weight: 600;
+  color: var(--color-fg-muted);
 }
 
 .dashboard-gauge-card__meta {
@@ -137,25 +151,29 @@
 /* ── Stat card layout ────────────────────────────────────────────────────── */
 
 .widget-stat {
-  container-type: inline-size;
-  height: 100%;
+  flex: 1 1 0%;
   min-height: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: center;
+  gap: 8px;
   padding: 4px 0;
 }
 
 .widget-stat__left {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
   min-width: 0;
+  text-align: center;
 }
 
 .widget-stat__value {
-  font-size: clamp(1.5rem, 10cqi, 2.5rem);
+  /* cqi requires container-type on the same element, which conflicts with
+     flex alignment — use vw-based clamp instead */
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
   font-weight: 600;
   line-height: 1.1;
   color: var(--tone-text, var(--color-fg));
@@ -187,8 +205,7 @@
 
 .widget-stat__right {
   flex-shrink: 0;
-  width: clamp(72px, 30%, 120px);
-  align-self: center;
+  width: clamp(100px, 60%, 180px);
 }
 
 .widget-stat__sparkline { display: block; width: 100%; }

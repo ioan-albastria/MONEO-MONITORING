@@ -1,0 +1,40 @@
+<div class="rules-list">
+  <div *ngIf="loading" class="rules-list__empty">Loading rules…</div>
+  <div *ngIf="error" class="rules-list__error">{{ error }}</div>
+
+  <div *ngIf="!loading && rules.length === 0 && !error" class="rules-list__empty">
+    No alert rules configured.
+  </div>
+
+  <table *ngIf="!loading && rules.length > 0" class="data-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Sensor</th>
+        <th>Condition</th>
+        <th>Severity</th>
+        <th>Enabled</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let rule of rules">
+        <td>{{ rule.name }}</td>
+        <td>Sensor #{{ rule.sensor_id }}</td>
+        <td class="rules-list__condition">{{ conditionSummary(rule) }}</td>
+        <td>
+          <span [class]="'pill pill--' + rule.severity">{{ rule.severity }}</span>
+        </td>
+        <td>
+          <button
+            type="button"
+            class="btn btn-xs"
+            [class.btn--active]="rule.is_enabled"
+            (click)="toggleEnabled(rule)"
+          >
+            {{ rule.is_enabled ? 'On' : 'Off' }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

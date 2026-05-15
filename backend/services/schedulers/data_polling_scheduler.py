@@ -4,6 +4,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from config import settings
 from services.moneo_poller import MoneoPoller
+from services.schedulers.alert_no_data_scheduler import check_no_data_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,14 @@ def start_scheduler():
         trigger="interval",
         hours=6,
         id="sync_sensor_metadata",
+        replace_existing=True,
+    )
+
+    _scheduler.add_job(
+        check_no_data_alerts,
+        trigger="interval",
+        seconds=60,
+        id="check_no_data_alerts",
         replace_existing=True,
     )
 

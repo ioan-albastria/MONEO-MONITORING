@@ -1,0 +1,40 @@
+<div class="alerts-list">
+  <div *ngIf="loading" class="alerts-list__empty">Loading active events…</div>
+  <div *ngIf="error" class="alerts-list__error">{{ error }}</div>
+
+  <div *ngIf="!loading && events.length === 0 && !error" class="alerts-list__empty">
+    No active alerts. All clear.
+  </div>
+
+  <table *ngIf="!loading && events.length > 0" class="data-table">
+    <thead>
+      <tr>
+        <th>State</th>
+        <th>Sensor</th>
+        <th>Value</th>
+        <th>Time</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let event of events">
+        <td>
+          <span [class]="severityClass(event.state)">{{ event.state }}</span>
+        </td>
+        <td>Sensor #{{ event.sensor_id }}</td>
+        <td>{{ event.observed_value !== null ? (event.observed_value | number:'1.2-2') : '—' }}</td>
+        <td>{{ event.observed_at | relativeTime }}</td>
+        <td>
+          <button
+            *ngIf="event.state === 'firing' || event.state === 'awaiting_ack'"
+            type="button"
+            class="btn btn-xs"
+            (click)="ack(event)"
+          >
+            Ack
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
