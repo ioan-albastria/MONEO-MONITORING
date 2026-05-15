@@ -1,3 +1,5 @@
+from typing import Callable
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -32,3 +34,23 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     return user
+
+
+def requires_role(*roles: str) -> Callable:
+    """Dependency factory — restricts an endpoint to users with one of the given roles.
+
+    Usage::
+
+        @router.put("/foo")
+        async def foo(current_user: User = Depends(requires_role("admin", "operator"))):
+            ...
+    """
+    async def _check(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient role",
+            )
+        return current_user
+
+    return _check

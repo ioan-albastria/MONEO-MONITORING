@@ -8,6 +8,14 @@ export interface Sensor {
   updated_at?: string;
   expected_poll_seconds: number | null;
   last_seen_at: string | null;
+  // Slice 2: range-bound fields
+  normal_min:    number | null;
+  normal_max:    number | null;
+  warning_min:   number | null;
+  warning_max:   number | null;
+  critical_min:  number | null;
+  critical_max:  number | null;
+  ranges_source: string;
 }
 
 export interface SensorReading {

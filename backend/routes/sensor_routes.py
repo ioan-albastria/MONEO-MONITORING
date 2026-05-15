@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from DAL import get_db
-from middleware import get_current_user
-from routes.response_models.sensor import SensorRead
+from DAL.models.sensor import Sensor
+from middleware import get_current_user, requires_role
+from routes.response_models.sensor import SensorRead, SensorRangesUpdate
 from routes.response_models.analytics import SensorTimeSeriesData
 from services.sensor_service import SensorService
 from services.sensor_readings_service import SensorReadingsService
@@ -78,3 +79,24 @@ async def set_sensor_active(
         return _sensor_service.set_sensor_active(db, sensor_id, is_active)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@sensor_router.put("/{sensor_id}/ranges", response_model=SensorRead)
+async def update_sensor_ranges(
+    sensor_id: int,
+    body: SensorRangesUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(requires_role("admin", "operator")),
+):
+    """Update the normal / warning / critical threshold bands for a sensor.
+    Requires admin or operator role.
+    """
+    sensor = db.get(Sensor, sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
+    for field, val in body.model_dump().items():
+        setattr(sensor, field, val)
+    sensor.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(sensor)
+    return sensor

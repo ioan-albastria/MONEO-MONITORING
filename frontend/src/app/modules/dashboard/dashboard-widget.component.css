@@ -67,6 +67,7 @@
 
 .dashboard-gauge-card__dial {
   --gauge-progress: 0%;
+  --gauge-color: var(--color-brand);   /* overridden per-widget by [style.--gauge-color] */
   /* Fit the largest circle that doesn't overflow in either axis */
   width: min(100cqw, calc(100cqh - 28px));
   height: min(100cqw, calc(100cqh - 28px));
@@ -74,11 +75,12 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
+  /* Default single-colour sweep; overridden by [style.background] when range zones are configured */
   background:
     radial-gradient(circle at center, transparent 57%, rgba(0, 0, 0, 0.1) 58%, transparent 59%),
     conic-gradient(
       from 180deg,
-      color-mix(in oklch, var(--color-danger) 76%, transparent) 0 var(--gauge-progress),
+      color-mix(in oklch, var(--gauge-color) 76%, transparent) 0 var(--gauge-progress),
       color-mix(in oklch, var(--color-surface-3) 52%, transparent) var(--gauge-progress) 100%
     );
 }
@@ -195,3 +197,21 @@
   max-width: 200px;
   line-height: 1.4;
 }
+
+/* ── Stat card status pill ───────────────────────────────────────────────── */
+
+.widget-stat__status-pill {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+  line-height: 1.6;
+}
+
+.widget-stat__status-pill[data-tier="normal"]   { background: #37c79a22; color: #37c79a; }
+.widget-stat__status-pill[data-tier="warning"]  { background: #f5b42822; color: #f5b428; }
+.widget-stat__status-pill[data-tier="critical"] { background: #e64b3c22; color: #e64b3c; }

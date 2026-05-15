@@ -17,8 +17,27 @@ class SensorRead(BaseModel):
     created_at: datetime
     expected_poll_seconds: Optional[int] = None
     last_seen_at: Optional[datetime] = None
+    # ── Slice 2: range bounds (read-only consumers see all tiers) ──────────
+    normal_min:    Optional[float] = None
+    normal_max:    Optional[float] = None
+    warning_min:   Optional[float] = None
+    warning_max:   Optional[float] = None
+    critical_min:  Optional[float] = None
+    critical_max:  Optional[float] = None
+    ranges_source: str = "manual"
 
     model_config = {"from_attributes": True}
+
+
+class SensorRangesUpdate(BaseModel):
+    """Payload for PUT /api/sensors/{id}/ranges — operator/admin only."""
+    normal_min:    Optional[float] = None
+    normal_max:    Optional[float] = None
+    warning_min:   Optional[float] = None
+    warning_max:   Optional[float] = None
+    critical_min:  Optional[float] = None
+    critical_max:  Optional[float] = None
+    ranges_source: str = "manual"
 
 
 class SensorReadingRead(BaseModel):

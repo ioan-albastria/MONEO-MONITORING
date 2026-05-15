@@ -18,7 +18,11 @@ import DAL.models.sensor_reading  # noqa: F401
 import DAL.models.asset           # noqa: F401
 import DAL.models.dashboard       # noqa: F401
 import DAL.models.dashboard_widget  # noqa: F401
-import DAL.models.alert_config    # noqa: F401
+import DAL.models.alert_rule               # noqa: F401
+import DAL.models.alert_event              # noqa: F401
+import DAL.models.alert_state              # noqa: F401
+import DAL.models.alert_route              # noqa: F401
+import DAL.models.alert_notification_outbox  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

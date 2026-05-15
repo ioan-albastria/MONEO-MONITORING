@@ -6,7 +6,11 @@ from DAL.models import (
     Sensor,
     SensorReading,
     Asset,
-    AlertConfig,
+    AlertRule,
+    AlertEvent,
+    AlertState,
+    AlertRoute,
+    AlertNotificationOutbox,
 )
 
 __all__ = [
@@ -21,5 +25,9 @@ __all__ = [
     "Sensor",
     "SensorReading",
     "Asset",
-    "AlertConfig",
+    "AlertRule",
+    "AlertEvent",
+    "AlertState",
+    "AlertRoute",
+    "AlertNotificationOutbox",
 ]

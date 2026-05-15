@@ -4,7 +4,11 @@ from DAL.models.dashboard_widget import DashboardWidget
 from DAL.models.sensor import Sensor
 from DAL.models.sensor_reading import SensorReading
 from DAL.models.asset import Asset
-from DAL.models.alert_config import AlertConfig
+from DAL.models.alert_rule import AlertRule
+from DAL.models.alert_event import AlertEvent
+from DAL.models.alert_state import AlertState
+from DAL.models.alert_route import AlertRoute
+from DAL.models.alert_notification_outbox import AlertNotificationOutbox
 
 __all__ = [
     "User",
@@ -13,5 +17,9 @@ __all__ = [
     "Sensor",
     "SensorReading",
     "Asset",
-    "AlertConfig",
+    "AlertRule",
+    "AlertEvent",
+    "AlertState",
+    "AlertRoute",
+    "AlertNotificationOutbox",
 ]

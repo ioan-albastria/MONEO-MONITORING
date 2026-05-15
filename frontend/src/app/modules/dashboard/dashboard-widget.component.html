@@ -59,13 +59,15 @@
       [plotOptions]="chartConfig.plotOptions"
       [noData]="chartConfig.noData"
       [fill]="chartConfig.fill"
+      [annotations]="chartConfig.annotations"
     ></apx-chart>
 
     <!-- Gauge dial -->
     <div *ngIf="!loading && !error && chartType === 'gauge'" class="dashboard-gauge-grid">
       <div class="dashboard-gauge-card__dial"
            [style.--gauge-progress]="gaugePercent + '%'"
-           [style.--gauge-color]="gaugeColor">
+           [style.--gauge-color]="gaugeColor"
+           [style.background]="gaugeBackground || null">
         <div class="dashboard-gauge-card__dial-inner">
           <span class="dashboard-gauge-card__dial-value">
             {{ gaugeValue !== null ? gaugeValue.toFixed(1) : '—' }}
@@ -93,6 +95,12 @@
           {{ statDeltaLabel }}
           <span class="widget-stat__delta-label">vs 1h ago</span>
         </div>
+        <!-- Status pill (hidden when no bounds configured) -->
+        <div
+          class="widget-stat__status-pill"
+          *ngIf="statStatusTier !== 'unknown'"
+          [attr.data-tier]="statStatusTier"
+        >{{ statStatusLabel }}</div>
       </div>
       <div class="widget-stat__right" *ngIf="statSparklineConfig">
         <apx-chart
@@ -117,6 +125,16 @@
     <button type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
       <span class="icon icon-muted">refresh</span>
     </button>
+    <!-- Quick-edit ranges: visible only for single-sensor widgets in edit mode -->
+    <button
+      type="button"
+      class="icon-btn"
+      title="Edit sensor ranges"
+      *ngIf="editable && activeSensor && (widget.settings?.sensor_ids?.length === 1)"
+      (click)="openRangesEditor()"
+    >
+      <span class="icon icon-muted">tune</span>
+    </button>
     <button
       type="button"
       class="icon-btn"
@@ -124,7 +142,7 @@
       (click)="configure.emit()"
       [disabled]="!editable"
     >
-      <span class="icon icon-muted">tune</span>
+      <span class="icon icon-muted">settings</span>
     </button>
     <button
       type="button"
