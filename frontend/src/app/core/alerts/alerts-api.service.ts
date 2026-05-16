@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
-import { AlertEvent, AlertRule } from '../../types/alert';
+import { AlertEvent, AlertRoute, AlertRule } from '../../types/alert';
 
 @Injectable({ providedIn: 'root' })
 export class AlertsApiService {
@@ -54,5 +54,21 @@ export class AlertsApiService {
     return firstValueFrom(
       this.http.post<AlertEvent>(`/api/alerts/events/${id}/ack`, note != null ? { note } : {})
     );
+  }
+
+  getRoutes(): Promise<AlertRoute[]> {
+    return firstValueFrom(this.http.get<AlertRoute[]>('/api/alerts/routes'));
+  }
+
+  createRoute(body: Partial<AlertRoute>): Promise<AlertRoute> {
+    return firstValueFrom(this.http.post<AlertRoute>('/api/alerts/routes', body));
+  }
+
+  updateRoute(id: number, body: Partial<AlertRoute>): Promise<AlertRoute> {
+    return firstValueFrom(this.http.put<AlertRoute>(`/api/alerts/routes/${id}`, body));
+  }
+
+  deleteRoute(id: number): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/alerts/routes/${id}`));
   }
 }

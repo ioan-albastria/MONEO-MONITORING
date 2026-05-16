@@ -7,5 +7,5 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertsPageComponent {
-  activeTab: 'events' | 'rules' = 'events';
+  activeTab: 'events' | 'rules' | 'routes' = 'events';
 }

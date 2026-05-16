@@ -19,6 +19,8 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AnalyticsResponse } from '../../types/analytics';
 import { Sensor, SensorReading, SensorTimeSeriesData } from '../../types/sensor';
 import { StatusTier, STATUS_COLOR_HEX, statusOf } from '../../core/sensors/sensor-status';
+import { AnnotationsApiService } from '../../core/annotations/annotations-api.service';
+import { Annotation } from '../../types/annotation';
 
 const PALETTE = ['#37c79a', '#56b9ff', '#ffbf47', '#ff7a59', '#9b8cff', '#5ed3c6'];
 
@@ -77,6 +79,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   private loadVersion  = 0;
   private lastSettingsKey = '';
   private latestAnalytics: AnalyticsResponse | null = null;
+  private widgetAnnotations: Annotation[] = [];
   private latestReading: SensorReading | null = null;
   private latestReadings: SensorTimeSeriesData | null = null;
   private themeObserver: MutationObserver | null = null;
@@ -90,6 +93,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     private readonly sensorApi: SensorApiService,
     private readonly realtime: RealtimeService,
     private readonly cdr: ChangeDetectorRef,
+    private readonly annotationsApi: AnnotationsApiService,
   ) {}
 
   ngOnInit(): void {
@@ -203,6 +207,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.latestAnalytics = resp;
     this.freshAt = this.maxTimestamp(resp);
     this.activeSensor = this.sensorForId(s.sensor_ids?.[0]);
+    await this.loadWidgetAnnotations(s.sensor_ids!, from, to);
     this.applyLineChart(resp, s);
   }
 
@@ -337,7 +342,10 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       },
       tooltip: { theme: theme.tooltip, x: { format: 'dd MMM yyyy HH:mm' } },
       noData: { text: 'No readings in this window' },
-      annotations: this.buildAnnotations(),
+      annotations: {
+        ...this.buildAnnotations(),
+        xaxis: this.buildXaxisAnnotations(),
+      },
     };
   }
 
@@ -490,6 +498,56 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
     this.widgetStatus = this.computeStatus();
     if (value === null) this.setEmpty('No recent reading available.');
+  }
+
+  // ── Annotation helpers ─────────────────────────────────────────────────
+
+  private async loadWidgetAnnotations(
+    sensorIds: number[],
+    from: string,
+    to: string,
+  ): Promise<void> {
+    if (!sensorIds.length) { this.widgetAnnotations = []; return; }
+    try {
+      if (sensorIds.length === 1) {
+        this.widgetAnnotations = await this.annotationsApi.getAnnotations({
+          scope_kind: 'sensor',
+          scope_id: sensorIds[0],
+          from,
+          to,
+          kinds: 'alert,manual,maintenance,event',
+        });
+      }
+    } catch {
+      this.widgetAnnotations = [];
+    }
+  }
+
+  private buildXaxisAnnotations(): any[] {
+    return this.widgetAnnotations.map(ann => {
+      const color = ann.color ?? '#8898aa';
+      if (ann.ended_at) {
+        return {
+          x:     new Date(ann.started_at).getTime(),
+          x2:    new Date(ann.ended_at).getTime(),
+          fillColor: color,
+          opacity: 0.12,
+          label: { text: ann.label, style: { color: '#fff', background: color } },
+        };
+      } else {
+        return {
+          x: new Date(ann.started_at).getTime(),
+          borderColor: color,
+          strokeDashArray: 0,
+          label: {
+            borderColor: color,
+            style: { color: '#fff', background: color },
+            text: ann.label,
+            orientation: 'horizontal',
+          },
+        };
+      }
+    });
   }
 
   // ── Status coloring helpers ────────────────────────────────────────────

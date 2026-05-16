@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from DAL import SessionLocal
 from routes.alert_routes import alert_router
+from routes.annotation_routes import annotation_router
 from routes.auth_routes import auth_router
 from routes.dashboard_routes import dashboard_router
 from routes.widget_routes import widget_router
@@ -53,7 +54,7 @@ async def lifespan(_app: FastAPI):
         db.close()
 
     logger.info("Starting polling scheduler …")
-    # start_scheduler()
+    start_scheduler()
 
     # Attempt an immediate metadata sync so sensors are visible on first run
     # from services.moneo_poller import MoneoPoller
@@ -97,6 +98,7 @@ app.include_router(analytics_router)
 app.include_router(moneo_router)
 app.include_router(ws_router)
 app.include_router(alert_router)
+app.include_router(annotation_router)
 
 
 if __name__ == "__main__":

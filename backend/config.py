@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     sensor_poll_interval_seconds: int = 300
     auto_migrate: bool = True
     alert_evaluation_enabled: bool = True
+    smtp_host: str = "localhost"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "moneo-alerts@example.com"
+    smtp_tls: bool = True
+    webhook_hmac_secret: str = "changeme"
+    notification_dispatch_enabled: bool = True
     debug: bool = False
     allowed_origins: list[str] = ["http://localhost:4200", "http://localhost:3000"]
     seed_admin_username: str = "admin"

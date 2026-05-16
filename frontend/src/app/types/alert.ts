@@ -38,3 +38,16 @@ export interface AlertEvent {
   note: string | null;
   created_at: string;
 }
+
+export interface AlertRoute {
+  id: number;
+  scope_kind: 'rule' | 'sensor' | 'asset' | 'severity' | 'all';
+  scope_id: number | null;
+  scope_severity: string | null;
+  channel: 'in_app' | 'email' | 'webhook';
+  target: string;
+  on_fire: boolean;
+  on_recover: boolean;
+  is_enabled: boolean;
+  created_at: string;
+}

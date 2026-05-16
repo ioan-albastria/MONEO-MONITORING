@@ -73,3 +73,39 @@ class AlertEventRead(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AlertRouteCreate(BaseModel):
+    scope_kind: str                    # 'rule','sensor','asset','severity','all'
+    scope_id: Optional[int] = None
+    scope_severity: Optional[str] = None
+    channel: str                       # 'in_app','email','webhook'
+    target: str                        # email address or webhook URL
+    on_fire: bool = True
+    on_recover: bool = False
+    is_enabled: bool = True
+
+
+class AlertRouteUpdate(BaseModel):
+    scope_kind: Optional[str] = None
+    scope_id: Optional[int] = None
+    scope_severity: Optional[str] = None
+    channel: Optional[str] = None
+    target: Optional[str] = None
+    on_fire: Optional[bool] = None
+    on_recover: Optional[bool] = None
+    is_enabled: Optional[bool] = None
+
+
+class AlertRouteRead(BaseModel):
+    id: int
+    scope_kind: str
+    scope_id: Optional[int] = None
+    scope_severity: Optional[str] = None
+    channel: str
+    target: str
+    on_fire: bool
+    on_recover: bool
+    is_enabled: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}

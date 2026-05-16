@@ -6,12 +6,16 @@ from sqlalchemy.orm import Session
 
 from DAL import get_db
 from DAL.models.alert_event import AlertEvent
+from DAL.models.alert_route import AlertRoute
 from DAL.models.alert_rule import AlertRule
 from DAL.models.alert_state import AlertState
 from DAL.models.sensor import Sensor
 from middleware import get_current_user, requires_role
 from routes.response_models.alert import (
     AlertEventRead,
+    AlertRouteCreate,
+    AlertRouteRead,
+    AlertRouteUpdate,
     AlertRuleCreate,
     AlertRuleRead,
     AlertRuleUpdate,
@@ -178,3 +182,56 @@ async def ack_event(
     db.commit()
     db.refresh(event)
     return event
+
+
+# ── Routes ─────────────────────────────────────────────────────────────────────
+
+@alert_router.get("/routes", response_model=list[AlertRouteRead])
+async def list_routes(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.query(AlertRoute).order_by(AlertRoute.id).all()
+
+
+@alert_router.post("/routes", response_model=AlertRouteRead, status_code=status.HTTP_201_CREATED)
+async def create_route(
+    body: AlertRouteCreate,
+    current_user=Depends(requires_role("admin", "operator")),
+    db: Session = Depends(get_db),
+):
+    route = AlertRoute(**body.model_dump())
+    db.add(route)
+    db.commit()
+    db.refresh(route)
+    return route
+
+
+@alert_router.put("/routes/{route_id}", response_model=AlertRouteRead)
+async def update_route(
+    route_id: int,
+    body: AlertRouteUpdate,
+    current_user=Depends(requires_role("admin", "operator")),
+    db: Session = Depends(get_db),
+):
+    route = db.get(AlertRoute, route_id)
+    if not route:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+    for field, val in body.model_dump(exclude_unset=True).items():
+        setattr(route, field, val)
+    db.commit()
+    db.refresh(route)
+    return route
+
+
+@alert_router.delete("/routes/{route_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_route(
+    route_id: int,
+    current_user=Depends(requires_role("admin", "operator")),
+    db: Session = Depends(get_db),
+):
+    route = db.get(AlertRoute, route_id)
+    if not route:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+    db.delete(route)
+    db.commit()

@@ -18,10 +18,20 @@
     >
       Rules
     </button>
+    <button
+      type="button"
+      role="tab"
+      [class.is-active]="activeTab === 'routes'"
+      [attr.aria-selected]="activeTab === 'routes'"
+      (click)="activeTab = 'routes'"
+    >
+      Notification Routes
+    </button>
   </div>
 
   <div class="alerts-page__body">
     <app-alerts-list *ngIf="activeTab === 'events'"></app-alerts-list>
     <app-alert-rules-list *ngIf="activeTab === 'rules'"></app-alert-rules-list>
+    <app-alert-routes-list *ngIf="activeTab === 'routes'"></app-alert-routes-list>
   </div>
 </div>

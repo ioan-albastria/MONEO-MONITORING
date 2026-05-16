@@ -7,9 +7,10 @@ import { AlertsRoutingModule } from './alerts-routing.module';
 import { AlertsPageComponent } from './alerts-page.component';
 import { AlertsListComponent } from './alerts-list.component';
 import { AlertRulesListComponent } from './alert-rules-list.component';
+import { AlertRoutesListComponent } from './alert-routes-list.component';
 
 @NgModule({
-  declarations: [AlertsPageComponent, AlertsListComponent, AlertRulesListComponent],
+  declarations: [AlertsPageComponent, AlertsListComponent, AlertRulesListComponent, AlertRoutesListComponent],
   imports: [
     CommonModule,
     RouterModule,

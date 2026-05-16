@@ -1,0 +1,40 @@
+<div class="alert-routes-list">
+  <div *ngIf="loading" class="routes-state">Loading notification routes…</div>
+  <div *ngIf="error" class="routes-state routes-state--error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && routes.length === 0" class="routes-state">
+    No notification routes configured.
+  </div>
+
+  <table *ngIf="!loading && !error && routes.length > 0" class="routes-table">
+    <thead>
+      <tr>
+        <th>Channel</th>
+        <th>Target</th>
+        <th>Scope</th>
+        <th>Triggers</th>
+        <th>Enabled</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let route of routes">
+        <td>{{ route.channel }}</td>
+        <td class="routes-table__target">{{ route.target }}</td>
+        <td>{{ route.scope_kind }}{{ route.scope_id ? ' #' + route.scope_id : '' }}{{ route.scope_severity ? ' (' + route.scope_severity + ')' : '' }}</td>
+        <td>{{ route.on_fire ? 'fire' : '' }}{{ route.on_fire && route.on_recover ? ' + ' : '' }}{{ route.on_recover ? 'recover' : '' }}</td>
+        <td>
+          <button type="button" class="icon-btn" (click)="toggleRoute(route)"
+                  [title]="route.is_enabled ? 'Disable' : 'Enable'">
+            <span class="icon">{{ route.is_enabled ? 'toggle_on' : 'toggle_off' }}</span>
+          </button>
+        </td>
+        <td>
+          <button type="button" class="icon-btn" title="Delete route" (click)="deleteRoute(route)">
+            <span class="icon icon-muted">delete</span>
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

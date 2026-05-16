@@ -4,6 +4,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from config import settings
 from services.moneo_poller import MoneoPoller
+from services.notification_dispatcher import dispatch_outbox
 from services.schedulers.alert_no_data_scheduler import check_no_data_alerts
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,15 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # _scheduler.start()
+    _scheduler.add_job(
+        dispatch_outbox,
+        trigger="interval",
+        seconds=30,
+        id="dispatch_notifications",
+        replace_existing=True,
+    )
+
+    _scheduler.start()
     logger.info("Polling scheduler started (interval=%ds)", interval)
 
 

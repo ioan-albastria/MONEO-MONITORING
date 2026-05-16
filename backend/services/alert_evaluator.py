@@ -6,10 +6,13 @@ from sqlalchemy.orm import Session
 from DAL.models.alert_event import AlertEvent
 from DAL.models.alert_rule import AlertRule
 from DAL.models.alert_state import AlertState
+from DAL.models.annotation import Annotation
 from DAL.models.sensor import Sensor
 from DAL.models.sensor_reading import SensorReading
 
 logger = logging.getLogger(__name__)
+
+_SEVERITY_COLOR = {"warning": "#f5b428", "critical": "#e64b3c"}
 
 
 class AlertEvaluator:
@@ -98,7 +101,15 @@ class AlertEvaluator:
                 if elapsed >= rule.dwell_seconds:
                     state.current_state = "firing"
                     state.state_since = now
-                    self._write_event(db, rule, "firing", observed_value, now)
+                    firing_event = self._write_event(db, rule, "firing", observed_value, now)
+                    self._write_annotation(
+                        db, rule, firing_event,
+                        kind="alert",
+                        label=f"[{rule.severity.upper()}] {rule.name}",
+                        started_at=now,
+                        color=_SEVERITY_COLOR.get(rule.severity, "#8898aa"),
+                    )
+                    self._check_flapping(db, rule, state, "fired", now)
 
         elif current == "pending":
             if condition_met:
@@ -108,7 +119,15 @@ class AlertEvaluator:
                 if elapsed >= rule.dwell_seconds:
                     state.current_state = "firing"
                     state.state_since = now
-                    self._write_event(db, rule, "firing", observed_value, now)
+                    firing_event = self._write_event(db, rule, "firing", observed_value, now)
+                    self._write_annotation(
+                        db, rule, firing_event,
+                        kind="alert",
+                        label=f"[{rule.severity.upper()}] {rule.name}",
+                        started_at=now,
+                        color=_SEVERITY_COLOR.get(rule.severity, "#8898aa"),
+                    )
+                    self._check_flapping(db, rule, state, "fired", now)
             else:
                 db.delete(state)
 
@@ -123,12 +142,16 @@ class AlertEvaluator:
                     if rule.policy == "auto_clear":
                         state.current_state = "recovered"
                         state.state_since = now
-                        self._write_event(db, rule, "recovered", observed_value, now)
+                        recovered_event = self._write_event(db, rule, "recovered", observed_value, now)
+                        self._close_open_annotation(db, rule, now)
+                        self._check_flapping(db, rule, state, "recovered", now)
                         db.delete(state)
                     else:
                         state.current_state = "awaiting_ack"
                         state.state_since = now
-                        self._write_event(db, rule, "awaiting_ack", observed_value, now)
+                        awaiting_event = self._write_event(db, rule, "awaiting_ack", observed_value, now)
+                        self._close_open_annotation(db, rule, now)
+                        self._check_flapping(db, rule, state, "recovered", now)
 
         elif current == "awaiting_ack":
             # Stays until explicitly ACK'd via the API
@@ -150,7 +173,7 @@ class AlertEvaluator:
         state: str,
         observed_value: float | None,
         observed_at: datetime,
-    ) -> None:
+    ) -> AlertEvent:
         event = AlertEvent(
             rule_id=rule.id,
             sensor_id=rule.sensor_id,
@@ -159,6 +182,74 @@ class AlertEvaluator:
             observed_at=observed_at,
         )
         db.add(event)
+        return event
+
+    def _write_annotation(
+        self,
+        db: Session,
+        rule: AlertRule,
+        event: AlertEvent,
+        kind: str,
+        label: str,
+        started_at: datetime,
+        ended_at: datetime | None = None,
+        color: str | None = None,
+    ) -> Annotation:
+        ann = Annotation(
+            kind=kind,
+            scope_kind="sensor",
+            scope_id=rule.sensor_id,
+            label=label,
+            started_at=started_at,
+            ended_at=ended_at,
+            color=color,
+            source_event_id=event.id,
+        )
+        db.add(ann)
+        return ann
+
+    def _close_open_annotation(self, db: Session, rule: AlertRule, now: datetime) -> None:
+        open_ann = (
+            db.query(Annotation)
+            .filter(
+                Annotation.source_event_id.in_(
+                    db.query(AlertEvent.id).filter(
+                        AlertEvent.rule_id == rule.id,
+                        AlertEvent.state == "firing",
+                    )
+                ),
+                Annotation.ended_at.is_(None),
+            )
+            .order_by(Annotation.started_at.desc())
+            .first()
+        )
+        if open_ann:
+            open_ann.ended_at = now
+
+    def _check_flapping(
+        self,
+        db: Session,
+        rule: AlertRule,
+        state: AlertState,
+        transition: str,
+        now: datetime,
+    ) -> None:
+        """Increment the 10-minute flap counter and toggle is_flapping."""
+        # Reset counter if the last tracked flip was > 10 minutes ago
+        if state.last_value_at and (now - state.last_value_at).total_seconds() > 600:
+            state.flap_count_10m = 0
+            if state.is_flapping:
+                state.is_flapping = False
+                self._write_event(db, rule, "flapping_stopped", state.last_value, now)
+
+        state.flap_count_10m += 1
+
+        if state.flap_count_10m >= 4 and not state.is_flapping:
+            state.is_flapping = True
+            self._write_event(db, rule, "flapping_started", state.last_value, now)
+        elif state.flap_count_10m < 4 and state.is_flapping:
+            state.is_flapping = False
+            self._write_event(db, rule, "flapping_stopped", state.last_value, now)
 
     def _sync_sensor_ranges(self, db: Session, rule: AlertRule, sensor: Sensor) -> None:
         if rule.condition != "outside_range":
