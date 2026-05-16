@@ -511,3 +511,53 @@
   border-top: 1px solid color-mix(in oklch, var(--color-brand) 20%, var(--color-border));
   background: color-mix(in oklch, var(--color-brand) 6%, transparent);
 }
+
+/* ── Bulk widget selection ──────────────────────────────────────────────── */
+
+.widget-select-overlay {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 20;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  background: color-mix(in oklch, var(--color-surface-1) 80%, transparent);
+}
+
+.p-0:hover .widget-select-overlay,
+.widget-select-overlay.is-selected {
+  opacity: 1;
+}
+
+.widget-select-icon {
+  font-size: 20px;
+  color: var(--color-fg-muted);
+  display: block;
+}
+
+.widget-select-overlay.is-selected .widget-select-icon {
+  color: var(--color-brand);
+}
+
+.selection-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--color-surface-1);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.selection-bar__count {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  flex: 1;
+}

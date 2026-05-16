@@ -1,0 +1,80 @@
+<div class="admin-section">
+  <div class="admin-section__header">
+    <h2 class="admin-section__title">Assets</h2>
+    <button class="btn btn-primary btn-sm" (click)="showCreateForm = !showCreateForm">
+      <span class="icon">add</span>{{ showCreateForm ? 'Cancel' : 'New Asset' }}
+    </button>
+  </div>
+
+  <div *ngIf="showCreateForm" class="admin-create-form">
+    <div class="form-row--inline">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" [(ngModel)]="createName" placeholder="Asset name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kind</label>
+        <select class="form-select" [(ngModel)]="createKind">
+          <option *ngFor="let k of kinds" [value]="k">{{ k }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Parent</label>
+        <select class="form-select" [(ngModel)]="createParentId">
+          <option [ngValue]="null">— none —</option>
+          <option *ngFor="let a of assets" [ngValue]="a.id">{{ a.path || a.name }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" (click)="createAsset()" [disabled]="creating || !createName.trim()">
+        {{ creating ? 'Creating…' : 'Create' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="admin-alert admin-alert--error">{{ error }}</div>
+  <div *ngIf="loading" class="admin-state">Loading…</div>
+
+  <table *ngIf="!loading" class="admin-table">
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Kind</th><th>Parent</th><th>Path</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of assets; trackBy: trackAsset">
+        <td class="mono">{{ row.id }}</td>
+        <td>
+          <input class="form-input form-input--inline"
+                 [(ngModel)]="row.editName"
+                 (ngModelChange)="markDirty(row)">
+        </td>
+        <td>
+          <select class="form-select form-select--sm"
+                  [(ngModel)]="row.editKind"
+                  (ngModelChange)="markDirty(row)">
+            <option *ngFor="let k of kinds" [value]="k">{{ k }}</option>
+          </select>
+        </td>
+        <td>
+          <select class="form-select form-select--sm"
+                  [(ngModel)]="row.editParentId"
+                  (ngModelChange)="markDirty(row)">
+            <option [ngValue]="null">— none —</option>
+            <option *ngFor="let a of assets" [ngValue]="a.id"
+                    [disabled]="a.id === row.id">
+              {{ a.name }}
+            </option>
+          </select>
+        </td>
+        <td class="text-fg-muted" style="font-size:0.72rem">{{ row.path }}</td>
+        <td style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-primary btn-sm" [disabled]="!row.dirty || row.saving"
+                  (click)="saveRow(row)">
+            {{ row.saving ? '…' : 'Save' }}
+          </button>
+          <button class="btn btn-danger btn-sm" (click)="deleteRow(row)">Del</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

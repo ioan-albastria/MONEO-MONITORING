@@ -29,8 +29,23 @@ export class KioskService implements OnDestroy {
   checkForKioskToken(): void {
     const params = new URLSearchParams(window.location.search);
     const kt = params.get('kt');
-    if (kt) {
-      localStorage.setItem(AuthService.TOKEN_KEY, kt);
+    if (!kt) return;
+
+    // If there is already a regular (non-kiosk) session, keep it.
+    // A kiosk device starts fresh so there is no prior token; an admin
+    // who opens a kiosk URL already has a regular JWT in storage.
+    const existing = localStorage.getItem(AuthService.TOKEN_KEY);
+    if (existing && !this._isKioskJwt(existing)) return;
+
+    localStorage.setItem(AuthService.TOKEN_KEY, kt);
+  }
+
+  private _isKioskJwt(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return 'kiosk_token_id' in payload;
+    } catch {
+      return false;
     }
   }
 

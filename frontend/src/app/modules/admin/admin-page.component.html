@@ -14,10 +14,18 @@
     >
       <span class="icon">group</span> Users
     </button>
+    <button role="tab"
+      class="admin-tab"
+      [class.is-active]="activeTab === 'assets'"
+      (click)="setTab('assets')"
+    >
+      <span class="icon">account_tree</span> Assets
+    </button>
   </nav>
 
   <div class="admin-tab-content" role="tabpanel">
     <app-admin-kiosk-tokens *ngIf="activeTab === 'kiosk-tokens'"></app-admin-kiosk-tokens>
     <app-admin-users        *ngIf="activeTab === 'users'"></app-admin-users>
+    <app-admin-assets       *ngIf="activeTab === 'assets'"></app-admin-assets>
   </div>
 </div>

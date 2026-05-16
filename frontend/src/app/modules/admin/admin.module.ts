@@ -6,12 +6,14 @@ import { AdminRoutingModule } from './admin-routing.module';
 import { AdminPageComponent } from './admin-page.component';
 import { AdminKioskTokensComponent } from './admin-kiosk-tokens.component';
 import { AdminUsersComponent } from './admin-users.component';
+import { AdminAssetsComponent } from './admin-assets.component';
 
 @NgModule({
   declarations: [
     AdminPageComponent,
     AdminKioskTokensComponent,
     AdminUsersComponent,
+    AdminAssetsComponent,
   ],
   imports: [
     CommonModule,

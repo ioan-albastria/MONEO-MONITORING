@@ -15,6 +15,13 @@ interface TreeNode {
   children: TreeNode[];
 }
 
+interface FlatDisplayNode {
+  kind: 'asset' | 'sensor';
+  treeNode?: TreeNode;   // defined when kind === 'asset'
+  sensor?: Sensor;       // defined when kind === 'sensor'
+  depth: number;
+}
+
 @Component({
   selector: 'app-asset-tree-picker',
   standalone: false,
@@ -28,6 +35,7 @@ export class AssetTreePickerComponent implements OnInit {
 
   filterText = '';
   roots: TreeNode[] = [];
+  flatDisplayNodes: FlatDisplayNode[] = [];
   unassignedSensors: Sensor[] = [];
   loading = true;
   error = false;
@@ -50,6 +58,7 @@ export class AssetTreePickerComponent implements OnInit {
       this.roots = this._buildNodes(this.treeService.snapshot);
       this.unassignedSensors = this.allSensors.filter(s => s.asset_id == null);
       this._applyFilter();
+      this._rebuildFlat();
       void this._loadSparklines();
     } catch {
       this.error = true;
@@ -96,6 +105,7 @@ export class AssetTreePickerComponent implements OnInit {
 
   toggleNode(node: TreeNode): void {
     node.expanded = !node.expanded;
+    this._rebuildFlat();
     this.cdr.markForCheck();
   }
 
@@ -118,7 +128,32 @@ export class AssetTreePickerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  trackFlatNode(_: number, flat: FlatDisplayNode): string {
+    return flat.kind === 'asset'
+      ? `a-${flat.treeNode!.asset.id}`
+      : `s-${flat.sensor!.id}`;
+  }
+
   // ── Internals ─────────────────────────────────────────────────────────
+
+  private _rebuildFlat(): void {
+    const result: FlatDisplayNode[] = [];
+    this._collectFlat(this.roots, 0, result);
+    this.flatDisplayNodes = result;
+  }
+
+  private _collectFlat(nodes: TreeNode[], depth: number, result: FlatDisplayNode[]): void {
+    for (const n of nodes) {
+      if (!n.visible) continue;
+      result.push({ kind: 'asset', treeNode: n, depth });
+      if (n.expanded) {
+        for (const s of this.visibleSensors(n)) {
+          result.push({ kind: 'sensor', sensor: s, depth: depth + 1 });
+        }
+        this._collectFlat(n.children, depth + 1, result);
+      }
+    }
+  }
 
   private _buildNodes(assets: AssetNode[]): TreeNode[] {
     return assets.map(a => ({
@@ -134,9 +169,10 @@ export class AssetTreePickerComponent implements OnInit {
     const q = this.filterText.trim().toLowerCase();
     if (!q) {
       this._setAllVisible(this.roots, true);
-      return;
+    } else {
+      this._filterNodes(this.roots, q);
     }
-    this._filterNodes(this.roots, q);
+    this._rebuildFlat();
   }
 
   private _setAllVisible(nodes: TreeNode[], visible: boolean): void {

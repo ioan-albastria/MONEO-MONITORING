@@ -3057,6 +3057,7 @@ html.kiosk section.dashboard-page {
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-brand) 20%, transparent);
 }
 .form-input--short { width: 100px; }
+.form-input--inline { width: 100%; min-width: 80px; }
 .form-select {
   background: var(--color-surface-0);
   border: 1px solid var(--color-border);

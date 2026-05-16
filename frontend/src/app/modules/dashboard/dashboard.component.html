@@ -137,15 +137,45 @@
           [item]="item.gridsterItem"
           class="p-0"
         >
+          <!-- Bulk-select checkbox — visible only in edit mode on owned dashboard -->
+          <div
+            *ngIf="editMode && selectedDashboard?.is_owned"
+            class="widget-select-overlay"
+            [class.is-selected]="selectedWidgetIds.has(item.widget.id)"
+            (click)="toggleWidgetSelection(item.widget.id)"
+          >
+            <span class="icon widget-select-icon">
+              {{ selectedWidgetIds.has(item.widget.id) ? 'check_box' : 'check_box_outline_blank' }}
+            </span>
+          </div>
+
           <app-dashboard-widget
             [widget]="item.widget"
-            [editable]="dashboard.is_owned"
+            [editable]="selectedDashboard!.is_owned"
             [editMode]="editMode"
             (configure)="openWidgetEditor(item.widget)"
             (remove)="deleteWidget(item.widget)"
           ></app-dashboard-widget>
         </gridster-item>
       </gridster>
+
+      <!-- Bulk selection bar -->
+      <div
+        *ngIf="editMode && selectedWidgetIds.size > 0"
+        class="selection-bar"
+      >
+        <span class="selection-bar__count">
+          {{ selectedWidgetIds.size }} widget{{ selectedWidgetIds.size === 1 ? '' : 's' }} selected
+        </span>
+        <button class="btn btn-danger btn-sm" (click)="deleteSelected()" [disabled]="saving">
+          <span class="icon">delete</span>
+          Delete selected
+        </button>
+        <button class="btn btn-sm" (click)="clearSelection()">
+          <span class="icon">close</span>
+          Clear
+        </button>
+      </div>
 
       <!-- Overlay: refreshing -->
       <div class="absolute inset-[18px] grid place-items-center p-3 pointer-events-none" *ngIf="loading">

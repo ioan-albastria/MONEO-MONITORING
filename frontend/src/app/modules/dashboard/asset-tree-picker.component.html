@@ -28,100 +28,53 @@
     Failed to load assets.
   </div>
 
-  <!-- Tree -->
+  <!-- Tree (flat rendering, supports arbitrary depth) -->
   <div *ngIf="!loading && !error" class="tree-picker__tree">
 
-    <!-- Asset nodes -->
-    <ng-container *ngFor="let node of roots; trackBy: trackByAssetId">
-      <ng-container *ngIf="node.visible">
-        <div class="tree-node tree-node--asset" [class.is-expanded]="node.expanded">
-          <button
-            type="button"
-            class="tree-node__toggle"
-            (click)="toggleNode(node)"
-            [attr.aria-expanded]="node.expanded"
-          >
-            <span class="icon tree-node__chevron">chevron_right</span>
-            <span class="tree-node__kind-pill">{{ node.asset.kind }}</span>
-            <span class="tree-node__name">{{ node.asset.name }}</span>
-            <span class="text-fg-faint text-xs" *ngIf="node.sensors.length">
-              ({{ node.sensors.length }})
-            </span>
-          </button>
-        </div>
+    <!-- Flat node list — handles root, children, grandchildren, etc. -->
+    <ng-container *ngFor="let flat of flatDisplayNodes; trackBy: trackFlatNode">
 
-        <!-- Sensors under this node -->
-        <ng-container *ngIf="node.expanded">
-          <div
-            *ngFor="let sensor of visibleSensors(node); trackBy: trackById"
-            class="tree-node tree-node--sensor"
-          >
-            <label class="tree-node__sensor-label">
-              <input
-                type="checkbox"
-                class="tree-node__checkbox"
-                [checked]="isSensorSelected(sensor.id)"
-                (change)="toggleSensor(sensor.id)"
-              />
-              <span class="tree-node__sensor-name">{{ sensor.name }}</span>
-              <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
-                {{ sensor.unit }}
-              </span>
-              <span class="tree-node__sensor-type text-fg-faint" *ngIf="sensor.sensor_type">{{ sensor.sensor_type }}</span>
-              <svg *ngIf="sparklinePath(sensor.id)"
-                class="tree-node__sparkline"
-                [attr.viewBox]="'0 0 64 18'"
-                width="64" height="18"
-                aria-hidden="true">
-                <path [attr.d]="sparklinePath(sensor.id)"
+      <!-- Asset header row -->
+      <div *ngIf="flat.kind === 'asset'"
+           class="tree-node tree-node--asset"
+           [class.is-expanded]="flat.treeNode!.expanded"
+           [style.paddingLeft.px]="flat.depth * 14">
+        <button type="button" class="tree-node__toggle"
+                (click)="toggleNode(flat.treeNode!)"
+                [attr.aria-expanded]="flat.treeNode!.expanded">
+          <span class="icon tree-node__chevron">chevron_right</span>
+          <span class="tree-node__kind-pill">{{ flat.treeNode!.asset.kind }}</span>
+          <span class="tree-node__name">{{ flat.treeNode!.asset.name }}</span>
+          <span class="text-fg-faint text-xs" *ngIf="flat.treeNode!.sensors.length">
+            ({{ flat.treeNode!.sensors.length }})
+          </span>
+        </button>
+      </div>
+
+      <!-- Sensor row -->
+      <div *ngIf="flat.kind === 'sensor'"
+           class="tree-node tree-node--sensor"
+           [style.paddingLeft.px]="flat.depth * 14">
+        <label class="tree-node__sensor-label">
+          <input type="checkbox" class="tree-node__checkbox"
+                 [checked]="isSensorSelected(flat.sensor!.id)"
+                 (change)="toggleSensor(flat.sensor!.id)" />
+          <span class="tree-node__sensor-name">{{ flat.sensor!.name }}</span>
+          <span class="tree-node__sensor-unit text-fg-faint" *ngIf="flat.sensor!.unit">
+            {{ flat.sensor!.unit }}
+          </span>
+          <span class="tree-node__sensor-type text-fg-faint" *ngIf="flat.sensor!.sensor_type">
+            {{ flat.sensor!.sensor_type }}
+          </span>
+          <svg *ngIf="sparklinePath(flat.sensor!.id)"
+               class="tree-node__sparkline"
+               [attr.viewBox]="'0 0 64 18'" width="64" height="18" aria-hidden="true">
+            <path [attr.d]="sparklinePath(flat.sensor!.id)"
                   stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-              </svg>
-            </label>
-          </div>
-          <!-- Recurse into children -->
-          <ng-container *ngFor="let child of node.children; trackBy: trackByAssetId">
-            <ng-container *ngIf="child.visible">
-              <div class="tree-node tree-node--asset tree-node--child"
-                   [class.is-expanded]="child.expanded">
-                <button type="button" class="tree-node__toggle"
-                  (click)="toggleNode(child)" [attr.aria-expanded]="child.expanded">
-                  <span class="icon tree-node__chevron">chevron_right</span>
-                  <span class="tree-node__kind-pill">{{ child.asset.kind }}</span>
-                  <span class="tree-node__name">{{ child.asset.name }}</span>
-                  <span class="text-fg-faint text-xs" *ngIf="child.sensors.length">
-                    ({{ child.sensors.length }})
-                  </span>
-                </button>
-              </div>
-              <ng-container *ngIf="child.expanded">
-                <div
-                  *ngFor="let sensor of visibleSensors(child); trackBy: trackById"
-                  class="tree-node tree-node--sensor tree-node--sensor-child"
-                >
-                  <label class="tree-node__sensor-label">
-                    <input type="checkbox" class="tree-node__checkbox"
-                      [checked]="isSensorSelected(sensor.id)"
-                      (change)="toggleSensor(sensor.id)" />
-                    <span class="tree-node__sensor-name">{{ sensor.name }}</span>
-                    <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
-                      {{ sensor.unit }}
-                    </span>
-                    <span class="tree-node__sensor-type text-fg-faint" *ngIf="sensor.sensor_type">{{ sensor.sensor_type }}</span>
-                    <svg *ngIf="sparklinePath(sensor.id)"
-                      class="tree-node__sparkline"
-                      [attr.viewBox]="'0 0 64 18'"
-                      width="64" height="18"
-                      aria-hidden="true">
-                      <path [attr.d]="sparklinePath(sensor.id)"
-                        stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-                    </svg>
-                  </label>
-                </div>
-              </ng-container>
-            </ng-container>
-          </ng-container>
-        </ng-container>
-      </ng-container>
+          </svg>
+        </label>
+      </div>
+
     </ng-container>
 
     <!-- Unassigned sensors group -->
@@ -130,36 +83,30 @@
         <span class="icon text-fg-faint">folder_off</span>
         <span class="tree-node__name text-fg-faint">Unassigned</span>
       </div>
-      <div
-        *ngFor="let sensor of visibleUnassigned(); trackBy: trackById"
-        class="tree-node tree-node--sensor"
-      >
+      <div *ngFor="let sensor of visibleUnassigned(); trackBy: trackById"
+           class="tree-node tree-node--sensor">
         <label class="tree-node__sensor-label">
           <input type="checkbox" class="tree-node__checkbox"
-            [checked]="isSensorSelected(sensor.id)"
-            (change)="toggleSensor(sensor.id)" />
+                 [checked]="isSensorSelected(sensor.id)"
+                 (change)="toggleSensor(sensor.id)" />
           <span class="tree-node__sensor-name">{{ sensor.name }}</span>
           <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
             {{ sensor.unit }}
           </span>
           <svg *ngIf="sparklinePath(sensor.id)"
-            class="tree-node__sparkline"
-            [attr.viewBox]="'0 0 64 18'"
-            width="64" height="18"
-            aria-hidden="true">
+               class="tree-node__sparkline"
+               [attr.viewBox]="'0 0 64 18'" width="64" height="18" aria-hidden="true">
             <path [attr.d]="sparklinePath(sensor.id)"
-              stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                  stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
           </svg>
         </label>
       </div>
     </ng-container>
 
     <!-- Empty state -->
-    <div
-      *ngIf="roots.length === 0 && unassignedSensors.length === 0"
-      class="tree-picker__state"
-    >
+    <div *ngIf="roots.length === 0 && unassignedSensors.length === 0" class="tree-picker__state">
       No assets or sensors available.
     </div>
+
   </div>
 </div>

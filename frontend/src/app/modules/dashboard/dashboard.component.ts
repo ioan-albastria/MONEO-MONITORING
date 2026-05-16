@@ -136,6 +136,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── Gridster (Phase 8.3) ───────────────────────────────────────────────
 
   editMode = false;
+  selectedWidgetIds = new Set<number>();
   gridItems: GridItem[] = [];
   gridOptions: GridsterConfig = this.buildGridOptions();
 
@@ -365,6 +366,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   toggleEditMode(): void {
     if (!this.canEditSelected) return;
     this.editMode = !this.editMode;
+    if (!this.editMode) this.clearSelection();
     this.gridOptions = {
       ...this.gridOptions,
       draggable: { ...this.gridOptions.draggable, enabled: this.editMode },
@@ -683,6 +685,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadError = err instanceof Error ? err.message : 'Failed to delete widget.';
     } finally {
       this.saving = false;
+    }
+  }
+
+  // ── Bulk widget selection ──────────────────────────────────────────────
+
+  toggleWidgetSelection(id: number): void {
+    if (this.selectedWidgetIds.has(id)) {
+      this.selectedWidgetIds.delete(id);
+    } else {
+      this.selectedWidgetIds.add(id);
+    }
+    this.selectedWidgetIds = new Set(this.selectedWidgetIds);
+  }
+
+  clearSelection(): void {
+    this.selectedWidgetIds = new Set();
+  }
+
+  async deleteSelected(): Promise<void> {
+    const d = this.selectedDashboard;
+    if (!d?.is_owned || this.saving) return;
+    const count = this.selectedWidgetIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`Remove ${count} widget${count === 1 ? '' : 's'} from the dashboard?`)) return;
+
+    this.saving = true;
+    this.loadError = null;
+    const ids = [...this.selectedWidgetIds];
+    this.selectedWidgetIds = new Set();
+    try {
+      await Promise.all(ids.map(id => this.api.deleteWidget(id)));
+      this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(d.id));
+      this.isOwnedSelected = this.selectedDashboard.is_owned;
+      this.buildGridItems();
+      this.syncPageHeader();
+    } catch {
+      this.loadError = 'Failed to delete some widgets.';
+    } finally {
+      this.saving = false;
+      this.refreshView();
     }
   }
 
