@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field as dc_field
+from datetime import datetime, timezone
 from typing import Callable
 
 from fastapi import Depends, HTTPException, status
@@ -11,10 +13,23 @@ _bearer = HTTPBearer()
 _auth_service = AuthService()
 
 
+@dataclass
+class KioskPrincipal:
+    """Synthetic principal returned by get_current_user for kiosk JWTs.
+    Has the same attribute interface as User for role-checking and UserRead serialisation."""
+    id: int = 0
+    username: str = 'kiosk'
+    email: str = ''
+    is_active: bool = True
+    role: str = 'kiosk'
+    is_kiosk: bool = True
+    kiosk_dashboard_ids: list = dc_field(default_factory=list)
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
     db: Session = Depends(get_db),
-) -> User:
+):
     token = credentials.credentials
     try:
         payload = _auth_service.decode_token(token)
@@ -25,27 +40,46 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # ── Kiosk token path ─────────────────────────────────────────────────────
+    kiosk_token_id = payload.get("kiosk_token_id")
+    if kiosk_token_id is not None:
+        from DAL.models.kiosk_token import KioskToken
+        kt = db.get(KioskToken, kiosk_token_id)
+        if not kt or not kt.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Kiosk token revoked or not found",
+            )
+        if kt.expires_at and kt.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Kiosk token expired",
+            )
+        return KioskPrincipal(
+            kiosk_dashboard_ids=list(kt.dashboard_ids or []),
+        )
+
+    # ── Regular user path ────────────────────────────────────────────────────
     user_id = payload.get("user_id")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
 
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
 
     return user
 
 
 def requires_role(*roles: str) -> Callable:
-    """Dependency factory — restricts an endpoint to users with one of the given roles.
-
-    Usage::
-
-        @router.put("/foo")
-        async def foo(current_user: User = Depends(requires_role("admin", "operator"))):
-            ...
-    """
-    async def _check(current_user: User = Depends(get_current_user)) -> User:
+    """Dependency factory — restricts an endpoint to users with one of the given roles."""
+    async def _check(current_user=Depends(get_current_user)):
         if current_user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

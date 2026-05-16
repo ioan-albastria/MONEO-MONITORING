@@ -12,6 +12,7 @@ import { filter, startWith } from 'rxjs';
 import { UiPreferencesService } from '../../core/ui/ui-preferences.service';
 import { PageHeaderStateService } from '../../core/ui/page-header-state.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { KioskService } from '../../core/kiosk/kiosk.service';
 
 @Component({
   selector: 'app-shell',
@@ -32,6 +33,8 @@ export class AppShellComponent implements OnInit {
   private readonly cdr             = inject(ChangeDetectorRef);
   readonly ui                      = inject(UiPreferencesService);
   private readonly auth            = inject(AuthService);
+  private readonly kiosk           = inject(KioskService);
+  readonly kioskService            = this.kiosk;
 
   private readonly routeTitles: Record<string, { title: string; subtitle: string }> = {
     '/dashboard': { title: 'Dashboard',  subtitle: 'Sensor Overview' },
@@ -47,6 +50,9 @@ export class AppShellComponent implements OnInit {
 
   ngOnInit(): void {
     this.userName = this.auth.currentUser?.username ?? '';
+    if (this.auth.currentUser) {
+      this.kiosk.activateIfKiosk(this.auth.currentUser);
+    }
 
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),

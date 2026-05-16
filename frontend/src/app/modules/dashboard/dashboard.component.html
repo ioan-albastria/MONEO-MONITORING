@@ -58,7 +58,7 @@
       </select>
     </div>
 
-    <div class="dashboard-toolbar__group">
+    <div class="dashboard-toolbar__group dashboard-toolbar__group--right">
       <!-- Edit mode toggle (pencil) -->
       <button type="button"
         class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
@@ -88,6 +88,16 @@
         title="Delete dashboard"
         aria-label="Delete dashboard">
         <span class="icon" aria-hidden="true">delete</span>
+      </button>
+
+      <!-- Copy shareable link -->
+      <button
+        type="button"
+        class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
+        title="Copy shareable link"
+        (click)="copyDashboardLink()"
+      >
+        <span class="icon" aria-hidden="true">link</span>
       </button>
     </div>
   </div>

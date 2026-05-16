@@ -17,4 +17,13 @@
     </main>
   </div>
   <app-toast-host></app-toast-host>
+
+  <!-- Kiosk mode indicator — fades after 10 s -->
+  <div
+    *ngIf="kioskService.showBadge$ | async"
+    class="kiosk-badge"
+    aria-label="Kiosk mode active"
+  >
+    KIOSK
+  </div>
 </div>

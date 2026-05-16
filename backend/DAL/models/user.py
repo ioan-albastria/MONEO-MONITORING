@@ -23,3 +23,11 @@ class User(Base):
     )
 
     dashboards = relationship("Dashboard", back_populates="owner")
+
+    @property
+    def is_kiosk(self) -> bool:
+        return False
+
+    @property
+    def kiosk_dashboard_ids(self) -> list:
+        return []

@@ -31,6 +31,13 @@ class AuthService:
         return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
     @staticmethod
+    def create_kiosk_token(kiosk_token_id: int, expires_at: datetime) -> str:
+        """Generate a JWT for a kiosk token row. Payload uses 'kiosk_token_id'
+        so middleware can distinguish it from regular user tokens."""
+        payload = {"kiosk_token_id": kiosk_token_id, "exp": expires_at}
+        return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+    @staticmethod
     def decode_token(token: str) -> dict:
         try:
             return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])

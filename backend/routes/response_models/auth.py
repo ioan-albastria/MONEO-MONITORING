@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -16,5 +17,7 @@ class UserRead(BaseModel):
     username: str
     email: str
     is_active: bool
+    is_kiosk: bool = False
+    kiosk_dashboard_ids: list[int] = []
 
     model_config = {"from_attributes": True}

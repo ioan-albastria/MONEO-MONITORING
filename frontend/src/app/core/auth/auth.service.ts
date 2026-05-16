@@ -8,6 +8,8 @@ export interface UserRead {
   username: string;
   email: string;
   is_active: boolean;
+  is_kiosk?: boolean;
+  kiosk_dashboard_ids?: number[];
 }
 
 interface TokenResponse {
@@ -43,5 +45,9 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(AuthService.TOKEN_KEY);
+  }
+
+  storeToken(token: string): void {
+    localStorage.setItem(AuthService.TOKEN_KEY, token);
   }
 }

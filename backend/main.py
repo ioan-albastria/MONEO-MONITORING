@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from DAL import SessionLocal
+from routes.admin_kiosk_routes import admin_kiosk_router
 from routes.alert_routes import alert_router
 from routes.annotation_routes import annotation_router
 from routes.asset_routes import asset_router
@@ -101,6 +102,7 @@ app.include_router(ws_router)
 app.include_router(alert_router)
 app.include_router(annotation_router)
 app.include_router(asset_router)
+app.include_router(admin_kiosk_router)
 
 
 if __name__ == "__main__":

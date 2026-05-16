@@ -566,6 +566,45 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   §5.2 Kiosk mode
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Hide chrome in kiosk mode */
+html.kiosk app-page-header { display: none !important; }
+html.kiosk app-nav-rail     { display: none !important; }
+
+/* Hide dashboard management controls but leave the grid and toolbar time pickers */
+html.kiosk .dashboard-toolbar__group--right { display: none !important; }
+
+/* Remove top/side padding so grid fills screen */
+html.kiosk main.flex-1 {
+  padding: 0 !important;
+}
+
+/* Kiosk indicator badge */
+.kiosk-badge {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 9999;
+  background: color-mix(in oklch, var(--color-brand) 85%, black);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm, 4px);
+  opacity: 1;
+  animation: kiosk-badge-fade 10s forwards;
+  pointer-events: none;
+}
+
+@keyframes kiosk-badge-fade {
+  0%,  70% { opacity: 1; }
+  100%      { opacity: 0; }
+}
+
 @layer base {
   :root {
     --app-header-h: 72px; /* adjust later if needed */

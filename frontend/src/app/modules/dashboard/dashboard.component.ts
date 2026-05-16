@@ -29,6 +29,10 @@ import {
 import { DashboardWidgetCreate, DashboardWidgetUpdate, WidgetSettings } from '../../types/widget';
 import { Sensor } from '../../types/sensor';
 import { DashboardTimeService, TimeRange, TimePreset, PRESET_HOURS } from '../../core/dashboard/time.service';
+import { DashboardUrlService } from '../../core/dashboard/url.service';
+import { KioskService } from '../../core/kiosk/kiosk.service';
+import { ToastService } from '../../shared/toast.service';
+import { Subscription } from 'rxjs';
 
 // ── Local form models ──────────────────────────────────────────────────────
 
@@ -146,6 +150,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
   timeRange: TimeRange = { preset: '1h', hours: 1, autoRefreshSeconds: 0 };
   private _timeRangeSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private _kioskSub: Subscription | null = null;
 
   private layoutTimer: ReturnType<typeof setTimeout> | null = null;
   private layoutInFlight = false;
@@ -175,6 +180,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private readonly auth: AuthService,
     private readonly timeService: DashboardTimeService,
     private readonly sanitizer: DomSanitizer,
+    private readonly urlService: DashboardUrlService,
+    private readonly kioskService: KioskService,
+    private readonly toast: ToastService,
   ) {
     const trust = (svg: string): SafeHtml => sanitizer.bypassSecurityTrustHtml(svg);
     this.widgetCatalog = [
@@ -249,11 +257,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.loadDashboards();
+    const urlParams = this.urlService.readParams();
+    await this.loadDashboards(urlParams.d);
+
+    // Apply URL time overrides (take precedence over dashboard defaults)
+    this._applyUrlTimeParams(urlParams);
+
+    // Sync URL with initial state after load
+    this._syncUrlFromState();
+
+    // If kiosk cycling is active, subscribe to dashboard rotation
+    if (this.kioskService.isKiosk) {
+      this._kioskSub = this.kioskService.activeDashboardId$.subscribe(id => {
+        if (id != null && id !== this.selectedDashboardId) {
+          void this.selectDashboardById(id);
+        }
+      });
+    }
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this._kioskSub?.unsubscribe();
     if (this.layoutTimer) clearTimeout(this.layoutTimer);
     if (this._timeRangeSaveTimer) clearTimeout(this._timeRangeSaveTimer);
     this.pageHeaderState.clear();
@@ -328,6 +353,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.buildGridItems();
       this.syncPageHeader();
       this.refreshView();
+      this._syncUrlFromState();
     } catch {
       this.loadError = 'Failed to load dashboard.';
       this.refreshView();
@@ -699,6 +725,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.timeService.setRange(this.timeRange);
     this._scheduleTimeRangeSave();
     this.refreshView();
+    this._syncUrlFromState();
   }
 
   onAutoRefreshChanged(seconds: number): void {
@@ -706,6 +733,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.timeService.setRange(this.timeRange);
     this._scheduleTimeRangeSave();
     this.refreshView();
+    this._syncUrlFromState();
   }
 
   private _scheduleTimeRangeSave(): void {
@@ -903,5 +931,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private refreshView(): void {
     if (this.destroyed) return;
     this.cdr.detectChanges();
+  }
+
+  // ── URL state ──────────────────────────────────────────────────────────
+
+  private _applyUrlTimeParams(urlParams: { preset?: string; ar?: number; from?: string; to?: string }): void {
+    const { preset, ar, from, to } = urlParams;
+    if (!preset && ar == null) return;
+
+    if (preset === 'custom' && from && to) {
+      this.timeService.setRange({ preset: 'custom', from, to, autoRefreshSeconds: ar ?? 0 });
+    } else if (preset && preset !== 'custom') {
+      const hours = PRESET_HOURS[preset as Exclude<TimePreset, 'custom'>];
+      if (hours) {
+        this.timeService.setRange({ preset: preset as TimePreset, hours, autoRefreshSeconds: ar ?? 0 });
+      }
+    } else if (ar != null) {
+      this.timeService.setRange({ ...this.timeService.current, autoRefreshSeconds: ar });
+    }
+    this.timeRange = this.timeService.current;
+  }
+
+  private _syncUrlFromState(): void {
+    this.urlService.syncParams({
+      d:      this.selectedDashboardId ?? undefined,
+      preset: this.timeRange.preset,
+      ar:     this.timeRange.autoRefreshSeconds || undefined,
+      from:   this.timeRange.from,
+      to:     this.timeRange.to,
+    });
+  }
+
+  copyDashboardLink(): void {
+    void this.urlService.copyLink().then(() => {
+      this.toast.push('Link copied to clipboard', 'success', 3000);
+    });
   }
 }
