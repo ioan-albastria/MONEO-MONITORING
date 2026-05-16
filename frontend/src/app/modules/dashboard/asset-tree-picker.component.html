@@ -68,6 +68,14 @@
                 {{ sensor.unit }}
               </span>
               <span class="tree-node__sensor-type text-fg-faint" *ngIf="sensor.sensor_type">{{ sensor.sensor_type }}</span>
+              <svg *ngIf="sparklinePath(sensor.id)"
+                class="tree-node__sparkline"
+                [attr.viewBox]="'0 0 64 18'"
+                width="64" height="18"
+                aria-hidden="true">
+                <path [attr.d]="sparklinePath(sensor.id)"
+                  stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              </svg>
             </label>
           </div>
           <!-- Recurse into children -->
@@ -99,6 +107,14 @@
                       {{ sensor.unit }}
                     </span>
                     <span class="tree-node__sensor-type text-fg-faint" *ngIf="sensor.sensor_type">{{ sensor.sensor_type }}</span>
+                    <svg *ngIf="sparklinePath(sensor.id)"
+                      class="tree-node__sparkline"
+                      [attr.viewBox]="'0 0 64 18'"
+                      width="64" height="18"
+                      aria-hidden="true">
+                      <path [attr.d]="sparklinePath(sensor.id)"
+                        stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                    </svg>
                   </label>
                 </div>
               </ng-container>
@@ -126,6 +142,14 @@
           <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
             {{ sensor.unit }}
           </span>
+          <svg *ngIf="sparklinePath(sensor.id)"
+            class="tree-node__sparkline"
+            [attr.viewBox]="'0 0 64 18'"
+            width="64" height="18"
+            aria-hidden="true">
+            <path [attr.d]="sparklinePath(sensor.id)"
+              stroke="#37c79a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          </svg>
         </label>
       </div>
     </ng-container>

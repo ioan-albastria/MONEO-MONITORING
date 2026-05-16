@@ -44,4 +44,27 @@ export class SensorApiService {
   updateRanges(id: number, body: Partial<import('../../types/sensor').Sensor>): Promise<import('../../types/sensor').Sensor> {
     return firstValueFrom(this.http.put<import('../../types/sensor').Sensor>(`/api/sensors/${id}/ranges`, body));
   }
+
+  getSparklines(ids: number[], minutes = 60): Promise<{ sensor_id: number; points: number[] }[]> {
+    let params = new HttpParams().set('minutes', String(minutes));
+    ids.forEach(id => (params = params.append('ids', String(id))));
+    return firstValueFrom(
+      this.http.get<{ sensor_id: number; points: number[] }[]>(
+        '/api/sensors/sparklines', { params }
+      )
+    );
+  }
+
+  getReadingsAround(
+    sensorId: number,
+    at: string,
+    radius = 10
+  ): Promise<{ timestamp: string; value: number }[]> {
+    const params = new HttpParams().set('at', at).set('radius', String(radius));
+    return firstValueFrom(
+      this.http.get<{ timestamp: string; value: number }[]>(
+        `/api/sensors/${sensorId}/readings/around`, { params }
+      )
+    );
+  }
 }

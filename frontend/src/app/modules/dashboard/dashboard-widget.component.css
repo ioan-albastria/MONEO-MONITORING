@@ -2,6 +2,7 @@
   display: block;
   height: 100%;
   min-height: 0;
+  position: relative;
 }
 
 :host ::ng-deep apx-chart,
@@ -148,6 +149,35 @@
   }
 }
 
+/* ── Gauge wide (semi-circle) mode ───────────────────────────────────────── */
+
+.gauge--wide .dashboard-gauge-card__dial {
+  width:  min(100cqw, 200px);
+  height: min(calc(50cqw), 100px);
+  border-radius: 999px 999px 0 0;
+  overflow: hidden;
+  background:
+    conic-gradient(
+      from 90deg,
+      var(--gauge-color) 0 calc(var(--gauge-progress) / 2),
+      color-mix(in oklch, var(--color-fg) 14%, var(--color-border))
+        calc(var(--gauge-progress) / 2) 50%,
+      transparent 50%
+    ) !important;
+}
+
+.gauge--wide .dashboard-gauge-card__dial-inner {
+  border-radius: 999px;
+  width: calc(100% - 20px);
+  height: calc(200% - 20px);
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+.gauge--wide .gauge-scale-row {
+  width: min(100cqw, 200px);
+}
+
 /* ── Stat card layout ────────────────────────────────────────────────────── */
 
 .widget-stat {
@@ -232,3 +262,91 @@
 .widget-stat__status-pill[data-tier="normal"]   { background: #37c79a22; color: #37c79a; }
 .widget-stat__status-pill[data-tier="warning"]  { background: #f5b42822; color: #f5b428; }
 .widget-stat__status-pill[data-tier="critical"] { background: #e64b3c22; color: #e64b3c; }
+
+/* ── Drill-down modal ────────────────────────────────────────────────────── */
+
+.drill-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+}
+
+.drill-modal__panel {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lev-2);
+  width: min(420px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drill-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-0);
+}
+
+.drill-modal__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.drill-modal__body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drill-modal__state {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-fg-faint);
+  font-size: 0.8rem;
+}
+
+.drill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.drill-table th {
+  text-align: left;
+  padding: 6px 14px;
+  color: var(--color-fg-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-0);
+  position: sticky;
+  top: 0;
+}
+
+.drill-table td {
+  padding: 5px 14px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+  color: var(--color-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.drill-table__row--pivot td {
+  background: color-mix(in oklch, var(--color-brand) 8%, transparent);
+  font-weight: 600;
+  color: var(--color-brand);
+}

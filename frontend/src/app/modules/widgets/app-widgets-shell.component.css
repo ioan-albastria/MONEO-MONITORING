@@ -34,3 +34,28 @@
 
 /* Desaturate body content when data is offline */
 :host([data-state="offline"]) .widget-body { opacity: 0.55; filter: saturate(0.3); }
+
+/* Drag handle strip */
+.widget-drag-strip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 12px;
+  margin-bottom: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.group:hover .widget-drag-strip,
+.group:focus-within .widget-drag-strip {
+  opacity: 1;
+}
+
+.widget-drag-icon {
+  font-size: 16px;
+  color: var(--color-fg-muted);
+  user-select: none;
+}
+
+.dashboard-widget-drag-handle:hover {
+  background-color: color-mix(in oklch, var(--color-fg) 3%, transparent);
+}

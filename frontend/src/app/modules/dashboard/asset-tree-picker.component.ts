@@ -31,6 +31,7 @@ export class AssetTreePickerComponent implements OnInit {
   unassignedSensors: Sensor[] = [];
   loading = true;
   error = false;
+  sparklines = new Map<number, number[]>();
 
   private allSensors: Sensor[] = [];
 
@@ -49,12 +50,43 @@ export class AssetTreePickerComponent implements OnInit {
       this.roots = this._buildNodes(this.treeService.snapshot);
       this.unassignedSensors = this.allSensors.filter(s => s.asset_id == null);
       this._applyFilter();
+      void this._loadSparklines();
     } catch {
       this.error = true;
     } finally {
       this.loading = false;
       this.cdr.markForCheck();
     }
+  }
+
+  private async _loadSparklines(): Promise<void> {
+    if (!this.allSensors.length) return;
+    const ids = this.allSensors.map(s => s.id);
+    try {
+      const data = await this.sensorApi.getSparklines(ids, 60);
+      for (const item of data) {
+        if (item.points.length > 1) {
+          this.sparklines.set(item.sensor_id, item.points);
+        }
+      }
+      this.cdr.markForCheck();
+    } catch {
+      // sparklines are optional — fail silently
+    }
+  }
+
+  sparklinePath(sensorId: number): string {
+    const pts = this.sparklines.get(sensorId);
+    if (!pts || pts.length < 2) return '';
+    const W = 64, H = 18;
+    const min = Math.min(...pts);
+    const max = Math.max(...pts);
+    const range = max - min || 1;
+    return pts.map((v, i) => {
+      const x = (i / (pts.length - 1)) * W;
+      const y = H - ((v - min) / range) * H * 0.85 - H * 0.075;
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
   }
 
   onFilterChange(): void {

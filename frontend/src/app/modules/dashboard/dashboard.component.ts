@@ -5,6 +5,7 @@ import {
   OnDestroy,
   OnInit,
 } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {
   GridsterConfig,
   GridsterItem,
@@ -53,12 +54,31 @@ type WidgetFormModel = {
   criticalMax: number | null;
 };
 
+// ── Smart defaults by sensor type ──────────────────────────────────────────
+
+const SENSOR_TYPE_DEFAULTS: Record<string, {
+  gaugeMin: number; gaugeMax: number;
+  normalMax: number | null; warningMax: number | null; criticalMax: number | null;
+}> = {
+  'temperature':  { gaugeMin: 0,   gaugeMax: 100,  normalMax: 60,   warningMax: 80,  criticalMax: 95  },
+  'pressure':     { gaugeMin: 0,   gaugeMax: 10,   normalMax: 7,    warningMax: 8.5, criticalMax: 9.5 },
+  'humidity':     { gaugeMin: 0,   gaugeMax: 100,  normalMax: 70,   warningMax: 85,  criticalMax: 95  },
+  'distance':     { gaugeMin: 0,   gaugeMax: 500,  normalMax: null, warningMax: null, criticalMax: null },
+  'vibration':    { gaugeMin: 0,   gaugeMax: 50,   normalMax: 20,   warningMax: 35,  criticalMax: 45  },
+  'current':      { gaugeMin: 0,   gaugeMax: 20,   normalMax: 15,   warningMax: 18,  criticalMax: 19  },
+  'voltage':      { gaugeMin: 0,   gaugeMax: 500,  normalMax: 400,  warningMax: 440, criticalMax: 480 },
+  'flow':         { gaugeMin: 0,   gaugeMax: 100,  normalMax: 80,   warningMax: 90,  criticalMax: null },
+};
+
 // ── Widget catalog ─────────────────────────────────────────────────────────
 
 interface WidgetCatalogItem {
   type: DashboardWidgetType;
   label: string;
   description: string;
+  tags: string[];
+  bestFor: string;
+  thumbnail: SafeHtml;
   defaultCols: number;
   defaultRows: number;
   defaultSettings: WidgetSettings;
@@ -134,40 +154,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Widget catalog (Phase 9) ───────────────────────────────────────────
 
-  readonly widgetCatalog: WidgetCatalogItem[] = [
-    {
-      type: 'line_chart',
-      label: 'Line Chart',
-      description: 'Time-series readings for one or more sensors over a window.',
-      defaultCols: 12,
-      defaultRows: 5,
-      defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60, show_legend: true },
-    },
-    {
-      type: 'bar_chart',
-      label: 'Bar Chart',
-      description: 'Aggregated values per sensor (avg / min / max in a bucket).',
-      defaultCols: 8,
-      defaultRows: 5,
-      defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60 },
-    },
-    {
-      type: 'gauge',
-      label: 'Gauge',
-      description: 'Live circular gauge for the most recent reading of one sensor.',
-      defaultCols: 4,
-      defaultRows: 4,
-      defaultSettings: { sensor_ids: [], gauge_min: 0, gauge_max: 100 },
-    },
-    {
-      type: 'stat_card',
-      label: 'Stat Card',
-      description: 'Single big number with trend label, live-updating.',
-      defaultCols: 4,
-      defaultRows: 3,
-      defaultSettings: { sensor_ids: [] },
-    },
-  ];
+  readonly widgetCatalog: WidgetCatalogItem[];
 
   // ── Widget editor (Phase 8.7) ──────────────────────────────────────────
 
@@ -187,7 +174,79 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private readonly cdr: ChangeDetectorRef,
     private readonly auth: AuthService,
     private readonly timeService: DashboardTimeService,
-  ) {}
+    private readonly sanitizer: DomSanitizer,
+  ) {
+    const trust = (svg: string): SafeHtml => sanitizer.bypassSecurityTrustHtml(svg);
+    this.widgetCatalog = [
+      {
+        type: 'line_chart',
+        label: 'Line Chart',
+        description: 'Time-series readings for one or more sensors over a window.',
+        tags: ['time-series', 'multi-sensor'],
+        bestFor: 'Trend analysis, pattern detection',
+        thumbnail: trust(`<svg viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="36" x2="80" y2="36" stroke="currentColor" stroke-opacity="0.12" stroke-dasharray="3 3"/>
+          <line x1="0" y1="24" x2="80" y2="24" stroke="currentColor" stroke-opacity="0.12" stroke-dasharray="3 3"/>
+          <polyline points="0,38 13,30 26,33 40,15 53,21 66,13 80,17"
+            stroke="#37c79a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <polygon points="0,38 13,30 26,33 40,15 53,21 66,13 80,17 80,48 0,48"
+            fill="#37c79a" fill-opacity="0.10"/>
+        </svg>`),
+        defaultCols: 12, defaultRows: 5,
+        defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60, show_legend: true },
+      },
+      {
+        type: 'bar_chart',
+        label: 'Bar Chart',
+        description: 'Aggregated values per sensor (avg / min / max in a bucket).',
+        tags: ['comparison', 'multi-sensor'],
+        bestFor: 'Comparing sensors side-by-side',
+        thumbnail: trust(`<svg viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5"  y="24" width="14" height="20" rx="3" fill="#56b9ff" fill-opacity="0.80"/>
+          <rect x="23" y="12" width="14" height="32" rx="3" fill="#37c79a" fill-opacity="0.80"/>
+          <rect x="41" y="18" width="14" height="26" rx="3" fill="#f5b428" fill-opacity="0.80"/>
+          <rect x="59" y="8"  width="14" height="36" rx="3" fill="#56b9ff" fill-opacity="0.80"/>
+        </svg>`),
+        defaultCols: 8, defaultRows: 5,
+        defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60 },
+      },
+      {
+        type: 'gauge',
+        label: 'Gauge',
+        description: 'Live circular gauge for the most recent reading of one sensor.',
+        tags: ['real-time', 'single-sensor'],
+        bestFor: 'Live process values, current state',
+        thumbnail: trust(`<svg viewBox="0 0 80 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 44 A30 30 0 1 1 70 44"
+            stroke="currentColor" stroke-opacity="0.15" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M10 44 A30 30 0 0 1 58 17"
+            stroke="#37c79a" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <circle cx="40" cy="44" r="14"
+            fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.18" stroke-width="1"/>
+          <text x="40" y="49" text-anchor="middle" font-size="9" font-weight="600"
+            fill="currentColor" fill-opacity="0.55">67%</text>
+        </svg>`),
+        defaultCols: 4, defaultRows: 4,
+        defaultSettings: { sensor_ids: [], gauge_min: 0, gauge_max: 100 },
+      },
+      {
+        type: 'stat_card',
+        label: 'Stat Card',
+        description: 'Single big number with trend label, live-updating.',
+        tags: ['real-time', 'single-sensor'],
+        bestFor: 'KPIs, current value at a glance',
+        thumbnail: trust(`<svg viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <text x="8" y="34" font-size="26" font-weight="700"
+            fill="currentColor" fill-opacity="0.75">42</text>
+          <text x="54" y="26" font-size="9" fill="#37c79a" font-weight="600">+2.3%</text>
+          <polyline points="8,44 22,40 36,42 50,36 64,38 78,32"
+            stroke="#37c79a" stroke-width="1.5" fill="none" opacity="0.65"/>
+        </svg>`),
+        defaultCols: 4, defaultRows: 3,
+        defaultSettings: { sensor_ids: [] },
+      },
+    ];
+  }
 
   async ngOnInit(): Promise<void> {
     await this.loadDashboards();
@@ -423,12 +482,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Widget editor ──────────────────────────────────────────────────────
 
-  openWidgetCreator(): void {
+  async openWidgetCreator(): Promise<void> {
     if (!this.selectedDashboard?.is_owned) return;
     this.widgetEditorMode = 'create';
     this.editingWidget = null;
     this.widgetForm = this.emptyWidgetForm();
     this.widgetError = null;
+    this.availableSensors = await this.sensorApi.listSensors();
     this.widgetEditorOpen = true;
   }
 
@@ -452,7 +512,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
     this.widgetError = null;
     this.widgetEditorOpen = true;
-    this.populateRangesFromSensor();
+    void this.sensorApi.listSensors().then(s => {
+      this.availableSensors = s;
+      this.populateRangesFromSensor();
+      this.refreshView();
+    });
     this.refreshView();
   }
 
@@ -463,6 +527,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   selectWidgetType(type: DashboardWidgetType): void {
     this.widgetForm = { ...this.widgetForm, type };
+  }
+
+  onWidgetSensorIdsChanged(ids: number[]): void {
+    this.widgetForm.sensorIds = ids;
+    if (this.widgetEditorMode !== 'create' || ids.length !== 1) return;
+    const sensor = this.availableSensors.find(s => s.id === ids[0]);
+    if (!sensor?.sensor_type) return;
+    const defaults = SENSOR_TYPE_DEFAULTS[sensor.sensor_type.toLowerCase()];
+    if (!defaults) return;
+    const blank = this.emptyWidgetForm();
+    if (this.widgetForm.gaugeMin === blank.gaugeMin)     this.widgetForm.gaugeMin     = defaults.gaugeMin;
+    if (this.widgetForm.gaugeMax === blank.gaugeMax)     this.widgetForm.gaugeMax     = defaults.gaugeMax;
+    if (this.widgetForm.normalMax  === blank.normalMax)  this.widgetForm.normalMax    = defaults.normalMax;
+    if (this.widgetForm.warningMax === blank.warningMax) this.widgetForm.warningMax   = defaults.warningMax;
+    if (this.widgetForm.criticalMax === blank.criticalMax) this.widgetForm.criticalMax = defaults.criticalMax;
   }
 
   async saveWidget(): Promise<void> {

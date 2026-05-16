@@ -2,8 +2,10 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
+  NgZone,
   OnChanges,
   OnDestroy,
   OnInit,
@@ -36,6 +38,7 @@ const PALETTE = ['#37c79a', '#56b9ff', '#ffbf47', '#ff7a59', '#9b8cff', '#5ed3c6
 export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   @Input({ required: true }) widget!: DashboardWidget;
   @Input() editable = false;
+  @Input() editMode = false;
   @Output() configure = new EventEmitter<void>();
   @Output() remove    = new EventEmitter<void>();
 
@@ -63,6 +66,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   gaugeColor = STATUS_COLOR_HEX.unknown;
   /** Multi-stop conic-gradient for zone coloring; empty string = no bounds configured. */
   gaugeBackground = '';
+  gaugeWide = false;
+  private _gaugeResizeObs: ResizeObserver | null = null;
 
   // ── Stat card ──────────────────────────────────────────────────────────
   statValue: number | null = null;
@@ -72,6 +77,13 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   statSparklineConfig: any = null;
   statStatusTier: StatusTier = 'unknown';
   statStatusLabel = '';
+
+  // ── Drill-down modal ───────────────────────────────────────────────────
+  drillOpen = false;
+  drillLoading = false;
+  drillTimestamp: string | null = null;
+  drillReadings: { timestamp: string; value: number }[] = [];
+  drillUnit = '';
 
   // ── Active sensor (single-sensor widgets) ──────────────────────────────
   /** The sensor object for single-sensor widgets; null for multi-sensor or while loading. */
@@ -98,6 +110,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     private readonly cdr: ChangeDetectorRef,
     private readonly annotationsApi: AnnotationsApiService,
     private readonly timeService: DashboardTimeService,
+    private readonly el: ElementRef<HTMLElement>,
+    private readonly zone: NgZone,
   ) {}
 
   ngOnInit(): void {
@@ -129,6 +143,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.themeObserver?.disconnect();
+    this._gaugeResizeObs?.disconnect();
     this.stopRealtime();
     this._timeSub?.unsubscribe();
   }
@@ -320,14 +335,20 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   // ── Chart builders (called again on theme change without re-fetch) ─────
 
   private applyLineChart(resp: AnalyticsResponse, s: WidgetSettings): void {
-    const theme  = this.readTheme();
+    const theme = this.readTheme();
+
+    // Build series with null boundary points so the x-axis always spans the
+    // full requested window even when data only covers part of it.
     const series = resp.data
-      .map((d, i) => ({
-        name:  d.sensor_name || `Sensor ${d.sensor_id}`,
-        data:  d.points.map(p => [new Date(p.timestamp).getTime(), p.value] as [number, number]),
-        color: PALETTE[i % PALETTE.length],
-      }))
-      .filter(sr => sr.data.length > 0);
+      .map((d, i) => {
+        const pts: (number | null)[][] = d.points.map(
+          p => [new Date(p.timestamp).getTime(), p.value]
+        );
+        if (this.chartFrom !== null) pts.unshift([this.chartFrom!, null]);
+        if (this.chartTo   !== null) pts.push([this.chartTo!,   null]);
+        return { name: d.sensor_name || `Sensor ${d.sensor_id}`, data: pts, color: PALETTE[i % PALETTE.length] };
+      })
+      .filter(sr => sr.data.length > 2); // >2 = at least one real point beyond the two boundary nulls
 
     this.chartType  = 'apex';
     this.chartConfig = {
@@ -337,6 +358,21 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
         zoom: { enabled: true, type: 'x', autoScaleYaxis: true },
         animations: { easing: 'easeinout', speed: 220 },
         foreColor: theme.fgMuted,
+        events: {
+          dataPointSelection: (_e: unknown, _ctx: unknown, cfg: { seriesIndex: number; dataPointIndex: number }) => {
+            const seriesData = this.latestAnalytics?.data[cfg.seriesIndex];
+            if (!seriesData) return;
+            // dataPointIndex is offset by 1 because we prepend a null boundary point
+            const pointIdx = cfg.dataPointIndex - 1;
+            if (pointIdx < 0 || pointIdx >= seriesData.points.length) return;
+            const point = seriesData.points[pointIdx];
+            if (!point) return;
+            const sensorId = seriesData.sensor_id;
+            this.zone.run(() => {
+              void this.openDrillDown(sensorId, point.timestamp, (seriesData as any).unit ?? '');
+            });
+          },
+        },
       },
       colors: PALETTE,
       dataLabels: { enabled: false },
@@ -447,6 +483,22 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.gaugePercent   = Math.round(percent);
     this.gaugeBackground = this.buildGaugeBackground(sensor ?? null);
     this.widgetStatus   = this.computeStatus();
+    this._observeGaugeSize();
+  }
+
+  private _observeGaugeSize(): void {
+    if (this._gaugeResizeObs) return; // only set up once
+    this._gaugeResizeObs = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      const wide = height > 0 && (width / height) > 1.4;
+      if (wide !== this.gaugeWide) {
+        this.gaugeWide = wide;
+        this.cdr.markForCheck();
+      }
+    });
+    this._gaugeResizeObs.observe(this.el.nativeElement);
   }
 
   private computeStatus(): WidgetStatus {
@@ -512,6 +564,30 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
     this.widgetStatus = this.computeStatus();
     if (value === null) this.setEmpty('No recent reading available.');
+  }
+
+  // ── Drill-down ─────────────────────────────────────────────────────────
+
+  async openDrillDown(sensorId: number, timestamp: string, unit: string): Promise<void> {
+    this.drillOpen    = true;
+    this.drillLoading = true;
+    this.drillTimestamp = timestamp;
+    this.drillUnit    = unit;
+    this.drillReadings = [];
+    this.cdr.markForCheck();
+    try {
+      this.drillReadings = await this.sensorApi.getReadingsAround(sensorId, timestamp, 10);
+    } catch {
+      this.drillReadings = [];
+    } finally {
+      this.drillLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  closeDrillDown(): void {
+    this.drillOpen = false;
+    this.cdr.markForCheck();
   }
 
   // ── Annotation helpers ─────────────────────────────────────────────────

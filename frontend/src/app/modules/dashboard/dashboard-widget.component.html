@@ -7,6 +7,7 @@
   [theme]="currentTheme"
   [freshAt]="freshAt"
   [expectedIntervalSeconds]="expectedIntervalSeconds"
+  [editMode]="editMode"
 >
   <!-- Always-visible reload button in header -->
   <button widgetActions type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
@@ -52,11 +53,13 @@
     ></apx-chart>
 
     <!-- Gauge dial -->
-    <div *ngIf="!loading && !error && chartType === 'gauge'" class="dashboard-gauge-grid">
+    <div *ngIf="!loading && !error && chartType === 'gauge'"
+         class="dashboard-gauge-grid"
+         [class.gauge--wide]="gaugeWide">
       <div class="dashboard-gauge-card__dial"
            [style.--gauge-progress]="gaugePercent + '%'"
            [style.--gauge-color]="gaugeColor"
-           [style.background]="gaugeBackground || null">
+           [style.background]="gaugeWide ? null : (gaugeBackground || null)">
         <div class="dashboard-gauge-card__dial-inner">
           <span class="dashboard-gauge-card__dial-value">
             {{ gaugeValue !== null ? gaugeValue.toFixed(1) : '—' }}
@@ -133,3 +136,39 @@
   </div>
 
 </app-widget-shell>
+
+<!-- ─── Drill-down modal ─────────────────────────────────────────────────── -->
+<div *ngIf="drillOpen" class="drill-modal" (click)="closeDrillDown()">
+  <div class="drill-modal__panel" (click)="$event.stopPropagation()">
+    <header class="drill-modal__header">
+      <div class="drill-modal__title">
+        Readings around
+        <span class="text-fg-muted">{{ drillTimestamp | date:'dd MMM yyyy HH:mm:ss' }}</span>
+      </div>
+      <button type="button" class="icon-btn" (click)="closeDrillDown()" title="Close">
+        <span class="icon icon-muted">close</span>
+      </button>
+    </header>
+    <div class="drill-modal__body">
+      <div *ngIf="drillLoading" class="drill-modal__state">Loading…</div>
+      <table *ngIf="!drillLoading && drillReadings.length" class="drill-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Value{{ drillUnit ? ' (' + drillUnit + ')' : '' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of drillReadings"
+              [class.drill-table__row--pivot]="r.timestamp === drillTimestamp">
+            <td>{{ r.timestamp | date:'HH:mm:ss.SSS' }}</td>
+            <td>{{ r.value | number:'1.2-4' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!drillLoading && !drillReadings.length" class="drill-modal__state">
+        No readings found around this point.
+      </div>
+    </div>
+  </div>
+</div>

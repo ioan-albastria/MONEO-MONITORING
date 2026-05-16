@@ -34,6 +34,11 @@
            min-h-[52px]
            cursor-grab active:cursor-grabbing"
   >
+    <!-- Drag indicator strip — only in edit mode, fades in on hover -->
+    <div *ngIf="editMode" class="widget-drag-strip" aria-hidden="true">
+      <span class="icon widget-drag-icon">drag_handle</span>
+    </div>
+
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">

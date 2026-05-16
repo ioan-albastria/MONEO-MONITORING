@@ -82,6 +82,7 @@ export class AppWidgetsShellComponent implements OnChanges, OnInit, OnDestroy {
 
   @Input() freshAt: string | null = null;
   @Input() expectedIntervalSeconds = 300;
+  @Input() editMode = false;
 
   // Consumed by template [style.X] bindings
   toneTint = 'transparent';

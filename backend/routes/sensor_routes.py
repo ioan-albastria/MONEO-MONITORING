@@ -16,6 +16,38 @@ _sensor_service = SensorService()
 _readings_service = SensorReadingsService()
 
 
+@sensor_router.get("/sparklines")
+async def get_sensor_sparklines(
+    ids: list[int] = Query(..., description="Sensor IDs"),
+    minutes: int = Query(60, ge=5, le=1440),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return a 12-point downsampled value array for each requested sensor."""
+    from DAL.models.sensor_reading import SensorReading as SR
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(minutes=minutes)
+    result = []
+    for sid in ids:
+        readings = (
+            db.query(SR)
+            .filter(SR.sensor_id == sid, SR.timestamp >= since)
+            .order_by(SR.timestamp.asc())
+            .all()
+        )
+        if not readings:
+            result.append({"sensor_id": sid, "points": []})
+            continue
+        target = 12
+        if len(readings) <= target:
+            pts = [r.value for r in readings]
+        else:
+            step = len(readings) / target
+            pts = [readings[int(i * step)].value for i in range(target)]
+        result.append({"sensor_id": sid, "points": pts})
+    return result
+
+
 @sensor_router.get("", response_model=list[SensorRead])
 async def get_sensors(
     active_only: bool = Query(False),
@@ -35,6 +67,34 @@ async def get_sensor(
         return _sensor_service.get_sensor(db, sensor_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@sensor_router.get("/{sensor_id}/readings/around")
+async def get_readings_around(
+    sensor_id: int,
+    at: datetime = Query(..., description="Centre timestamp (ISO 8601)"),
+    radius: int = Query(10, ge=1, le=50),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return up to `radius` readings before and after `at`, sorted ascending."""
+    from DAL.models.sensor_reading import SensorReading as SR
+    before = (
+        db.query(SR)
+        .filter(SR.sensor_id == sensor_id, SR.timestamp <= at)
+        .order_by(SR.timestamp.desc())
+        .limit(radius)
+        .all()
+    )
+    after = (
+        db.query(SR)
+        .filter(SR.sensor_id == sensor_id, SR.timestamp > at)
+        .order_by(SR.timestamp.asc())
+        .limit(radius)
+        .all()
+    )
+    combined = sorted(before + after, key=lambda r: r.timestamp)
+    return [{"timestamp": r.timestamp.isoformat(), "value": r.value} for r in combined]
 
 
 @sensor_router.get("/{sensor_id}/readings", response_model=SensorTimeSeriesData)

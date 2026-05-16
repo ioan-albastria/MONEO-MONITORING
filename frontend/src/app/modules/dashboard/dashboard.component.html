@@ -130,6 +130,7 @@
           <app-dashboard-widget
             [widget]="item.widget"
             [editable]="dashboard.is_owned"
+            [editMode]="editMode"
             (configure)="openWidgetEditor(item.widget)"
             (remove)="deleteWidget(item.widget)"
           ></app-dashboard-widget>
@@ -295,8 +296,8 @@
 
       <div class="dashboard-modal__body dashboard-modal__body--widget">
 
-        <!-- Section 1: Widget type picker -->
-        <div class="dashboard-editor-section">
+        <!-- Section 1: Widget type picker (create mode only) -->
+        <div class="dashboard-editor-section" *ngIf="widgetEditorMode === 'create'">
           <div class="dashboard-editor-section__eyebrow">Widget type</div>
           <div class="dashboard-editor-section__title">Choose a visualization</div>
           <div class="dashboard-widget-picker">
@@ -307,9 +308,23 @@
               [class.is-active]="widgetForm.type === cat.type"
               (click)="selectWidgetType(cat.type)"
             >
-              <div class="dashboard-widget-picker__title">{{ cat.label }}</div>
-              <div class="dashboard-widget-picker__description">{{ cat.description }}</div>
-              <div class="dashboard-widget-picker__status" *ngIf="widgetForm.type === cat.type">Selected</div>
+              <div class="dashboard-widget-picker__thumb"
+                   [innerHTML]="cat.thumbnail"
+                   aria-hidden="true">
+              </div>
+              <div class="dashboard-widget-picker__card-body">
+                <div class="dashboard-widget-picker__title">{{ cat.label }}</div>
+                <div class="dashboard-widget-picker__description">{{ cat.description }}</div>
+                <div class="dashboard-widget-picker__meta">
+                  <span *ngFor="let tag of cat.tags" class="dashboard-widget-picker__tag">{{ tag }}</span>
+                </div>
+                <div class="dashboard-widget-picker__best-for">
+                  Best for: {{ cat.bestFor }}
+                </div>
+              </div>
+              <div class="dashboard-widget-picker__status" *ngIf="widgetForm.type === cat.type">
+                ✓ Selected
+              </div>
             </button>
           </div>
         </div>
@@ -340,7 +355,7 @@
           </div>
           <app-asset-tree-picker
             [selectedIds]="widgetForm.sensorIds"
-            (selectedIdsChange)="widgetForm.sensorIds = $event"
+            (selectedIdsChange)="onWidgetSensorIdsChanged($event)"
           ></app-asset-tree-picker>
           <div class="dashboard-editor-section__hint">
             Browse the asset tree or type to filter. Click a sensor to select it.
