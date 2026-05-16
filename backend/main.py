@@ -11,6 +11,7 @@ from config import settings
 from DAL import SessionLocal
 from routes.alert_routes import alert_router
 from routes.annotation_routes import annotation_router
+from routes.asset_routes import asset_router
 from routes.auth_routes import auth_router
 from routes.dashboard_routes import dashboard_router
 from routes.widget_routes import widget_router
@@ -99,6 +100,7 @@ app.include_router(moneo_router)
 app.include_router(ws_router)
 app.include_router(alert_router)
 app.include_router(annotation_router)
+app.include_router(asset_router)
 
 
 if __name__ == "__main__":

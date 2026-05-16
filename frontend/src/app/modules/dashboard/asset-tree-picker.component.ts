@@ -1,0 +1,146 @@
+import {
+  ChangeDetectionStrategy, ChangeDetectorRef,
+  Component, EventEmitter, Input, OnInit, Output,
+} from '@angular/core';
+import { AssetNode } from '../../types/asset';
+import { Sensor } from '../../types/sensor';
+import { AssetTreeService } from '../../core/assets/asset-tree.service';
+import { SensorApiService } from '../../core/sensors/sensor-api.service';
+
+interface TreeNode {
+  asset: AssetNode;
+  sensors: Sensor[];
+  expanded: boolean;
+  visible: boolean;
+  children: TreeNode[];
+}
+
+@Component({
+  selector: 'app-asset-tree-picker',
+  standalone: false,
+  templateUrl: './asset-tree-picker.component.html',
+  styleUrl: './asset-tree-picker.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AssetTreePickerComponent implements OnInit {
+  @Input()  selectedIds: number[] = [];
+  @Output() selectedIdsChange = new EventEmitter<number[]>();
+
+  filterText = '';
+  roots: TreeNode[] = [];
+  unassignedSensors: Sensor[] = [];
+  loading = true;
+  error = false;
+
+  private allSensors: Sensor[] = [];
+
+  constructor(
+    private readonly treeService: AssetTreeService,
+    private readonly sensorApi: SensorApiService,
+    private readonly cdr: ChangeDetectorRef,
+  ) {}
+
+  async ngOnInit(): Promise<void> {
+    try {
+      await Promise.all([
+        this.treeService.ensureLoaded(),
+        this.sensorApi.listSensors().then(s => { this.allSensors = s; }),
+      ]);
+      this.roots = this._buildNodes(this.treeService.snapshot);
+      this.unassignedSensors = this.allSensors.filter(s => s.asset_id == null);
+      this._applyFilter();
+    } catch {
+      this.error = true;
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  onFilterChange(): void {
+    this._applyFilter();
+    this.cdr.markForCheck();
+  }
+
+  toggleNode(node: TreeNode): void {
+    node.expanded = !node.expanded;
+    this.cdr.markForCheck();
+  }
+
+  isSensorSelected(id: number): boolean {
+    return this.selectedIds.includes(id);
+  }
+
+  toggleSensor(id: number): void {
+    const next = this.selectedIds.includes(id)
+      ? this.selectedIds.filter(x => x !== id)
+      : [...this.selectedIds, id];
+    this.selectedIds = next;
+    this.selectedIdsChange.emit(next);
+    this.cdr.markForCheck();
+  }
+
+  clearAll(): void {
+    this.selectedIds = [];
+    this.selectedIdsChange.emit([]);
+    this.cdr.markForCheck();
+  }
+
+  // ── Internals ─────────────────────────────────────────────────────────
+
+  private _buildNodes(assets: AssetNode[]): TreeNode[] {
+    return assets.map(a => ({
+      asset: a,
+      sensors: this.allSensors.filter(s => s.asset_id === a.id),
+      expanded: false,
+      visible: true,
+      children: this._buildNodes(a.children),
+    }));
+  }
+
+  private _applyFilter(): void {
+    const q = this.filterText.trim().toLowerCase();
+    if (!q) {
+      this._setAllVisible(this.roots, true);
+      return;
+    }
+    this._filterNodes(this.roots, q);
+  }
+
+  private _setAllVisible(nodes: TreeNode[], visible: boolean): void {
+    for (const n of nodes) {
+      n.visible = visible;
+      n.expanded = false;
+      this._setAllVisible(n.children, visible);
+    }
+  }
+
+  private _filterNodes(nodes: TreeNode[], q: string): boolean {
+    let anyVisible = false;
+    for (const n of nodes) {
+      const nameMatch = n.asset.name.toLowerCase().includes(q)
+        || (n.asset.path ?? '').toLowerCase().includes(q);
+      const sensorMatch = n.sensors.some(s => s.name.toLowerCase().includes(q));
+      const childVisible = this._filterNodes(n.children, q);
+      n.visible = nameMatch || sensorMatch || childVisible;
+      n.expanded = n.visible;
+      if (n.visible) anyVisible = true;
+    }
+    return anyVisible;
+  }
+
+  visibleSensors(node: TreeNode): Sensor[] {
+    const q = this.filterText.trim().toLowerCase();
+    if (!q) return node.sensors;
+    return node.sensors.filter(s => s.name.toLowerCase().includes(q));
+  }
+
+  visibleUnassigned(): Sensor[] {
+    const q = this.filterText.trim().toLowerCase();
+    if (!q) return this.unassignedSensors;
+    return this.unassignedSensors.filter(s => s.name.toLowerCase().includes(q));
+  }
+
+  trackById(_i: number, item: { id: number }): number { return item.id; }
+  trackByAssetId(_i: number, n: TreeNode): number { return n.asset.id; }
+}

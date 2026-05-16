@@ -338,23 +338,12 @@
             Sensors
             <span class="text-xs text-fg-faint">required — pick at least one</span>
           </div>
-          <div class="dashboard-widget__state" *ngIf="sensorsLoading">Loading sensors…</div>
-          <select
-            *ngIf="!sensorsLoading"
-            multiple
-            class="dashboard-toolbar__select dashboard-toolbar__select--multi"
-            size="6"
-            [(ngModel)]="widgetForm.sensorIds"
-          >
-            <option *ngFor="let s of availableSensors" [ngValue]="s.id">
-              {{ s.name }}{{ s.unit ? ' (' + s.unit + ')' : '' }}
-            </option>
-          </select>
-          <div class="dashboard-editor-section__hint" *ngIf="!sensorsLoading && !availableSensors.length">
-            No sensors available. Check the backend has sensor data.
-          </div>
-          <div class="dashboard-editor-section__hint" *ngIf="!sensorsLoading && availableSensors.length">
-            Hold Ctrl / Cmd to select multiple sensors.
+          <app-asset-tree-picker
+            [selectedIds]="widgetForm.sensorIds"
+            (selectedIdsChange)="widgetForm.sensorIds = $event"
+          ></app-asset-tree-picker>
+          <div class="dashboard-editor-section__hint">
+            Browse the asset tree or type to filter. Click a sensor to select it.
           </div>
         </div>
 

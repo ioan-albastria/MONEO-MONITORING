@@ -3,9 +3,12 @@ export interface Sensor {
   name: string;
   unit?: string | null;
   description?: string | null;
+  sensor_type?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+  asset_id?: number | null;
+  asset_path?: string | null;
   expected_poll_seconds: number | null;
   last_seen_at: string | null;
   // Slice 2: range-bound fields

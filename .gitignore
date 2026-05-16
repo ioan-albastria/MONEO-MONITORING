@@ -1,3 +1,4 @@
 **/worktrees
 **/package-lock.json
 **/__pycache__/
+/.claude

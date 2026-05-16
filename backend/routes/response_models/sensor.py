@@ -25,6 +25,7 @@ class SensorRead(BaseModel):
     critical_min:  Optional[float] = None
     critical_max:  Optional[float] = None
     ranges_source: str = "manual"
+    asset_path: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

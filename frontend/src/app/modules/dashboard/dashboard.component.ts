@@ -178,7 +178,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   widgetError: string | null = null;
   widgetSaving = false;
   availableSensors: Sensor[] = [];
-  sensorsLoading = false;
 
 
   constructor(
@@ -431,7 +430,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.widgetForm = this.emptyWidgetForm();
     this.widgetError = null;
     this.widgetEditorOpen = true;
-    void this.loadSensors();
   }
 
   async openWidgetEditor(widget: DashboardWidget): Promise<void> {
@@ -454,7 +452,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
     this.widgetError = null;
     this.widgetEditorOpen = true;
-    await this.loadSensors();
     this.populateRangesFromSensor();
     this.refreshView();
   }
@@ -688,20 +685,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       s.bucket_minutes = 60;
     }
     return s;
-  }
-
-  private async loadSensors(): Promise<void> {
-    if (this.availableSensors.length) return;
-    this.sensorsLoading = true;
-    this.refreshView();
-    try {
-      this.availableSensors = await this.sensorApi.listSensors();
-    } catch {
-      // Non-fatal: sensor list stays empty, user sees empty multi-select
-    } finally {
-      this.sensorsLoading = false;
-      this.refreshView();
-    }
   }
 
   private async loadDashboards(preferredId?: number): Promise<void> {

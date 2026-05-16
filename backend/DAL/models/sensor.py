@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, Float, Integer, JSON, String
+from typing import TYPE_CHECKING
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from DAL.db_context import Base
+
+if TYPE_CHECKING:
+    from DAL.models.asset import Asset
 
 
 class Sensor(Base):
@@ -13,7 +17,10 @@ class Sensor(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     sensor_type: Mapped[str] = mapped_column(String, nullable=False)
     unit: Mapped[str] = mapped_column(String, nullable=False)
-    asset_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    asset_id: Mapped[int | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="SET NULL"), nullable=True
+    )
+    asset: Mapped["Asset | None"] = relationship("Asset", back_populates="sensors", lazy="select")
     min_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     max_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -39,3 +46,13 @@ class Sensor(Base):
     ranges_source: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
 
     readings = relationship("SensorReading", back_populates="sensor", cascade="all, delete-orphan")
+
+    @property
+    def asset_path(self) -> str | None:
+        """Hierarchical path including the sensor name, e.g. 'Plant A / Line 3 / temp'.
+        Returns None if the sensor has no assigned asset.
+        Requires the `asset` relationship to be loaded (use joinedload in queries).
+        """
+        if self.asset and self.asset.path:
+            return f"{self.asset.path} / {self.name}"
+        return None

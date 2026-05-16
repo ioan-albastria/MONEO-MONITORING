@@ -1,0 +1,141 @@
+<div class="tree-picker">
+  <!-- Filter input -->
+  <div class="tree-picker__search">
+    <span class="icon tree-picker__search-icon">search</span>
+    <input
+      class="tree-picker__search-input"
+      type="text"
+      placeholder="Filter sensors…"
+      [(ngModel)]="filterText"
+      (ngModelChange)="onFilterChange()"
+    />
+  </div>
+
+  <!-- Status bar -->
+  <div class="tree-picker__status">
+    <span class="text-fg-faint">{{ selectedIds.length }} selected</span>
+    <button
+      *ngIf="selectedIds.length > 0"
+      type="button"
+      class="tree-picker__clear-btn"
+      (click)="clearAll()"
+    >Clear all</button>
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="loading" class="tree-picker__state">Loading…</div>
+  <div *ngIf="!loading && error" class="tree-picker__state tree-picker__state--error">
+    Failed to load assets.
+  </div>
+
+  <!-- Tree -->
+  <div *ngIf="!loading && !error" class="tree-picker__tree">
+
+    <!-- Asset nodes -->
+    <ng-container *ngFor="let node of roots; trackBy: trackByAssetId">
+      <ng-container *ngIf="node.visible">
+        <div class="tree-node tree-node--asset" [class.is-expanded]="node.expanded">
+          <button
+            type="button"
+            class="tree-node__toggle"
+            (click)="toggleNode(node)"
+            [attr.aria-expanded]="node.expanded"
+          >
+            <span class="icon tree-node__chevron">chevron_right</span>
+            <span class="tree-node__kind-pill">{{ node.asset.kind }}</span>
+            <span class="tree-node__name">{{ node.asset.name }}</span>
+            <span class="text-fg-faint text-xs" *ngIf="node.sensors.length">
+              ({{ node.sensors.length }})
+            </span>
+          </button>
+        </div>
+
+        <!-- Sensors under this node -->
+        <ng-container *ngIf="node.expanded">
+          <div
+            *ngFor="let sensor of visibleSensors(node); trackBy: trackById"
+            class="tree-node tree-node--sensor"
+          >
+            <label class="tree-node__sensor-label">
+              <input
+                type="checkbox"
+                class="tree-node__checkbox"
+                [checked]="isSensorSelected(sensor.id)"
+                (change)="toggleSensor(sensor.id)"
+              />
+              <span class="tree-node__sensor-name">{{ sensor.name }}</span>
+              <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
+                {{ sensor.unit }}
+              </span>
+              <span class="tree-node__sensor-type text-fg-faint" *ngIf="sensor.sensor_type">{{ sensor.sensor_type }}</span>
+            </label>
+          </div>
+          <!-- Recurse into children -->
+          <ng-container *ngFor="let child of node.children; trackBy: trackByAssetId">
+            <ng-container *ngIf="child.visible">
+              <div class="tree-node tree-node--asset tree-node--child"
+                   [class.is-expanded]="child.expanded">
+                <button type="button" class="tree-node__toggle"
+                  (click)="toggleNode(child)" [attr.aria-expanded]="child.expanded">
+                  <span class="icon tree-node__chevron">chevron_right</span>
+                  <span class="tree-node__kind-pill">{{ child.asset.kind }}</span>
+                  <span class="tree-node__name">{{ child.asset.name }}</span>
+                  <span class="text-fg-faint text-xs" *ngIf="child.sensors.length">
+                    ({{ child.sensors.length }})
+                  </span>
+                </button>
+              </div>
+              <ng-container *ngIf="child.expanded">
+                <div
+                  *ngFor="let sensor of visibleSensors(child); trackBy: trackById"
+                  class="tree-node tree-node--sensor tree-node--sensor-child"
+                >
+                  <label class="tree-node__sensor-label">
+                    <input type="checkbox" class="tree-node__checkbox"
+                      [checked]="isSensorSelected(sensor.id)"
+                      (change)="toggleSensor(sensor.id)" />
+                    <span class="tree-node__sensor-name">{{ sensor.name }}</span>
+                    <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
+                      {{ sensor.unit }}
+                    </span>
+                    <span class="tree-node__sensor-type text-fg-faint" *ngIf="sensor.sensor_type">{{ sensor.sensor_type }}</span>
+                  </label>
+                </div>
+              </ng-container>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+    </ng-container>
+
+    <!-- Unassigned sensors group -->
+    <ng-container *ngIf="visibleUnassigned().length > 0">
+      <div class="tree-node tree-node--unassigned-header">
+        <span class="icon text-fg-faint">folder_off</span>
+        <span class="tree-node__name text-fg-faint">Unassigned</span>
+      </div>
+      <div
+        *ngFor="let sensor of visibleUnassigned(); trackBy: trackById"
+        class="tree-node tree-node--sensor"
+      >
+        <label class="tree-node__sensor-label">
+          <input type="checkbox" class="tree-node__checkbox"
+            [checked]="isSensorSelected(sensor.id)"
+            (change)="toggleSensor(sensor.id)" />
+          <span class="tree-node__sensor-name">{{ sensor.name }}</span>
+          <span class="tree-node__sensor-unit text-fg-faint" *ngIf="sensor.unit">
+            {{ sensor.unit }}
+          </span>
+        </label>
+      </div>
+    </ng-container>
+
+    <!-- Empty state -->
+    <div
+      *ngIf="roots.length === 0 && unassignedSensors.length === 0"
+      class="tree-picker__state"
+    >
+      No assets or sensors available.
+    </div>
+  </div>
+</div>

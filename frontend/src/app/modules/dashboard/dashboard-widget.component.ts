@@ -140,7 +140,10 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   get subtitle(): string {
-    return this.widget.subtitle?.trim() || '';
+    const manual = this.widget.subtitle?.trim() || '';
+    if (manual) return manual;
+    if (this.activeSensor?.asset_path) return this.activeSensor.asset_path;
+    return '';
   }
 
   get badgeText(): string {
