@@ -11,6 +11,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { Subscription } from 'rxjs';
+import { debounceTime, skip } from 'rxjs/operators';
 import { DashboardWidget } from '../../types/dashboard';
 import { WidgetSettings } from '../../types/widget';
 import { WidgetTone, WidgetStatus } from '../widgets/app-widgets-shell.component';
@@ -21,6 +22,7 @@ import { Sensor, SensorReading, SensorTimeSeriesData } from '../../types/sensor'
 import { StatusTier, STATUS_COLOR_HEX, statusOf } from '../../core/sensors/sensor-status';
 import { AnnotationsApiService } from '../../core/annotations/annotations-api.service';
 import { Annotation } from '../../types/annotation';
+import { DashboardTimeService } from '../../core/dashboard/time.service';
 
 const PALETTE = ['#37c79a', '#56b9ff', '#ffbf47', '#ff7a59', '#9b8cff', '#5ed3c6'];
 
@@ -84,6 +86,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   private latestReadings: SensorTimeSeriesData | null = null;
   private themeObserver: MutationObserver | null = null;
   private realtimeSub: Subscription | null = null;
+  private _timeSub: Subscription | null = null;
   private sensors: Sensor[] = [];
   /** Resolved time-window bounds (ms) for pinning the line-chart X axis. */
   private chartFrom: number | null = null;
@@ -94,6 +97,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     private readonly realtime: RealtimeService,
     private readonly cdr: ChangeDetectorRef,
     private readonly annotationsApi: AnnotationsApiService,
+    private readonly timeService: DashboardTimeService,
   ) {}
 
   ngOnInit(): void {
@@ -104,6 +108,12 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
       this.cdr.markForCheck();
     });
     void this.reload();
+    this._timeSub = this.timeService.range$.pipe(
+      skip(1),
+      debounceTime(250),
+    ).subscribe(() => {
+      if (this._usesInheritedRange()) void this.reload();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -120,6 +130,7 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   ngOnDestroy(): void {
     this.themeObserver?.disconnect();
     this.stopRealtime();
+    this._timeSub?.unsubscribe();
   }
 
   // ── Public getters ─────────────────────────────────────────────────────
@@ -648,12 +659,6 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     return `#${ch(16)}${ch(8)}${ch(0)}`;
   }
 
-  // ── Ranges editor ──────────────────────────────────────────────────────
-
-  openRangesEditor(): void {
-    this.configure.emit();
-  }
-
   // ── Theme observation ──────────────────────────────────────────────────
 
   private observeTheme(): void {
@@ -683,7 +688,18 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   // ── Helpers ────────────────────────────────────────────────────────────
 
+  private _usesInheritedRange(): boolean {
+    const s = this.widget?.settings;
+    if (!s) return false;
+    if (s.time_range_inherit === false) return false;
+    if (s.from && s.to && s.time_range_inherit === undefined) return false;
+    return true;
+  }
+
   private resolveWindow(s: WidgetSettings): { from: string; to: string } {
+    if (this._usesInheritedRange()) {
+      return this.timeService.resolveWindow();
+    }
     if (s.time_range_hours && s.time_range_hours > 0) {
       const to   = new Date();
       const from = new Date(to.getTime() - s.time_range_hours * 3600_000);

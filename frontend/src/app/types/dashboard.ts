@@ -31,6 +31,10 @@ export interface DashboardSummary {
 
 export interface Dashboard extends DashboardSummary {
   widgets: DashboardWidget[];
+  default_time_range_hours?: number | null;
+  default_from?: string | null;
+  default_to?: string | null;
+  auto_refresh_seconds?: number | null;
 }
 
 export interface DashboardCreate {
@@ -43,6 +47,10 @@ export interface DashboardUpdate {
   name?: string;
   description?: string;
   is_public?: boolean;
+  default_time_range_hours?: number | null;
+  default_from?: string | null;
+  default_to?: string | null;
+  auto_refresh_seconds?: number | null;
 }
 
 export interface DashboardWidgetLayoutItem {

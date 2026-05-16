@@ -5,6 +5,7 @@ export interface WidgetSettings {
   time_range_hours?: number;
   from?: string;
   to?: string;
+  time_range_inherit?: boolean;
   aggregated?: boolean;
   bucket_minutes?: number;
   gauge_min?: number;

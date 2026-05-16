@@ -34,6 +34,30 @@
       </button>
     </div>
 
+    <!-- Time picker toolbar — only when a dashboard is loaded -->
+    <div class="dashboard-toolbar__time" *ngIf="selectedDashboard">
+      <!-- Preset buttons -->
+      <div class="time-presets" role="group" aria-label="Time range">
+        <button
+          *ngFor="let p of presets"
+          type="button"
+          class="time-preset-btn"
+          [class.is-active]="timeRange.preset === p"
+          (click)="onPresetSelected(p)"
+        >{{ p }}</button>
+      </div>
+
+      <!-- Auto-refresh selector -->
+      <select
+        class="time-refresh-select"
+        [ngModel]="timeRange.autoRefreshSeconds"
+        (ngModelChange)="onAutoRefreshChanged($event)"
+        [ngModelOptions]="{ standalone: true }"
+      >
+        <option *ngFor="let o of autoRefreshOptions" [value]="o.value">{{ o.label }}</option>
+      </select>
+    </div>
+
     <div class="dashboard-toolbar__group">
       <!-- Edit mode toggle (pencil) -->
       <button type="button"

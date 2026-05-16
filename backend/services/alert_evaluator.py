@@ -1,9 +1,12 @@
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 
 from DAL.models.alert_event import AlertEvent
+from DAL.models.alert_notification_outbox import AlertNotificationOutbox
+from DAL.models.alert_route import AlertRoute
 from DAL.models.alert_rule import AlertRule
 from DAL.models.alert_state import AlertState
 from DAL.models.annotation import Annotation
@@ -110,6 +113,7 @@ class AlertEvaluator:
                         color=_SEVERITY_COLOR.get(rule.severity, "#8898aa"),
                     )
                     self._check_flapping(db, rule, state, "fired", now)
+                    self._enqueue_notifications(db, rule, firing_event)
 
         elif current == "pending":
             if condition_met:
@@ -128,6 +132,7 @@ class AlertEvaluator:
                         color=_SEVERITY_COLOR.get(rule.severity, "#8898aa"),
                     )
                     self._check_flapping(db, rule, state, "fired", now)
+                    self._enqueue_notifications(db, rule, firing_event)
             else:
                 db.delete(state)
 
@@ -145,6 +150,7 @@ class AlertEvaluator:
                         recovered_event = self._write_event(db, rule, "recovered", observed_value, now)
                         self._close_open_annotation(db, rule, now)
                         self._check_flapping(db, rule, state, "recovered", now)
+                        self._enqueue_notifications(db, rule, recovered_event)
                         db.delete(state)
                     else:
                         state.current_state = "awaiting_ack"
@@ -152,6 +158,7 @@ class AlertEvaluator:
                         awaiting_event = self._write_event(db, rule, "awaiting_ack", observed_value, now)
                         self._close_open_annotation(db, rule, now)
                         self._check_flapping(db, rule, state, "recovered", now)
+                        self._enqueue_notifications(db, rule, awaiting_event)
 
         elif current == "awaiting_ack":
             # Stays until explicitly ACK'd via the API
@@ -225,6 +232,62 @@ class AlertEvaluator:
         )
         if open_ann:
             open_ann.ended_at = now
+
+    def _enqueue_notifications(
+        self,
+        db: Session,
+        rule: AlertRule,
+        event: AlertEvent,
+    ) -> None:
+        """Match the fired/recovered event to AlertRoute records and enqueue outbox rows."""
+        is_firing = event.state in ("firing", "flapping_started")
+        is_recovering = event.state in ("recovered", "awaiting_ack", "flapping_stopped")
+
+        if not is_firing and not is_recovering:
+            return
+
+        trigger_col = AlertRoute.on_fire if is_firing else AlertRoute.on_recover
+
+        routes = (
+            db.query(AlertRoute)
+            .filter(
+                AlertRoute.is_enabled == True,
+                trigger_col == True,
+                or_(
+                    AlertRoute.scope_kind == "all",
+                    and_(AlertRoute.scope_kind == "rule",     AlertRoute.scope_id == rule.id),
+                    and_(AlertRoute.scope_kind == "sensor",   AlertRoute.scope_id == rule.sensor_id),
+                    and_(AlertRoute.scope_kind == "severity", AlertRoute.scope_severity == rule.severity),
+                ),
+            )
+            .all()
+        )
+
+        payload = {
+            "subject":        f"[{rule.severity.upper()}] {rule.name}",
+            "body":           (
+                f"Alert '{rule.name}' is {event.state}. "
+                f"Value: {event.observed_value if event.observed_value is not None else 'N/A'}"
+            ),
+            "rule_id":        rule.id,
+            "rule_name":      rule.name,
+            "severity":       rule.severity,
+            "sensor_id":      rule.sensor_id,
+            "event_state":    event.state,
+            "observed_value": event.observed_value,
+            "observed_at":    event.observed_at.isoformat() if event.observed_at else None,
+        }
+
+        for route in routes:
+            entry = AlertNotificationOutbox(
+                event_id=event.id,
+                route_id=route.id,
+                channel=route.channel,
+                target=route.target,
+                payload=payload,
+                status="pending",
+            )
+            db.add(entry)
 
     def _check_flapping(
         self,

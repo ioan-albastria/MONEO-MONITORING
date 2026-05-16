@@ -29,6 +29,10 @@ class DashboardRead(BaseModel):
     description: Optional[str] = None
     owner_id: int
     is_public: bool
+    default_time_range_hours: Optional[int] = None
+    default_from:             Optional[datetime] = None
+    default_to:               Optional[datetime] = None
+    auto_refresh_seconds:     Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     widgets: list[DashboardWidgetRead] = []
@@ -46,6 +50,10 @@ class DashboardUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     is_public: Optional[bool] = None
+    default_time_range_hours: Optional[int] = None
+    default_from:             Optional[datetime] = None
+    default_to:               Optional[datetime] = None
+    auto_refresh_seconds:     Optional[int] = None
 
 
 class DashboardWidgetCreate(BaseModel):

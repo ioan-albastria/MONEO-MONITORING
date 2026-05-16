@@ -62,6 +62,14 @@ class DashboardService:
             dashboard.description = payload.description
         if payload.is_public is not None:
             dashboard.is_public = payload.is_public
+        if payload.default_time_range_hours is not None or "default_time_range_hours" in payload.model_fields_set:
+            dashboard.default_time_range_hours = payload.default_time_range_hours
+        if payload.default_from is not None or "default_from" in payload.model_fields_set:
+            dashboard.default_from = payload.default_from
+        if payload.default_to is not None or "default_to" in payload.model_fields_set:
+            dashboard.default_to = payload.default_to
+        if payload.auto_refresh_seconds is not None or "auto_refresh_seconds" in payload.model_fields_set:
+            dashboard.auto_refresh_seconds = payload.auto_refresh_seconds
         dashboard.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(dashboard)

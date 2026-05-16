@@ -12,6 +12,10 @@ class Dashboard(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    default_time_range_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    default_from:             Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    default_to:               Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    auto_refresh_seconds:     Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )

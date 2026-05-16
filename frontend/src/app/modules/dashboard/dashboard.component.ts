@@ -27,6 +27,7 @@ import {
 } from '../../types/dashboard';
 import { DashboardWidgetCreate, DashboardWidgetUpdate, WidgetSettings } from '../../types/widget';
 import { Sensor } from '../../types/sensor';
+import { DashboardTimeService, TimeRange, TimePreset, PRESET_HOURS } from '../../core/dashboard/time.service';
 
 // ── Local form models ──────────────────────────────────────────────────────
 
@@ -114,6 +115,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   gridItems: GridItem[] = [];
   gridOptions: GridsterConfig = this.buildGridOptions();
 
+  // ── Time picker ────────────────────────────────────────────────────────
+  readonly presets: TimePreset[] = ['15m', '1h', '6h', '24h', '7d', '30d'];
+  readonly autoRefreshOptions = [
+    { label: 'Off', value: 0 },
+    { label: '10s', value: 10 },
+    { label: '30s', value: 30 },
+    { label: '1m',  value: 60 },
+    { label: '5m',  value: 300 },
+  ];
+  timeRange: TimeRange = { preset: '1h', hours: 1, autoRefreshSeconds: 0 };
+  private _timeRangeSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
   private layoutTimer: ReturnType<typeof setTimeout> | null = null;
   private layoutInFlight = false;
   private layoutQueued = false;
@@ -128,7 +141,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       description: 'Time-series readings for one or more sensors over a window.',
       defaultCols: 12,
       defaultRows: 5,
-      defaultSettings: { sensor_ids: [], time_range_hours: 24, aggregated: true, bucket_minutes: 60, show_legend: true },
+      defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60, show_legend: true },
     },
     {
       type: 'bar_chart',
@@ -136,7 +149,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       description: 'Aggregated values per sensor (avg / min / max in a bucket).',
       defaultCols: 8,
       defaultRows: 5,
-      defaultSettings: { sensor_ids: [], time_range_hours: 24, aggregated: true, bucket_minutes: 60 },
+      defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60 },
     },
     {
       type: 'gauge',
@@ -174,6 +187,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private readonly pageHeaderState: PageHeaderStateService,
     private readonly cdr: ChangeDetectorRef,
     private readonly auth: AuthService,
+    private readonly timeService: DashboardTimeService,
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -183,6 +197,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     if (this.layoutTimer) clearTimeout(this.layoutTimer);
+    if (this._timeRangeSaveTimer) clearTimeout(this._timeRangeSaveTimer);
     this.pageHeaderState.clear();
   }
 
@@ -250,6 +265,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     try {
       this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(nextId));
       this.isOwnedSelected = this.selectedDashboard.is_owned;
+      this.timeService.loadFromDashboard(this.selectedDashboard);
+      this.timeRange = this.timeService.current;
       this.buildGridItems();
       this.syncPageHeader();
       this.refreshView();
@@ -598,6 +615,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
   }
 
+  // ── Time picker ────────────────────────────────────────────────────────
+
+  onPresetSelected(preset: TimePreset): void {
+    const hours = preset !== 'custom' ? PRESET_HOURS[preset] : undefined;
+    this.timeRange = { ...this.timeRange, preset, hours };
+    this.timeService.setRange(this.timeRange);
+    this._scheduleTimeRangeSave();
+    this.refreshView();
+  }
+
+  onAutoRefreshChanged(seconds: number): void {
+    this.timeRange = { ...this.timeRange, autoRefreshSeconds: Number(seconds) };
+    this.timeService.setRange(this.timeRange);
+    this._scheduleTimeRangeSave();
+    this.refreshView();
+  }
+
+  private _scheduleTimeRangeSave(): void {
+    if (!this.selectedDashboard?.is_owned) return;
+    if (this._timeRangeSaveTimer) clearTimeout(this._timeRangeSaveTimer);
+    this._timeRangeSaveTimer = setTimeout(async () => {
+      const d = this.selectedDashboard;
+      if (!d?.is_owned) return;
+      const r = this.timeService.current;
+      try {
+        await this.api.updateDashboard(d.id, {
+          default_time_range_hours: r.preset !== 'custom' ? (r.hours ?? null) : null,
+          default_from:             r.preset === 'custom' ? (r.from ?? null) : null,
+          default_to:               r.preset === 'custom' ? (r.to ?? null) : null,
+          auto_refresh_seconds:     r.autoRefreshSeconds || null,
+        });
+      } catch { /* non-fatal */ }
+    }, 500);
+  }
+
   private buildGridItems(): void {
     this.suppressLayout = true;
     this.gridItems = (this.selectedDashboard?.widgets ?? []).map(w => ({
@@ -621,8 +673,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private buildWidgetSettings(form: WidgetFormModel): WidgetSettings {
     const s: WidgetSettings = { sensor_ids: [...form.sensorIds] };
     if (form.timeMode === 'relative') {
-      s.time_range_hours = form.timeRangeHours;
+      s.time_range_inherit = true;
     } else {
+      s.time_range_inherit = false;
       s.from = form.from;
       s.to = form.to;
     }
@@ -679,6 +732,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (nextId) {
         this.selectedDashboard = this.stampOwnership(await this.api.getDashboard(nextId));
         this.isOwnedSelected = this.selectedDashboard.is_owned;
+        this.timeService.loadFromDashboard(this.selectedDashboard);
+        this.timeRange = this.timeService.current;
         this.buildGridItems();
       } else {
         this.selectedDashboard = null;

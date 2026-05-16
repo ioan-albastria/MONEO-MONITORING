@@ -360,3 +360,56 @@
     padding: 14px;
   }
 }
+
+/* ── Time picker ─────────────────────────────────────────────────────────── */
+
+.dashboard-toolbar__time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.time-presets {
+  display: flex;
+  gap: 4px;
+}
+
+.time-preset-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklch, var(--color-border) 78%, transparent);
+  background: color-mix(in oklch, var(--color-surface-0) 68%, transparent);
+  color: var(--color-fg-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.time-preset-btn:hover {
+  background: color-mix(in oklch, var(--color-surface-2) 72%, transparent);
+  border-color: color-mix(in oklch, var(--color-brand) 22%, var(--color-border));
+  color: var(--color-fg);
+}
+
+.time-preset-btn.is-active {
+  background: color-mix(in oklch, var(--color-brand) 20%, var(--color-surface-1));
+  border-color: color-mix(in oklch, var(--color-brand) 50%, var(--color-border));
+  color: var(--color-brand);
+}
+
+.time-refresh-select {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklch, var(--color-border) 78%, transparent);
+  background: color-mix(in oklch, var(--color-surface-0) 68%, transparent);
+  color: var(--color-fg);
+  font-size: 11px;
+  cursor: pointer;
+}
