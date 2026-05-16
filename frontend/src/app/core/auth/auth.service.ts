@@ -8,6 +8,7 @@ export interface UserRead {
   username: string;
   email: string;
   is_active: boolean;
+  role?: string;
   is_kiosk?: boolean;
   kiosk_dashboard_ids?: number[];
 }

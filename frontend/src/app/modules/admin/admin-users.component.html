@@ -1,0 +1,57 @@
+<div class="admin-section">
+  <div class="admin-section__header">
+    <h2 class="admin-section__title">Users</h2>
+  </div>
+
+  <div *ngIf="loading" class="admin-state">Loading&hellip;</div>
+  <div *ngIf="loadError" class="admin-alert admin-alert--error">{{ loadError }}</div>
+
+  <table *ngIf="!loading && rows.length" class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Active</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of rows; trackBy: trackUser">
+        <td class="mono">{{ row.id }}</td>
+        <td>
+          {{ row.username }}
+          <span *ngIf="isCurrentUser(row)" class="badge badge--you">(you)</span>
+        </td>
+        <td class="text-fg-muted">{{ row.email }}</td>
+        <td>
+          <select class="form-select form-select--sm"
+                  [(ngModel)]="row.editRole"
+                  [disabled]="isCurrentUser(row) || row.saving">
+            <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+          </select>
+        </td>
+        <td>
+          <span class="status-chip" [attr.data-status]="row.is_active ? 'active' : 'inactive'">
+            {{ row.is_active ? 'Yes' : 'No' }}
+          </span>
+        </td>
+        <td>{{ row.created_at | date:'dd MMM yyyy' }}</td>
+        <td>
+          <button
+            class="btn btn-primary btn-sm"
+            [disabled]="!isDirty(row) || row.saving || isCurrentUser(row)"
+            (click)="saveRole(row)"
+          >
+            {{ row.saving ? '&hellip;' : 'Save' }}
+          </button>
+          <span *ngIf="row.saveError" class="save-error">{{ row.saveError }}</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div *ngIf="!loading && !rows.length" class="admin-state">No users found.</div>
+</div>

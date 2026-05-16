@@ -25,7 +25,7 @@ export class AppNavRailComponent {
     { label: 'Events',     icon: 'bolt',            route: '/alerts',    enabled: true  },
     { label: 'Raw Data',   icon: 'data_object',     route: '/raw-data',  enabled: false },
     { label: 'Reports',    icon: 'analytics',       route: '/reports',   enabled: false },
-    { label: 'Admin',      icon: 'settings',        route: '/admin',     enabled: false },
+    { label: 'Admin',      icon: 'settings',        route: '/admin',     enabled: true  },
   ];
 
   constructor(readonly ui: UiPreferencesService) {}

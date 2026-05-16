@@ -22,6 +22,11 @@ const routes: Routes = [
         path: 'alerts',
         loadChildren: () => import('./modules/alerts/alerts.module').then(m => m.AlertsModule),
       },
+      {
+        path: 'admin',
+        loadChildren: () =>
+          import('./modules/admin/admin.module').then(m => m.AdminModule),
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

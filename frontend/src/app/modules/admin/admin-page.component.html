@@ -1,0 +1,23 @@
+<div class="admin-page canvas-view">
+  <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
+    <button role="tab"
+      class="admin-tab"
+      [class.is-active]="activeTab === 'kiosk-tokens'"
+      (click)="setTab('kiosk-tokens')"
+    >
+      <span class="icon">key</span> Kiosk Tokens
+    </button>
+    <button role="tab"
+      class="admin-tab"
+      [class.is-active]="activeTab === 'users'"
+      (click)="setTab('users')"
+    >
+      <span class="icon">group</span> Users
+    </button>
+  </nav>
+
+  <div class="admin-tab-content" role="tabpanel">
+    <app-admin-kiosk-tokens *ngIf="activeTab === 'kiosk-tokens'"></app-admin-kiosk-tokens>
+    <app-admin-users        *ngIf="activeTab === 'users'"></app-admin-users>
+  </div>
+</div>
