@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   selector: 'app-alerts-page',
   standalone: false,
   templateUrl: './alerts-page.component.html',
+  styleUrls: ['./alerts-page.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertsPageComponent {

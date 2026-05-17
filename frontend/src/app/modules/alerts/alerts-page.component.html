@@ -1,37 +1,31 @@
-<div class="alerts-page">
-  <div class="alerts-page__tabs" role="tablist">
-    <button
-      type="button"
-      role="tab"
+<div class="alerts-page canvas-view">
+  <nav class="alerts-tabs" role="tablist" aria-label="Alerts sections">
+    <button role="tab"
+      class="alerts-tab"
       [class.is-active]="activeTab === 'events'"
-      [attr.aria-selected]="activeTab === 'events'"
       (click)="activeTab = 'events'"
     >
       Active Events
     </button>
-    <button
-      type="button"
-      role="tab"
+    <button role="tab"
+      class="alerts-tab"
       [class.is-active]="activeTab === 'rules'"
-      [attr.aria-selected]="activeTab === 'rules'"
       (click)="activeTab = 'rules'"
     >
       Rules
     </button>
-    <button
-      type="button"
-      role="tab"
+    <button role="tab"
+      class="alerts-tab"
       [class.is-active]="activeTab === 'routes'"
-      [attr.aria-selected]="activeTab === 'routes'"
       (click)="activeTab = 'routes'"
     >
       Notification Routes
     </button>
-  </div>
+  </nav>
 
-  <div class="alerts-page__body">
-    <app-alerts-list *ngIf="activeTab === 'events'"></app-alerts-list>
-    <app-alert-rules-list *ngIf="activeTab === 'rules'"></app-alert-rules-list>
+  <div class="alerts-tab-content" role="tabpanel">
+    <app-alerts-list       *ngIf="activeTab === 'events'"></app-alerts-list>
+    <app-alert-rules-list  *ngIf="activeTab === 'rules'"></app-alert-rules-list>
     <app-alert-routes-list *ngIf="activeTab === 'routes'"></app-alert-routes-list>
   </div>
 </div>

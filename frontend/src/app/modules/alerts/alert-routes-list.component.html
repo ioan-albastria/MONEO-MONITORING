@@ -1,4 +1,76 @@
 <div class="alert-routes-list">
+  <div class="routes-toolbar">
+    <button type="button" class="btn btn-sm btn-primary"
+            *ngIf="!createOpen"
+            (click)="openCreateForm()">
+      + New Route
+    </button>
+  </div>
+
+  <div class="routes-create-panel" *ngIf="createOpen">
+    <div *ngIf="createError" class="routes-state routes-state--error">{{ createError }}</div>
+
+    <div class="create-row">
+      <label>Scope</label>
+      <select [(ngModel)]="createScopeKind">
+        <option value="all">All</option>
+        <option value="rule">Rule</option>
+        <option value="sensor">Sensor</option>
+        <option value="asset">Asset</option>
+        <option value="severity">Severity</option>
+      </select>
+
+      <input *ngIf="['rule','sensor','asset'].includes(createScopeKind)"
+             type="number" [(ngModel)]="createScopeId"
+             placeholder="ID" style="width:80px" />
+
+      <select *ngIf="createScopeKind === 'severity'"
+              [(ngModel)]="createScopeSeverity">
+        <option value="warning">Warning</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
+
+    <div class="create-row">
+      <label>Channel</label>
+      <select [(ngModel)]="createChannel">
+        <option value="in_app">In-app</option>
+        <option value="email">Email</option>
+        <option value="webhook">Webhook</option>
+      </select>
+    </div>
+
+    <div class="create-row" *ngIf="createChannel !== 'in_app'">
+      <label>Target</label>
+      <input type="text" [(ngModel)]="createTarget"
+             [placeholder]="createChannel === 'email' ? 'email@example.com' : 'https://...'" />
+    </div>
+
+    <div class="create-row">
+      <label>
+        <input type="checkbox" [(ngModel)]="createOnFire" />
+        On fire
+      </label>
+      <label>
+        <input type="checkbox" [(ngModel)]="createOnRecover" />
+        On recover
+      </label>
+    </div>
+
+    <div class="create-actions">
+      <button type="button" class="btn btn-sm btn-primary"
+              [disabled]="createSaving"
+              (click)="createRoute()">
+        {{ createSaving ? 'Saving…' : 'Save' }}
+      </button>
+      <button type="button" class="btn btn-sm btn-ghost"
+              [disabled]="createSaving"
+              (click)="cancelCreate()">
+        Cancel
+      </button>
+    </div>
+  </div>
+
   <div *ngIf="loading" class="routes-state">Loading notification routes…</div>
   <div *ngIf="error" class="routes-state routes-state--error">{{ error }}</div>
 

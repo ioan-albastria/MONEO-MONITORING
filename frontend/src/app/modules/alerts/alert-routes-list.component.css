@@ -1,0 +1,90 @@
+.alert-routes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.routes-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.routes-state {
+  color: var(--color-fg-muted);
+  font-size: 0.875rem;
+  padding: 12px 0;
+}
+.routes-state--error { color: #e64b3c; }
+
+.routes-create-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+}
+
+.create-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+.create-row label {
+  min-width: 72px;
+  color: var(--color-fg-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.create-row select,
+.create-row input[type="text"],
+.create-row input[type="number"] {
+  padding: 4px 8px;
+  background: var(--color-surface-0);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-fg);
+  font-size: 0.8125rem;
+  height: var(--h-control);
+}
+
+.create-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.routes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.routes-table th {
+  text-align: left;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.routes-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+  color: var(--color-fg);
+  vertical-align: middle;
+}
+.routes-table__target {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-fg-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
