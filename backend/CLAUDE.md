@@ -23,14 +23,27 @@ API, and streams live sensor values to connected WebSocket clients.
 The frontend was built against this contract. Even additive changes (new fields, new routes) require
 sign-off because they may imply schema migrations.
 
-## Migrations (Slice 1)
+## Migrations (Slices 1–3)
 
 Schema is managed by **Alembic** (`backend/alembic.ini`, `backend/migrations/`).
 - `migrations/env.py` — reads DB URL from `config.settings.database_url`; imports all models for autogenerate.
-- `migrations/versions/0001_initial_schema.py` — no-op baseline (tables pre-existed).
-- `migrations/versions/0002_sensor_extensions.py` — adds 9 new sensor columns.
 - `Settings.auto_migrate: bool = True` — when True, `main.py` lifespan runs `alembic upgrade head` on startup.
 - `init_db()` in `DAL/db_context.py` is preserved for use in `tests/conftest.py` (SQLite in-memory fixtures only).
+
+Migration chain (head = 0010):
+
+| File | Purpose |
+|---|---|
+| `0001_initial_schema.py` | No-op baseline — tables pre-existed |
+| `0002_sensor_extensions.py` | Adds 9 sensor columns (freshness + range bounds) |
+| `0003_alert_schema_and_user_role.py` | Alert schema + user role column |
+| `0004_alert_full_schema.py` | Replaces alert tables with full §3.3 schema |
+| `0005_annotations.py` | Adds annotation table |
+| `0006_dashboard_time_range.py` | Adds time-range picker columns to dashboards |
+| `0007_asset_hierarchy.py` | Asset hierarchy: parent_id, kind, path |
+| `0008_kiosk_tokens.py` | kiosk_tokens table |
+| `0009_processdata_compatibility.py` | datasource ref column + reading uniqueness constraint on (sensor_id, timestamp) |
+| `0010_sync_runs.py` | sync_runs and sync_errors observability tables |
 
 ## Folder structure
 
@@ -41,8 +54,16 @@ backend/
 │   ├── env.py                 # Reads DB URL from config; imports all model modules
 │   ├── script.py.mako         # Standard Alembic version template
 │   └── versions/
-│       ├── 0001_initial_schema.py    # No-op baseline
-│       └── 0002_sensor_extensions.py # Adds 9 sensor columns
+│       ├── 0001_initial_schema.py
+│       ├── 0002_sensor_extensions.py
+│       ├── 0003_alert_schema_and_user_role.py
+│       ├── 0004_alert_full_schema.py
+│       ├── 0005_annotations.py
+│       ├── 0006_dashboard_time_range.py
+│       ├── 0007_asset_hierarchy.py
+│       ├── 0008_kiosk_tokens.py
+│       ├── 0009_processdata_compatibility.py
+│       └── 0010_sync_runs.py
 ├── DAL/
 │   ├── db_context.py          # Engine, SessionLocal, init_db() (tests only), Base
 │   └── models/
@@ -52,7 +73,9 @@ backend/
 │       ├── sensor.py          # Sensor (moneo_sensor_id unique, unit, asset_id)
 │       ├── sensor_reading.py  # SensorReading (sensor_id + timestamp indexes)
 │       ├── asset.py           # Asset (moneo_asset_id, location, lat/lng)
-│       └── alert_config.py    # AlertConfig (threshold_value, comparison_type)
+│       ├── alert_config.py    # AlertConfig (threshold_value, comparison_type)
+│       ├── sync_run.py        # SyncRun (source, status, records_in/written, error_count)
+│       └── sync_error.py      # SyncError (run_id FK, kind, message, sensor_id)
 ├── routes/
 │   ├── auth_routes.py         # /api/auth/*
 │   ├── dashboard_routes.py    # /api/dashboards/*
@@ -60,6 +83,7 @@ backend/
 │   ├── sensor_routes.py       # /api/sensors/*
 │   ├── analytics_routes.py    # /api/analytics
 │   ├── moneo_routes.py        # /api/moneo/* (upstream proxy + admin sync)
+│   ├── admin_sync_routes.py   # /api/admin/sync/* (sync health surface)
 │   ├── websocket_routes.py    # /ws/sensors/*
 │   └── response_models/       # Pydantic schemas: auth.py, sensor.py, dashboard.py, analytics.py, widget.py
 ├── services/
@@ -70,12 +94,13 @@ backend/
 │   ├── analytics_service.py   # Multi-sensor analytics
 │   ├── moneo_api_client.py    # httpx wrapper for upstream IFM API
 │   ├── moneo_poller.py        # Sync metadata + poll latest readings
+│   ├── sync_health_service.py # SyncHealthService — lifecycle tracker + health reporter
 │   ├── demo_seed_service.py   # Seeds demo sensors/dashboards on first startup
 │   └── schedulers/
 │       └── data_polling_scheduler.py  # APScheduler job setup
 ├── middleware.py               # get_current_user() FastAPI dependency (Bearer → User)
 ├── config.py                   # Pydantic Settings from env vars
-└── main.py                     # App factory, lifespan (init_db, seed, scheduler)
+└── main.py                     # App factory, lifespan (migrate, seed, scheduler, auth probe)
 ```
 
 ## Auth
@@ -150,6 +175,46 @@ backend/
 | GET | `/api/moneo/raw/{path:path}` | Bearer | Generic MONEO proxy |
 | POST | `/api/moneo/admin/sync-metadata` | Bearer + admin only | Trigger metadata sync |
 
+### Admin — sync
+| Method | Path | Auth | Purpose | Response |
+|---|---|---|---|---|
+| GET | `/api/admin/sync/health` | Bearer + admin | Sync health JSON | See shape below |
+
+**`/api/admin/sync/health` response shape** (authoritative contract from Slice 3):
+```json
+{
+  "moneo.readings": {
+    "derived_status": "healthy",
+    "last_status": "success",
+    "last_run_started_at": "2026-05-17T13:28:00.677615+00:00",
+    "last_run_finished_at": "2026-05-17T13:28:10.677622+00:00",
+    "last_success_at": "2026-05-17T13:28:10.677622+00:00",
+    "lag_seconds": 60,
+    "consecutive_failures": 0,
+    "records_in": 200,
+    "records_written": 200,
+    "error_count": 0,
+    "last_error_kind": null,
+    "last_error_message": null
+  },
+  "moneo.metadata": {
+    "derived_status": "failed",
+    "last_status": null,
+    "last_run_started_at": null,
+    "last_run_finished_at": null,
+    "last_success_at": null,
+    "lag_seconds": null,
+    "consecutive_failures": 0,
+    "records_in": 0,
+    "records_written": 0,
+    "error_count": 0,
+    "last_error_kind": null,
+    "last_error_message": null
+  }
+}
+```
+Shape is FROZEN — do not add fields without explicit approval.
+
 ### WebSocket
 | Path | Auth | Purpose |
 |---|---|---|
@@ -162,10 +227,12 @@ backend/
 | `users` | `id`, `username` (unique), `email` (unique), `hashed_password`, `is_active` | ← dashboards |
 | `dashboards` | `id`, `owner_id` (FK users), `name`, `is_public` | → owner, ← widgets |
 | `dashboard_widgets` | `id`, `dashboard_id` (FK, cascade delete), `widget_type`, `x/y/cols/rows`, `settings` (JSON) | → dashboard |
-| `sensors` | `id`, `moneo_sensor_id` (unique), `name`, `unit`, `asset_id` (nullable FK), `is_active`, `metadata` (JSON), `expected_poll_seconds` (nullable int), `last_seen_at` (nullable timestamptz), `normal_min/max`, `warning_min/max`, `critical_min/max` (all nullable float), `ranges_source` (varchar 20, default 'manual') | ← readings, ← alert_configs |
-| `sensor_readings` | `id`, `sensor_id` (FK), `value`, `timestamp` | → sensor — indexed on `(sensor_id, timestamp)` |
+| `sensors` | `id`, `moneo_sensor_id` (unique), `moneo_datasource_ref` (unique nullable), `name`, `unit`, `asset_id` (nullable FK), `is_active`, `metadata` (JSON), `expected_poll_seconds` (nullable int), `last_seen_at` (nullable timestamptz), `normal_min/max`, `warning_min/max`, `critical_min/max` (all nullable float), `ranges_source` (varchar 20, default 'manual') | ← readings, ← alert_configs |
+| `sensor_readings` | `id`, `sensor_id` (FK), `value`, `timestamp` — unique on `(sensor_id, timestamp)` | → sensor — indexed on `(sensor_id, timestamp)` |
 | `assets` | `id`, `moneo_asset_id` (unique), `name`, `location`, `latitude`, `longitude`, `metadata` (JSON) | ← sensors |
 | `alert_configs` | `id`, `sensor_id` (FK), `threshold_value`, `comparison_type`, `is_active` | → sensor |
+| `sync_runs` | `id`, `source` (varchar, e.g. `"moneo.readings"`), `status`, `started_at`, `finished_at`, `records_in`, `records_written`, `error_count`, `error_summary` | ← sync_errors |
+| `sync_errors` | `id`, `run_id` (FK sync_runs), `kind` (e.g. `"http_401"`), `message`, `sensor_id` (nullable) | → sync_run |
 
 Tables are managed by Alembic migrations (see Migrations section above). On startup, `main.py` runs `alembic upgrade head` when `settings.auto_migrate=True`.
 
@@ -177,14 +244,25 @@ Tables are managed by Alembic migrations (see Migrations section above). On star
 **Poller:** `services/moneo_poller.py` — `MoneoPoller` called by APScheduler
 
 **Credentials:**
-- Bearer token: `config.py` `moneo_api_key` ← `MONEO_API_KEY` env var
+- Bearer token: `config.py` `moneo_api_key` ← `MONEO_API_KEY` env var (**required — no default**)
 - Base URL: `config.py` `moneo_api_base_url` ← `MONEO_API_BASE_URL` env var
   - Default: `https://ifm-ro-sales.w-eu.moneo.ifm/api/platform/v1`
 - Sent as: `Authorization: Bearer {moneo_api_key}` on every upstream request
 
-**Polling schedule:**
-- `poll_latest_readings()` — every 300s (`SENSOR_POLL_INTERVAL_SECONDS`); deduplicates by timestamp; sets `sensor.last_seen_at = timestamp` inside the same transaction on each new reading
-- `sync_sensor_metadata()` — on startup + every 6h; upserts `Asset` + `Sensor` rows from MONEO `/nodes`
+**Client methods:**
+- `get_devices()` — fetches all topology nodes from `/nodes`; raises on HTTP error
+- `get_processdata(device_id, datasource_id, ...)` — fetches process data with retry policy (retries on 429/5xx; no retry on 401/403/404); paginates at caller's request
+- `raw_get(path, params)` — proxy a raw GET, raises on HTTP error
+- `raw_get_response(path, params)` — proxy a raw GET, returns diagnostics dict (status_code, url, headers, body)
+- `verify_auth()` — one-shot probe: GET /nodes?pageSize=1, no retry on 401; returns `{ok, status_code, message}`
+- `close()` — closes the underlying httpx client
+
+**Polling schedule** (APScheduler, `services/schedulers/data_polling_scheduler.py`):
+- `poll_latest_readings()` — every `SENSOR_POLL_INTERVAL_SECONDS` seconds (default 300); uses watermark from `sensor.last_seen_at`; paginates up to `MONEO_POLL_MAX_PAGES_PER_SENSOR` pages at page_size=500; backfill capped at `MAX_BACKFILL_HOURS`
+- `sync_sensor_metadata()` — every 6h; upserts `Asset` + `Sensor` rows from MONEO `/nodes`; persists `moneo_datasource_ref` alongside `moneo_sensor_id`
+- `prune_sync_history()` — daily at 03:00; deletes sync_runs + sync_errors older than `SYNC_HISTORY_RETENTION_DAYS` days
+- `check_no_data_alerts()` — every 60s; evaluates no-data alert rules
+- `dispatch_outbox()` — every 30s; dispatches notification outbox
 
 **Proxy routes** (`/api/moneo/*`) pass raw MONEO responses to the frontend. 502 on upstream failure.
 
@@ -203,10 +281,75 @@ is a planned Iteration 2 improvement (SUPPORT tier in `EXPANSION_PLAN.md`).
   FastAPI to avoid path ambiguity (FastAPI matches in declaration order).
 - **`POST /api/dashboards/{id}/layout`** returns 204 (no body), not the updated dashboard. The
   frontend relies on its local gridster state, not a refreshed server response.
-- **APScheduler start** is currently commented out in `main.py` lifespan. Polling does not run
-  automatically in development unless manually uncommented or triggered via `/api/moneo/admin/sync-metadata`.
 - **Admin check** is a simple `username != "admin"` string comparison in `moneo_routes.py`, not
   a role field on `User`. There is no `is_admin` column.
 - **Default credentials** (`JWT_SECRET_KEY = "changeme"`, `seed_admin_password = "changeme"`)
   must be overridden in `.env` before any non-local deployment.
-- **`sensor_readings` grows unbounded** — there is no retention/pruning job yet.
+- **`sensor_readings` grows unbounded for individual sensors** — a unique constraint on
+  `(sensor_id, timestamp)` (added in migration 0009) prevents duplicate writes, but there is
+  no row-level time-based retention job for old readings.
+- **`MONEO_API_KEY` is required at boot** — Pydantic will refuse to start without it. The boot
+  log line `MONEO auth OK` / `MONEO auth FAILED (401)` confirms whether the upstream credentials
+  are valid.
+
+---
+
+## MONEO Token Rotation
+
+### Background
+`MONEO_API_KEY` is a Personal Access Token (PAT) issued by the MONEO platform to a specific user.
+There is no refresh-token flow — once a PAT is revoked or expires it returns 401 on every request
+until a new one is minted and deployed.
+
+### Three independent tokens — do not conflate
+
+| Token | Where | Lifecycle | Who manages |
+|---|---|---|---|
+| **MONEO PAT** (this runbook) | `backend/.env` only — never sent to frontend | No automatic expiry; rotate manually or on suspected leak | Backend operator |
+| **User JWT** issued by `/api/auth/login` | Frontend `localStorage['auth_token']` | 24h TTL, no refresh; user re-logs in when expired | Frontend (auto-redirect on 401) |
+| **Kiosk JWT** | Frontend `sessionStorage`; `kiosk_tokens` DB row carries `expires_at` | Row-level expiry set at issuance | Admin via kiosk management UI |
+
+### When to rotate
+
+- Boot log shows `MONEO auth FAILED (401) — token expired or revoked`.
+- `sync_errors` rows accumulate with `kind='http_401'`.
+- `/api/admin/sync/health` → `derived_status='failed'` with `last_error_kind='http_401'` on
+  `moneo.readings` or `moneo.metadata`.
+- Suspected leak: token appeared in a chat message, screenshot, commit, log line, or any
+  public-facing surface.
+- Quarterly hygiene rotation (recommended cadence even with no signs of compromise).
+
+### How to rotate
+
+1. **Mint a new PAT** in the MONEO web UI: User menu → Personal Access Tokens → Create.
+   Copy the token value immediately — it is shown only once.
+
+2. **Edit `backend/.env` locally** — replace the `MONEO_API_KEY` value with the new PAT.
+   Do not commit `.env`; it is gitignored.
+
+3. **Restart the backend service.**
+
+4. **Verify** the boot log shows `MONEO auth OK` within a few seconds of startup.
+
+5. **Confirm via health endpoint:**
+   ```
+   curl -H "Authorization: Bearer <admin-jwt>" \
+        http://localhost:8000/api/admin/sync/health
+   ```
+   `moneo.readings.derived_status` should transition to `'healthy'` within one poll cycle
+   (up to `SENSOR_POLL_INTERVAL_SECONDS` seconds).
+
+6. **Revoke the OLD PAT** in the MONEO web UI (User menu → Personal Access Tokens → Revoke).
+
+### Don'ts
+
+- **Do not commit `.env`** — it is gitignored, but double-check with `git status` before
+  every commit.
+- **Do not paste the token** in chat messages, screenshots, log output, or issue trackers.
+- **Do not reuse a PAT across environments** (dev / staging / production should each have
+  their own PAT).
+
+### If rotation breaks
+
+Roll back by restoring the previous PAT value in `backend/.env` and restarting. Investigate
+the new PAT (correct permissions? copied fully without truncation?) before retrying.

@@ -26,10 +26,14 @@ frontend/src/app/
 │   ├── auth/          # AuthService, AuthInterceptorService (class-based), auth.guard.ts (CanMatchFn)
 │   ├── realtime/      # RealtimeService — rxjs WebSocket, per-sensor subscriptions
 │   ├── sensors/       # SensorApiService — REST calls: readings, analytics, latest
+│   ├── services/      # sync-health.service.ts — polls /api/admin/sync/health; data contract for sync status components
 │   └── ui/            # UiPreferencesService — theme + density toggle, localStorage persistence
 ├── modules/
 │   ├── dashboard/     # DashboardComponent (grid host), DashboardWidgetComponent (renderer), DashboardApiService
 │   ├── layout/        # AppShellComponent, AppNavRailComponent, AppPageHeaderComponent
+│   │                  #   — sync-status-indicator: nav-rail chip showing overall sync health
+│   │                  #   — sync-status-panel: expandable detail panel (per-source rows)
+│   │                  #   — sync-status-banner: full-width alert strip shown when sync is degraded/failed
 │   ├── login/         # LoginComponent — login form
 │   └── widgets/       # AppWidgetsShellComponent — presentational chrome wrapper for every widget
 ├── types/             # TypeScript interfaces: dashboard.ts, widget.ts, sensor.ts, analytics.ts
@@ -157,6 +161,7 @@ optionally persists to localStorage. Init called from `app.ts` constructor.
 - `@theme` block (lines 13–100): all design tokens as CSS custom properties
 - `:root.theme-light` (lines 275–291): overrides surface + foreground colours for light mode
 - `.density-compact` rules (lines 296–318): tighter `--h-control`, `--h-row`, `--pad-widget`, `--gap-grid`
+- Slice 4 added four sync-status tokens: `--color-status-healthy`, `--color-status-degraded`, `--color-status-failed`, `--color-status-unknown`
 
 **Colour space:** OKLch throughout (e.g. `oklch(0.98 0.01 255)`).
 

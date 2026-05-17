@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,6 +25,7 @@ from routes.moneo_routes import moneo_router
 from routes.websocket_routes import ws_router
 from services.auth_service import AuthService
 from services.demo_seed_service import seed_demo_data
+from services.moneo_api_client import MoneoApiClient
 from services.schedulers.data_polling_scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -60,15 +62,19 @@ async def lifespan(_app: FastAPI):
     logger.info("Starting polling scheduler …")
     start_scheduler()
 
-    # Attempt an immediate metadata sync so sensors are visible on first run
-    # from services.moneo_poller import MoneoPoller
-    # poller = MoneoPoller()
-    # try:
-    #     await poller.sync_sensor_metadata()
-    # except Exception as e:
-    #     logger.warning("Initial metadata sync failed (MONEO API may not be reachable): %s", e)
-    # finally:
-    #     await poller.close()
+    # Boot-time MONEO auth probe — logs OK or FAILED; never blocks startup.
+    try:
+        client = MoneoApiClient()
+        try:
+            result = await asyncio.wait_for(client.verify_auth(), timeout=5)
+        finally:
+            await client.close()
+        if result["ok"]:
+            logger.info(result["message"])
+        else:
+            logger.error(result["message"])
+    except Exception as e:
+        logger.error("MONEO auth probe crashed: %s", e)
 
     yield  # application runs here
 

@@ -178,5 +178,43 @@ class MoneoApiClient:
             "body": body,
         }
 
+    async def verify_auth(self) -> dict:
+        """
+        One-shot probe that confirms the MONEO PAT is valid.
+
+        Issues GET /nodes?pageSize=1 with a 5-second timeout cap.
+        Does NOT retry on 401 (same policy as get_processdata for _NO_RETRY_STATUS).
+        Returns a dict with keys: ok (bool), status_code (int|None), message (str).
+        """
+        url = f"{self.base_url}/nodes"
+        try:
+            response = await self._client.get(url, params={"pageSize": 1}, timeout=5.0)
+        except Exception as exc:
+            return {
+                "ok": False,
+                "status_code": None,
+                "message": f"MONEO probe transport error: {type(exc).__name__}: {exc}",
+            }
+
+        if response.status_code == 200:
+            return {"ok": True, "status_code": 200, "message": "MONEO auth OK"}
+
+        if response.status_code == 401:
+            return {
+                "ok": False,
+                "status_code": 401,
+                "message": (
+                    "MONEO auth FAILED (401) — token expired or revoked. "
+                    "See backend/CLAUDE.md → MONEO Token Rotation."
+                ),
+            }
+
+        body = response.text[:200]
+        return {
+            "ok": False,
+            "status_code": response.status_code,
+            "message": f"MONEO probe got unexpected HTTP {response.status_code}: {body}",
+        }
+
     async def close(self):
         await self._client.aclose()
