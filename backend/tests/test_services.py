@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -189,11 +189,12 @@ class TestSensorReadingsService:
 
     def test_aggregated_readings(self, db):
         sensor = _make_sensor(db, "PressureSensor")
+        base = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
         for minute in [0, 10, 20, 60, 70]:
             db.add(SensorReading(
                 sensor_id=sensor.id,
                 value=float(minute),
-                timestamp=datetime(2024, 1, 1, 12, minute, tzinfo=timezone.utc),
+                timestamp=base + timedelta(minutes=minute),
                 status="ok",
             ))
         db.commit()

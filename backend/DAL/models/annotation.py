@@ -9,7 +9,7 @@ from DAL.db_context import Base
 class Annotation(Base):
     __tablename__ = "annotation"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
     scope_kind: Mapped[str] = mapped_column(String(20), nullable=False)
     scope_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

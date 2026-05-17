@@ -53,6 +53,16 @@ class AlertEvaluator:
         except Exception:
             logger.exception("AlertEvaluator.evaluate_no_data failed for rule %s", rule.id)
 
+    @staticmethod
+    def _dt_elapsed(since: datetime, now: datetime) -> float:
+        """Return (now - since).total_seconds() safely for both tz-aware and tz-naive datetimes.
+
+        SQLite returns offset-naive datetimes for DateTime(timezone=True) columns.
+        """
+        if since.tzinfo is None and now.tzinfo is not None:
+            now = now.replace(tzinfo=None)
+        return (now - since).total_seconds()
+
     def _condition_met(self, value: float | None, rule: AlertRule) -> bool:
         if value is None:
             return False
@@ -100,7 +110,7 @@ class AlertEvaluator:
                     state.last_value_at = now
                 self._write_event(db, rule, "pending", observed_value, now)
                 # Immediately check dwell in case dwell_seconds == 0
-                elapsed = (now - state.state_since).total_seconds()
+                elapsed = self._dt_elapsed(state.state_since, now)
                 if elapsed >= rule.dwell_seconds:
                     state.current_state = "firing"
                     state.state_since = now
@@ -119,7 +129,7 @@ class AlertEvaluator:
             if condition_met:
                 state.last_value = observed_value
                 state.last_value_at = now
-                elapsed = (now - state.state_since).total_seconds()
+                elapsed = self._dt_elapsed(state.state_since, now)
                 if elapsed >= rule.dwell_seconds:
                     state.current_state = "firing"
                     state.state_since = now
@@ -142,7 +152,7 @@ class AlertEvaluator:
                 state.last_value_at = now
             else:
                 last_met_at = state.last_value_at or state.state_since
-                recovery_elapsed = (now - last_met_at).total_seconds()
+                recovery_elapsed = self._dt_elapsed(last_met_at, now)
                 if recovery_elapsed >= rule.recovery_dwell_seconds:
                     if rule.policy == "auto_clear":
                         state.current_state = "recovered"
@@ -299,7 +309,7 @@ class AlertEvaluator:
     ) -> None:
         """Increment the 10-minute flap counter and toggle is_flapping."""
         # Reset counter if the last tracked flip was > 10 minutes ago
-        if state.last_value_at and (now - state.last_value_at).total_seconds() > 600:
+        if state.last_value_at and self._dt_elapsed(state.last_value_at, now) > 600:
             state.flap_count_10m = 0
             if state.is_flapping:
                 state.is_flapping = False

@@ -350,3 +350,65 @@
   font-weight: 600;
   color: var(--color-brand);
 }
+
+/* ── Inline ranges editor panel ──────────────────────────────────────── */
+
+.ranges-editor {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow-y: auto;
+}
+
+.ranges-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ranges-editor__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.ranges-editor__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.ranges-editor__label {
+  font-size: 0.72rem;
+  color: var(--color-fg-muted);
+  text-align: right;
+}
+
+.ranges-editor__input {
+  width: 100%;
+  padding: 3px 6px;
+  font-size: 0.8125rem;
+  background: var(--color-surface-2, var(--color-surface-1));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-fg);
+}
+
+.ranges-editor__error {
+  font-size: 0.72rem;
+  color: var(--color-danger, #e64b3c);
+}
+
+.ranges-editor__actions {
+  display: flex;
+  gap: 8px;
+}
+

@@ -115,6 +115,16 @@
 
   <!-- Chrome bar — right actions -->
   <div widgetChrome class="flex items-center gap-1">
+    <!-- Edit sensor ranges — only for single-sensor widgets when editable -->
+    <button
+      type="button"
+      class="icon-btn"
+      title="Edit sensor ranges"
+      *ngIf="editable && activeSensor && !rangesEditorOpen"
+      (click)="openRangesEditor()"
+    >
+      <span class="icon icon-muted">tune</span>
+    </button>
     <button
       type="button"
       class="icon-btn"
@@ -136,6 +146,51 @@
   </div>
 
 </app-widget-shell>
+
+<!-- ─── Inline ranges editor panel ──────────────────────────────────────── -->
+<div *ngIf="rangesEditorOpen" class="ranges-editor">
+  <div class="ranges-editor__header">
+    <span class="ranges-editor__title">Edit sensor ranges</span>
+    <button type="button" class="icon-btn" (click)="closeRangesEditor()" title="Close">
+      <span class="icon icon-muted">close</span>
+    </button>
+  </div>
+
+  <div class="ranges-editor__grid">
+    <label class="ranges-editor__label">Normal min</label>
+    <input class="ranges-editor__input" type="number"
+           [(ngModel)]="rangesForm.normal_min" placeholder="—">
+
+    <label class="ranges-editor__label">Normal max</label>
+    <input class="ranges-editor__input" type="number"
+           [(ngModel)]="rangesForm.normal_max" placeholder="—">
+
+    <label class="ranges-editor__label">Warning min</label>
+    <input class="ranges-editor__input" type="number"
+           [(ngModel)]="rangesForm.warning_min" placeholder="—">
+
+    <label class="ranges-editor__label">Warning max</label>
+    <input class="ranges-editor__input" type="number"
+           [(ngModel)]="rangesForm.warning_max" placeholder="—">
+
+    <label class="ranges-editor__label">Critical min</label>
+    <input class="ranges-editor__input" type="number"
+           [(ngModel)]="rangesForm.critical_min" placeholder="—">
+
+    <label class="ranges-editor__label">Critical max</label>
+    <input class="ranges-editor__input" type="number"
+           [(ngModel)]="rangesForm.critical_max" placeholder="—">
+  </div>
+
+  <div *ngIf="rangesSaveError" class="ranges-editor__error">{{ rangesSaveError }}</div>
+
+  <div class="ranges-editor__actions">
+    <button class="btn btn-primary btn-sm" (click)="saveRanges()" [disabled]="rangesSaving">
+      {{ rangesSaving ? 'Saving…' : 'Save' }}
+    </button>
+    <button class="btn btn-sm" (click)="closeRangesEditor()">Cancel</button>
+  </div>
+</div>
 
 <!-- ─── Drill-down modal ─────────────────────────────────────────────────── -->
 <div *ngIf="drillOpen" class="drill-modal" (click)="closeDrillDown()">

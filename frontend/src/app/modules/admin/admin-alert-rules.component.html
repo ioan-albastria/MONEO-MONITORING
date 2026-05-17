@@ -1,0 +1,99 @@
+<div class="admin-section">
+  <div class="admin-section__header">
+    <h2 class="admin-section__title">Alert Rules</h2>
+    <button class="btn btn-sm"
+      [class.btn-primary]="!showCreateForm"
+      [class.btn-ghost]="showCreateForm"
+      (click)="showCreateForm = !showCreateForm">
+      <span class="icon">{{ showCreateForm ? 'close' : 'add' }}</span>
+      {{ showCreateForm ? 'Cancel' : 'New Rule' }}
+    </button>
+  </div>
+
+  <div *ngIf="showCreateForm" class="admin-create-form">
+    <div class="form-row--inline">
+      <div class="form-group">
+        <label class="form-label">Sensor</label>
+        <select class="form-select" [(ngModel)]="createSensorId">
+          <option [ngValue]="null">— select —</option>
+          <option *ngFor="let s of sensors" [ngValue]="s.id">{{ s.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" [(ngModel)]="createName" placeholder="Rule name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Condition</label>
+        <select class="form-select" [(ngModel)]="createCondition">
+          <option *ngFor="let c of conditions" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Threshold Hi</label>
+        <input class="form-input" type="number" [(ngModel)]="createThresholdHi" placeholder="—">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Threshold Lo</label>
+        <input class="form-input" type="number" [(ngModel)]="createThresholdLo" placeholder="—">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Severity</label>
+        <select class="form-select" [(ngModel)]="createSeverity">
+          <option *ngFor="let s of severities" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dwell (s)</label>
+        <input class="form-input" type="number" [(ngModel)]="createDwellSeconds">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" (click)="createRule()"
+              [disabled]="creating || !createName.trim() || createSensorId == null">
+        {{ creating ? 'Creating…' : 'Create' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="admin-alert admin-alert--error">{{ error }}</div>
+  <div *ngIf="loading" class="admin-state">Loading…</div>
+
+  <table *ngIf="!loading" class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Sensor</th><th>Name</th><th>Condition</th>
+        <th>Threshold</th><th>Severity</th><th>Dwell</th><th>Enabled</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of rules; trackBy: trackRule">
+        <td class="mono text-fg-muted">{{ row.id }}</td>
+        <td>{{ sensorName(row.sensor_id) }}</td>
+        <td>{{ row.name }}</td>
+        <td class="mono">{{ row.condition }}</td>
+        <td class="text-fg-muted" style="font-size:0.72rem">
+          <span *ngIf="row.threshold_lo != null">≥{{ row.threshold_lo }} </span>
+          <span *ngIf="row.threshold_hi != null">≤{{ row.threshold_hi }}</span>
+        </td>
+        <td>
+          <span class="status-chip"
+                [class.status-chip--warning]="row.severity === 'warning'"
+                [class.status-chip--critical]="row.severity === 'critical'">
+            {{ row.severity }}
+          </span>
+        </td>
+        <td class="text-fg-muted">{{ row.dwell_seconds }}s</td>
+        <td>
+          <button class="btn btn-sm" [disabled]="row.saving"
+                  (click)="toggleEnabled(row)">
+            {{ row.is_enabled ? 'Disable' : 'Enable' }}
+          </button>
+        </td>
+        <td>
+          <button class="btn btn-danger btn-sm" (click)="deleteRule(row)">Del</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

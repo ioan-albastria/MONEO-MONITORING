@@ -7,6 +7,7 @@ import { AdminPageComponent } from './admin-page.component';
 import { AdminKioskTokensComponent } from './admin-kiosk-tokens.component';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminAssetsComponent } from './admin-assets.component';
+import { AdminAlertRulesComponent } from './admin-alert-rules.component';
 
 @NgModule({
   declarations: [
@@ -14,6 +15,7 @@ import { AdminAssetsComponent } from './admin-assets.component';
     AdminKioskTokensComponent,
     AdminUsersComponent,
     AdminAssetsComponent,
+    AdminAlertRulesComponent,
   ],
   imports: [
     CommonModule,

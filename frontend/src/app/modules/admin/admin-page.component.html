@@ -21,11 +21,19 @@
     >
       <span class="icon">account_tree</span> Assets
     </button>
+    <button role="tab"
+      class="admin-tab"
+      [class.is-active]="activeTab === 'alert-rules'"
+      (click)="setTab('alert-rules')"
+    >
+      <span class="icon">notifications_active</span> Alert Rules
+    </button>
   </nav>
 
   <div class="admin-tab-content" role="tabpanel">
     <app-admin-kiosk-tokens *ngIf="activeTab === 'kiosk-tokens'"></app-admin-kiosk-tokens>
     <app-admin-users        *ngIf="activeTab === 'users'"></app-admin-users>
     <app-admin-assets       *ngIf="activeTab === 'assets'"></app-admin-assets>
+    <app-admin-alert-rules  *ngIf="activeTab === 'alert-rules'"></app-admin-alert-rules>
   </div>
 </div>

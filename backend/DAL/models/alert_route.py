@@ -9,7 +9,7 @@ from DAL.db_context import Base
 class AlertRoute(Base):
     __tablename__ = "alert_route"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     scope_kind: Mapped[str] = mapped_column(String(20), nullable=False)
     scope_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     scope_severity: Mapped[str | None] = mapped_column(String(10), nullable=True)

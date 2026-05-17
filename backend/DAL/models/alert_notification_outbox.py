@@ -9,7 +9,7 @@ from DAL.db_context import Base
 class AlertNotificationOutbox(Base):
     __tablename__ = "alert_notification_outbox"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     event_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("alert_event.id", ondelete="CASCADE"), nullable=False
     )

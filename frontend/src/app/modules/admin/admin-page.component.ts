@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-type AdminTab = 'kiosk-tokens' | 'users' | 'assets';
+type AdminTab = 'kiosk-tokens' | 'users' | 'assets' | 'alert-rules';
 
 @Component({
   selector: 'app-admin-page',

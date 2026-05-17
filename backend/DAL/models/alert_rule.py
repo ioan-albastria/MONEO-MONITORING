@@ -9,7 +9,7 @@ from DAL.db_context import Base
 class AlertRule(Base):
     __tablename__ = "alert_rule"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     sensor_id: Mapped[int] = mapped_column(
         ForeignKey("sensors.id", ondelete="CASCADE"), nullable=False
     )

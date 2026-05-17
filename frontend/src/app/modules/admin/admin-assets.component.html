@@ -1,8 +1,12 @@
 <div class="admin-section">
   <div class="admin-section__header">
     <h2 class="admin-section__title">Assets</h2>
-    <button class="btn btn-primary btn-sm" (click)="showCreateForm = !showCreateForm">
-      <span class="icon">add</span>{{ showCreateForm ? 'Cancel' : 'New Asset' }}
+    <button class="btn btn-sm"
+      [class.btn-primary]="!showCreateForm"
+      [class.btn-ghost]="showCreateForm"
+      (click)="showCreateForm = !showCreateForm">
+      <span class="icon">{{ showCreateForm ? 'close' : 'add' }}</span>
+      {{ showCreateForm ? 'Cancel' : 'New Asset' }}
     </button>
   </div>
 

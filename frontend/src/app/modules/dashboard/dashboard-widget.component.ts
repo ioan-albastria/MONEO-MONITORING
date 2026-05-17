@@ -89,6 +89,20 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   /** The sensor object for single-sensor widgets; null for multi-sensor or while loading. */
   activeSensor: Sensor | null = null;
 
+  // ── Ranges editor ──────────────────────────────────────────────────────
+  rangesEditorOpen  = false;
+  rangesSaving      = false;
+  rangesSaveError: string | null = null;
+  rangesForm = {
+    normal_min:    null as number | null,
+    normal_max:    null as number | null,
+    warning_min:   null as number | null,
+    warning_max:   null as number | null,
+    critical_min:  null as number | null,
+    critical_max:  null as number | null,
+    ranges_source: 'manual' as string,
+  };
+
   // ── Private ────────────────────────────────────────────────────────────
   private loadVersion  = 0;
   private lastSettingsKey = '';
@@ -588,6 +602,52 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   closeDrillDown(): void {
     this.drillOpen = false;
     this.cdr.markForCheck();
+  }
+
+  // ── Ranges editor ──────────────────────────────────────────────────────
+
+  openRangesEditor(): void {
+    const s = this.activeSensor;
+    if (!s) return;
+    this.rangesForm = {
+      normal_min:    s.normal_min   ?? null,
+      normal_max:    s.normal_max   ?? null,
+      warning_min:   s.warning_min  ?? null,
+      warning_max:   s.warning_max  ?? null,
+      critical_min:  s.critical_min ?? null,
+      critical_max:  s.critical_max ?? null,
+      ranges_source: s.ranges_source ?? 'manual',
+    };
+    this.rangesSaveError = null;
+    this.rangesEditorOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeRangesEditor(): void {
+    this.rangesEditorOpen = false;
+    this.rangesSaveError  = null;
+    this.cdr.markForCheck();
+  }
+
+  async saveRanges(): Promise<void> {
+    const s = this.activeSensor;
+    if (!s || this.rangesSaving) return;
+    this.rangesSaving    = true;
+    this.rangesSaveError = null;
+    this.cdr.markForCheck();
+    try {
+      const updated = await this.sensorApi.updateRanges(s.id, this.rangesForm);
+      const idx = this.sensors.findIndex(x => x.id === s.id);
+      if (idx >= 0) this.sensors[idx] = updated;
+      this.activeSensor = updated;
+      this.rangesEditorOpen = false;
+      void this.reload();
+    } catch {
+      this.rangesSaveError = 'Failed to save. Check values and try again.';
+    } finally {
+      this.rangesSaving = false;
+      this.cdr.markForCheck();
+    }
   }
 
   // ── Annotation helpers ─────────────────────────────────────────────────
