@@ -31,12 +31,16 @@ frontend/src/app/
 ├── modules/
 │   ├── dashboard/     # DashboardComponent (grid host), DashboardWidgetComponent (renderer), DashboardApiService
 │   ├── layout/        # AppShellComponent, AppNavRailComponent, AppPageHeaderComponent
-│   │                  #   — sync-status-indicator: nav-rail chip showing overall sync health
-│   │                  #   — sync-status-panel: expandable detail panel (per-source rows)
-│   │                  #   — sync-status-banner: full-width alert strip shown when sync is degraded/failed
+│   │                  #   hosts <app-sync-status-indicator> in the page header (before user-pill)
+│   │                  #   and <app-sync-status-banner> between header and main content
 │   ├── login/         # LoginComponent — login form
 │   └── widgets/       # AppWidgetsShellComponent — presentational chrome wrapper for every widget
-├── types/             # TypeScript interfaces: dashboard.ts, widget.ts, sensor.ts, analytics.ts
+├── shared/            # Cross-cutting UI — registered and exported by shared.module.ts
+│   └── components/
+│       ├── sync-status-indicator/  # Pill showing overall sync health (healthy/degraded/failed/pending); click opens panel
+│       ├── sync-status-panel/      # Per-source detail: last success, lag, records, errors, refresh button
+│       └── sync-status-banner/     # Full-width red banner for overall=failed; sessionStorage dismissal
+├── types/             # TypeScript interfaces: dashboard.ts, widget.ts, sensor.ts, analytics.ts, sync-health.ts
 ├── app.ts             # Root component — calls UiPreferencesService.init() on construction
 ├── app-module.ts      # AppModule — registers AuthInterceptor in HTTP_INTERCEPTORS
 └── app-routing.module.ts  # Lazy-loads LoginModule and DashboardModule
@@ -161,7 +165,7 @@ optionally persists to localStorage. Init called from `app.ts` constructor.
 - `@theme` block (lines 13–100): all design tokens as CSS custom properties
 - `:root.theme-light` (lines 275–291): overrides surface + foreground colours for light mode
 - `.density-compact` rules (lines 296–318): tighter `--h-control`, `--h-row`, `--pad-widget`, `--gap-grid`
-- Slice 4 added four sync-status tokens: `--color-status-healthy`, `--color-status-degraded`, `--color-status-failed`, `--color-status-unknown`
+- Slice 4 added four sync-status tokens: `--color-status-ok` (healthy), `--color-status-warn` (degraded), `--color-status-error` (failed), `--color-status-pending` (never-synced / awaiting)
 
 **Colour space:** OKLch throughout (e.g. `oklch(0.98 0.01 255)`).
 
@@ -195,7 +199,7 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 - Screenshots on failure, trace on first retry
 - HTML report: `frontend/playwright-report/index.html`
 
-**Test inventory (52 cases):**
+**Test inventory (57 Playwright e2e cases, 11 files):**
 
 | File | IDs | Coverage |
 |---|---|---|
@@ -206,8 +210,14 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 | `layout.spec.ts` | LAYOUT-01 | Drag & debounced layout persistence POST |
 | `charts.spec.ts` | CHART-01–05 | Line/bar/gauge/stat render, empty-state overlay |
 | `realtime.spec.ts` | RT-01–03 | WS connection, lifecycle, gauge live update |
+| `theme.spec.ts` | — | Theme toggle persistence |
+| `tinting.spec.ts` | — | Ambient status tinting, `data-state` attribute |
+| `freshness.spec.ts` | — | Data freshness footer, stale/offline states |
+| `sync-status.spec.ts` | SYNC-01–05 | Admin indicator/panel, non-admin hidden, failed banner + dismissal, never-synced "awaiting" state |
 
-**Current status:** 36 passed / 15 failed (pre-existing backend DELETE timeouts in cleanup) / 1 skipped (DASH-03, requires Angular devtools — intentional `test.skip`)
+**Karma unit test status (latest):** 68 passed / 5 failed (all 5 failures are pre-existing — `sensor-status.spec.ts` × 4, `app.spec.ts` × 1; all 35 Slice 4 specs pass).
+
+**Playwright e2e status:** 36 passed / 15 failed (pre-existing backend DELETE timeouts in cleanup) / 1 skipped (DASH-03, requires Angular devtools — intentional `test.skip`). The 5 Slice 4 SYNC-* cases require a stubbed backend and run separately.
 
 ## Spec deviations
 
@@ -254,5 +264,11 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 | TypeScript widget types | `types/widget.ts` |
 | TypeScript dashboard types | `types/dashboard.ts` |
 | TypeScript sensor/analytics types | `types/sensor.ts`, `types/analytics.ts` |
+| TypeScript sync-health types | `types/sync-health.ts` — `DerivedStatus`, `LastStatus`, `SyncSource`, `SyncHealth` |
+| Sync health service (polling, adapter) | `core/services/sync-health.service.ts` |
+| Sync status indicator component | `shared/components/sync-status-indicator/` |
+| Sync status detail panel component | `shared/components/sync-status-panel/` |
+| Sync status failure banner component | `shared/components/sync-status-banner/` |
+| Status CSS tokens (ok/warn/error/pending) | `src/styles.css` `@theme` block — `--color-status-ok`, `--color-status-warn`, `--color-status-error`, `--color-status-pending` |
 | AppModule (interceptor registration) | `app-module.ts` |
 | Lazy route definitions | `app-routing.module.ts` |

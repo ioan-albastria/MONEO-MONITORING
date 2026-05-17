@@ -46,17 +46,17 @@ pip install -r requirements.txt
 # Create .env file
 cp .env.example .env
 
-# Edit .env with local settings:
+# Edit .env with local settings.
+# MONEO_API_KEY is REQUIRED — Pydantic will refuse to start without it.
+# See backend/.env.example for the full list of variables.
 # DATABASE_URL=postgresql://moneo_user:password@localhost/moneo_monitoring
-# MONEO_API_KEY=your_test_api_key
-# JWT_SECRET_KEY=your_secret_key
+# MONEO_API_KEY=<your-moneo-pat>        ← get from MONEO UI: User menu → Personal Access Tokens
+# JWT_SECRET_KEY=<long-random-string>   ← override before any non-local deployment
 
-# Run database migrations
-# (If using Alembic)
+# Run database migrations (Alembic)
 alembic upgrade head
-
-# Or initialize database
-python -c "from DAL import init_db; init_db()"
+# Note: main.py runs migrations automatically on startup when auto_migrate=True (default).
+# init_db() is only for the test suite (SQLite in-memory fixtures) — do not use it here.
 
 # Start backend server
 uvicorn main:app --reload --port 8000
@@ -771,10 +771,19 @@ Error: Token has expired
 Solution: Refresh token endpoint, adjust JWT_EXPIRY settings
 ```
 
-#### 3. MONEO API Connection Fails
+#### 3. MONEO API Connection Fails / 401 at Boot
 ```
-Error: Failed to connect to MONEO API
-Solution: Check API key, verify API endpoint URL, check network connectivity
+Boot log: "MONEO auth FAILED (401) — token expired or revoked."
+Solution: Rotate the MONEO PAT — see backend/CLAUDE.md → MONEO Token Rotation.
+Steps: MONEO UI → User menu → Personal Access Tokens → Revoke old, Create new →
+       edit backend/.env MONEO_API_KEY → restart backend →
+       verify boot log shows "MONEO auth OK".
+```
+
+```
+Boot log: ValidationError: MONEO_API_KEY is required
+Solution: backend/.env is missing or MONEO_API_KEY line is not set.
+          Copy backend/.env.example → backend/.env and fill in MONEO_API_KEY.
 ```
 
 #### 4. High Memory Usage
@@ -810,12 +819,16 @@ psql -U moneo_user moneo_monitoring < backup_before_migration.sql
 ## Post-Deployment Checklist
 
 - [ ] Health checks passing
-- [ ] Database migrations completed
-- [ ] Sensor polling scheduler running
+- [ ] Database migrations completed (`alembic upgrade head` ran at boot)
+- [ ] Boot log shows `MONEO auth OK` (confirms MONEO PAT is valid)
+- [ ] `GET /api/admin/sync/health` returns `derived_status` (not an error) within one poll cycle
+- [ ] Sensor polling scheduler running (check APScheduler logs)
 - [ ] Monitoring alerts configured
 - [ ] Backup jobs scheduled and tested
 - [ ] SSL certificate valid
-- [ ] CORS working correctly
+- [ ] CORS working correctly (`ALLOWED_ORIGINS` lists all frontend origins)
+- [ ] `backend/.env` is NOT committed — confirm with `git check-ignore backend/.env`
+- [ ] `JWT_SECRET_KEY`, `SEED_ADMIN_PASSWORD`, `WEBHOOK_HMAC_SECRET` are non-default values
 - [ ] Error logs empty (or only expected warnings)
 - [ ] Performance metrics within acceptable range
 - [ ] User acceptance testing completed

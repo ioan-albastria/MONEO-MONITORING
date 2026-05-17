@@ -4,91 +4,72 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                       End Users (Web/Mobile)                     │
+│                       End Users (Browser)                        │
 ├─────────────────────────────────────────────────────────────────┤
 │
 │  ┌──────────────────────────────────────────────────────────┐
 │  │              Frontend Application Layer                   │
 │  ├──────────────────────────────────────────────────────────┤
-│  │  Angular 17+ Application                                 │
-│  │  - Dashboard Components                                  │
-│  │  - Widget Grid (angular-gridster2)                       │
-│  │  - ApexCharts Visualizations                            │
-│  │  - Real-time Updates (optional WebSocket)               │
-│  │  - Authentication & Routing                             │
-│  │  - State Management (RxJS)                              │
+│  │  Angular 20 SPA (NgModules)                              │
+│  │  - Dashboard + Widget grid (angular-gridster2)           │
+│  │  - ApexCharts visualisations; CSS conic-gradient gauge   │
+│  │  - Sync-status surface (indicator, panel, banner)        │
+│  │  - Real-time updates (rxjs WebSocket per sensor)         │
+│  │  - JWT auth (localStorage) + class-based interceptor     │
+│  │  - Dark/light theme + density toggle                     │
 │  └──────────────────────────────────────────────────────────┘
 │               ▲                                ▼
-│               │         HTTP/WebSocket         │
+│               │      HTTP (REST) / WebSocket   │
 │               │                                │
-│  ┌──────────────────────────────────────────────────────────┐
-│  │              API Gateway / Load Balancer                  │
-│  │  (Optional: NGINX, HAProxy for production)                │
-│  └──────────────────────────────────────────────────────────┘
-│               ▼
 │  ┌──────────────────────────────────────────────────────────┐
 │  │           Backend Application Layer (FastAPI)             │
 │  ├──────────────────────────────────────────────────────────┤
 │  │
 │  │  ┌─────────────────────────────────────────────────────┐
-│  │  │  REST API Routes                                   │
-│  │  │  - /api/dashboards                                 │
-│  │  │  - /api/dashboards/{id}/widgets                    │
-│  │  │  - /api/sensors                                    │
-│  │  │  - /api/sensors/{id}/readings                      │
-│  │  │  - /api/analytics                                  │
-│  │  │  - /api/auth                                       │
-│  │  │  - /ws/* (WebSocket endpoints)                     │
+│  │  │  REST / WebSocket Route Handlers                   │
+│  │  │  - /api/auth/*                                     │
+│  │  │  - /api/dashboards/*  /api/widgets/*               │
+│  │  │  - /api/sensors/*     /api/analytics               │
+│  │  │  - /api/moneo/*  (MONEO proxy + admin sync-meta)   │
+│  │  │  - /api/admin/sync/health  (sync observability)    │
+│  │  │  - /ws/sensors/{id}  (WebSocket)                   │
 │  │  └─────────────────────────────────────────────────────┘
 │  │
 │  │  ┌─────────────────────────────────────────────────────┐
-│  │  │  Business Logic Services Layer                     │
-│  │  │  ┌─────────────────────────────────────────────┐  │
-│  │  │  │ Service Classes                             │  │
-│  │  │  │ - DashboardService                         │  │
-│  │  │  │ - WidgetService                            │  │
-│  │  │  │ - SensorService                            │  │
-│  │  │  │ - SensorReadingsService                    │  │
-│  │  │  │ - AnalyticsService                         │  │
-│  │  │  │ - AuthService                              │  │
-│  │  │  │ - AlertingService                          │  │
-│  │  │  └─────────────────────────────────────────────┘  │
-│  │  │
-│  │  │  ┌─────────────────────────────────────────────┐  │
-│  │  │  │ MONEO API Integration Layer                │  │
-│  │  │  │ - MoneoApiClient (HTTP)                   │  │
-│  │  │  │ - Request/Response Handling               │  │
-│  │  │  │ - Error Recovery                          │  │
-│  │  │  │ - Rate Limiting                           │  │
-│  │  │  └─────────────────────────────────────────────┘  │
-│  │  │
-│  │  │  ┌─────────────────────────────────────────────┐  │
-│  │  │  │ Schedulers & Background Jobs               │  │
-│  │  │  │ - MoneoPollingScheduler (fetch data)      │  │
-│  │  │  │ - AggregationScheduler (pre-calc metrics) │  │
-│  │  │  │ - CacheWarmupScheduler                    │  │
-│  │  │  │ - AlertingScheduler                       │  │
-│  │  │  └─────────────────────────────────────────────┘  │
-│  │  │
-│  │  │  ┌─────────────────────────────────────────────┐  │
-│  │  │  │ Middleware & Authentication                │  │
-│  │  │  │ - JWT Token Validation                     │  │
-│  │  │  │ - CORS Policy                              │  │
-│  │  │  │ - Request Logging                          │  │
-│  │  │  │ - Error Handling                           │  │
-│  │  │  └─────────────────────────────────────────────┘  │
+│  │  │  Business Logic Services                           │
+│  │  │  - AuthService, DashboardService, WidgetService    │
+│  │  │  - SensorService, SensorReadingsService            │
+│  │  │  - AnalyticsService, AlertService                  │
+│  │  │  - MoneoApiClient  (httpx, retry, auth probe)      │
+│  │  │  - MoneoPoller     (watermark-driven pagination)   │
+│  │  │  - SyncHealthService  (lifecycle tracker + health) │
+│  │  └─────────────────────────────────────────────────────┘
+│  │
+│  │  ┌─────────────────────────────────────────────────────┐
+│  │  │  APScheduler Background Jobs                       │
+│  │  │  - poll_latest_readings  every SENSOR_POLL_INTERVAL │
+│  │  │  - sync_sensor_metadata  every 6 h                  │
+│  │  │  - prune_sync_history    daily at 03:00             │
+│  │  │  - check_no_data_alerts  every 60 s                 │
+│  │  │  - dispatch_outbox       every 30 s                 │
+│  │  └─────────────────────────────────────────────────────┘
+│  │
+│  │  ┌─────────────────────────────────────────────────────┐
+│  │  │  Middleware / Auth                                 │
+│  │  │  - JWT Bearer validation (get_current_user dep)    │
+│  │  │  - CORS policy                                     │
+│  │  │  - Alembic auto-migrate on startup                 │
 │  │  └─────────────────────────────────────────────────────┘
 │  │
 │  └──────────────────────────────────────────────────────────┘
 │               ▼
 │  ┌──────────────────────────────────────────────────────────┐
-│  │        Data Access Layer (SQLAlchemy ORM)                 │
+│  │        Data Access Layer (SQLAlchemy 2.0)                 │
 │  ├──────────────────────────────────────────────────────────┤
-│  │  - Models Mapping (DB ↔ Python Objects)                  │
-│  │  - Query Building & Execution                            │
-│  │  - Session Management                                    │
-│  │  - Relationship Handling                                 │
-│  │  - Transaction Management                                │
+│  │  Models: User, Dashboard, DashboardWidget, Asset,        │
+│  │          Sensor, SensorReading, AlertConfig,             │
+│  │          KioskToken, SyncRun, SyncError                  │
+│  │  Session management via SessionLocal factory             │
 │  └──────────────────────────────────────────────────────────┘
 │               ▼
 └─────────────────────────────────────────────────────────────────┘
@@ -96,445 +77,160 @@
             ┌─────────────────────────────────────────┐
             │      Data Storage & Caching             │
             ├─────────────────────────────────────────┤
-            │  ┌────────────────────────────────────┐ │
-            │  │  PostgreSQL Database               │ │
-            │  │  - Users & Authentication          │ │
-            │  │  - Dashboards & Widgets            │ │
-            │  │  - Sensors & Assets                │ │
-            │  │  - Sensor Readings (Time-Series)   │ │
-            │  │  - Alerts & Notifications          │ │
-            │  │  - Aggregated Metrics              │ │
-            │  └────────────────────────────────────┘ │
-            │  ┌────────────────────────────────────┐ │
-            │  │  Redis Cache (Optional)            │ │
-            │  │  - Session Tokens                  │ │
-            │  │  - Recent Sensor Readings          │ │
-            │  │  - Aggregated Metrics Cache        │ │
-            │  │  - Widget Configuration Cache      │ │
-            │  └────────────────────────────────────┘ │
+            │  PostgreSQL                             │
+            │  - Users, dashboards, widgets           │
+            │  - Sensors, assets, readings            │
+            │  - Alert configs                        │
+            │  - Kiosk tokens                         │
+            │  - sync_runs / sync_errors (Slice 3+)   │
+            │                                         │
+            │  Redis (configured, not yet active)     │
+            │  - Planned for caching (Iteration 2)    │
             └─────────────────────────────────────────┘
                         ▲
                         │
-            ┌───────────────────────────┐
-            │  External Data Sources    │
-            ├───────────────────────────┤
-            │  IFM MONEO API            │
-            │  (Sensor Data Feed)       │
-            └───────────────────────────┘
+            ┌───────────────────────────────────────┐
+            │  IFM MONEO Platform API               │
+            │  /api/platform/v1                     │
+            │  - GET /nodes  (topology)             │
+            │  - GET /processdata/device/{id}/       │
+            │    datasource/{datasourceId}           │
+            │    (time-series readings)              │
+            └───────────────────────────────────────┘
 ```
 
 ---
 
-## Component Architecture
-
-### Frontend (Angular)
+## Frontend Component Map
 
 ```
-Application Bootstrap (main.ts)
+app.ts (root)
     ▼
-┌─────────────────────────────────┐
-│  App Root Component             │
-│  ├─ Navigation                  │
-│  └─ Main Router Outlet          │
-└─────────────────────────────────┘
-         ▼
-┌─────────────────────────────────┐
-│  Feature Modules                │
-├─────────────────────────────────┤
-│  Dashboard Module               │
-│  ├─ DashboardComponent          │
-│  ├─ DashboardListComponent      │
-│  ├─ DashboardGridComponent      │
-│  │  └─ GridsterContainer        │
-│  ├─ DashboardWidgetComponent    │
-│  │  ├─ LineChartWidget          │
-│  │  ├─ BarChartWidget           │
-│  │  ├─ GaugeWidget              │
-│  │  ├─ StatCardWidget           │
-│  │  └─ TableWidget              │
-│  └─ WidgetConfigComponent       │
-│
-│  Sensor Module                  │
-│  ├─ SensorListComponent         │
-│  └─ SensorDetailsComponent      │
-└─────────────────────────────────┘
-         ▼
-┌─────────────────────────────────┐
-│  Core Services (Singleton)      │
-├─────────────────────────────────┤
-│  - AuthService                  │
-│  - StateService                 │
-│  - HttpInterceptor              │
-└─────────────────────────────────┘
-         ▼
-┌─────────────────────────────────┐
-│  API Services                   │
-├─────────────────────────────────┤
-│  - DashboardApiService          │
-│  - SensorApiService             │
-│  - AnalyticsApiService          │
-│  - AuthApiService               │
-└─────────────────────────────────┘
-         ▼
-┌─────────────────────────────────┐
-│  HTTP Client (HttpClientModule) │
-└─────────────────────────────────┘
+AppModule
+├─ AuthModule (lazy)
+│   └─ LoginComponent
+└─ DashboardModule (lazy)
+    ├─ DashboardComponent          # grid host, CRUD, modal
+    │   └─ DashboardWidgetComponent  # renders one widget
+    │       └─ AppWidgetsShellComponent  # chrome wrapper
+    │           ├─ LineChart / BarChart (ApexCharts)
+    │           ├─ Gauge (CSS conic-gradient)
+    │           └─ StatCard (sparkline + delta)
+    └─ layout/
+        ├─ AppShellComponent       # outer shell, hosts banner
+        ├─ AppNavRailComponent     # left nav rail
+        └─ AppPageHeaderComponent  # top bar, hosts indicator
 ```
 
-### Backend (FastAPI)
+**Shared components (shared.module.ts):**
+- `SyncStatusIndicatorComponent` — pill in the header; click opens panel
+- `SyncStatusPanelComponent` — per-source detail rows, lag, errors, refresh
+- `SyncStatusBannerComponent` — red banner for `overall=failed`
+
+**Core services:**
+- `AuthService` + `AuthInterceptorService` — JWT storage, Bearer attachment, 401 redirect
+- `RealtimeService` — rxjs WebSocket, per-sensor subscriptions, exponential backoff reconnect
+- `SensorApiService` — REST: readings, analytics, latest
+- `SyncHealthService` — polls `GET /api/admin/sync/health` every 30 s; 403→null; visibility-paused
+- `UiPreferencesService` — theme + density toggle (localStorage)
+
+---
+
+## Backend File Map
 
 ```
-main.py (Application Entry Point)
-    ▼
-┌────────────────────────────────────┐
-│  FastAPI Application Setup         │
-│  ├─ Middleware Setup               │
-│  ├─ CORS Configuration             │
-│  ├─ Exception Handlers             │
-│  ├─ Dependency Injection           │
-│  └─ Router Registration            │
-└────────────────────────────────────┘
-    ▼
-┌────────────────────────────────────┐
-│  Route Layers                      │
-├────────────────────────────────────┤
-│  auth_routes.py
-│    POST /login
-│    POST /register
-│    POST /refresh
-│
-│  dashboard_routes.py
-│    GET /dashboards
-│    POST /dashboards
-│    PUT /dashboards/{id}
-│    DELETE /dashboards/{id}
-│
-│  widget_routes.py
-│    GET /dashboards/{id}/widgets
-│    POST /dashboards/{id}/widgets
-│    PUT /dashboards/{id}/widgets/{id}
-│    DELETE /dashboards/{id}/widgets/{id}
-│    PUT /dashboards/{id}/widgets/layout
-│
-│  sensor_routes.py
-│    GET /sensors
-│    GET /sensors/{id}
-│    GET /sensors/{id}/readings
-│    GET /sensors/{id}/aggregates
-│
-│  analytics_routes.py
-│    GET /analytics/comparison
-│    GET /analytics/trends
-│    GET /analytics/anomalies
-│
-│  asset_routes.py
-│    GET /assets
-│    GET /assets/{id}/sensors
-│
-│  websocket_routes.py
-│    WS /ws/sensor/{sensor_id}
-│
-└────────────────────────────────────┘
-    ▼
-┌────────────────────────────────────┐
-│  Service Layer                     │
-├────────────────────────────────────┤
-│  services/
-│  ├─ auth_service.py
-│  ├─ dashboard_service.py
-│  ├─ widget_service.py
-│  ├─ sensor_service.py
-│  ├─ sensor_readings_service.py
-│  ├─ analytics_service.py
-│  ├─ moneo_api_client.py
-│  ├─ moneo_poller.py
-│  ├─ alert_service.py
-│  └─ schedulers/
-│     ├─ data_polling_scheduler.py
-│     ├─ aggregation_scheduler.py
-│     └─ cache_warmup_scheduler.py
-│
-└────────────────────────────────────┘
-    ▼
-┌────────────────────────────────────┐
-│  Data Access Layer (DAL)           │
-├────────────────────────────────────┤
-│  DAL/
-│  ├─ db_context.py (Session mgmt)
-│  └─ models/
-│     ├─ user.py
-│     ├─ dashboard.py
-│     ├─ dashboard_widget.py
-│     ├─ sensor.py
-│     ├─ sensor_reading.py
-│     ├─ asset.py
-│     └─ alert_config.py
-│
-│  Database (PostgreSQL)
-│
-└────────────────────────────────────┘
+backend/
+├── main.py                       # lifespan: migrate → seed → scheduler → MONEO auth probe
+├── config.py                     # Pydantic Settings (MONEO_API_KEY required, no default)
+├── middleware.py                  # get_current_user() FastAPI dependency
+├── DAL/
+│   ├── db_context.py             # Engine, SessionLocal, Base
+│   └── models/
+│       ├── user.py               # User
+│       ├── dashboard.py          # Dashboard
+│       ├── dashboard_widget.py   # DashboardWidget
+│       ├── sensor.py             # Sensor (+moneo_datasource_ref, last_seen_at, range cols)
+│       ├── sensor_reading.py     # SensorReading (UNIQUE sensor_id+timestamp)
+│       ├── asset.py              # Asset
+│       ├── alert_config.py       # AlertConfig
+│       ├── sync_run.py           # SyncRun (source, status, records_in/written, error_count)
+│       └── sync_error.py         # SyncError (run_id FK, kind, message, sensor_id FK)
+├── routes/
+│   ├── auth_routes.py            # /api/auth/*
+│   ├── dashboard_routes.py       # /api/dashboards/*
+│   ├── widget_routes.py          # /api/widgets/*
+│   ├── sensor_routes.py          # /api/sensors/*
+│   ├── analytics_routes.py       # /api/analytics
+│   ├── moneo_routes.py           # /api/moneo/* (proxy + admin sync-metadata)
+│   ├── admin_sync_routes.py      # /api/admin/sync/health
+│   ├── websocket_routes.py       # /ws/sensors/{id}
+│   └── response_models/          # Pydantic response schemas
+├── services/
+│   ├── auth_service.py
+│   ├── sensor_service.py
+│   ├── sensor_readings_service.py
+│   ├── dashboard_service.py
+│   ├── analytics_service.py
+│   ├── moneo_api_client.py       # httpx, retry policy, verify_auth() probe
+│   ├── moneo_poller.py           # watermark polling + bulk upsert
+│   ├── sync_health_service.py    # run() context-mgr, record_error(), get_health(), prune()
+│   ├── demo_seed_service.py
+│   └── schedulers/
+│       └── data_polling_scheduler.py  # APScheduler job registration
+└── migrations/
+    └── versions/
+        ├── 0001_initial_schema.py
+        ├── …
+        └── 0010_sync_runs.py
 ```
 
 ---
 
-## Data Flow Diagrams
-
-### 1. Dashboard Creation & Widget Setup
+## Data Flow: Sensor Readings Ingestion
 
 ```
-User (Frontend)
-    │
-    ├─ Click "Create Dashboard"
-    │
+APScheduler (every SENSOR_POLL_INTERVAL_SECONDS)
     ▼
-DashboardComponent (Frontend)
+MoneoPoller.poll_latest_readings()
     │
-    ├─ Show create dialog
-    ├─ Collect form data (name, description)
+    ├─ SyncHealthService.run("moneo.readings")  ← starts SyncRun row
     │
-    ▼
-DashboardApiService
+    ├─ For each active sensor:
+    │   ├─ Compute from_ms = max(last_seen_at+1ms, now - MAX_BACKFILL_HOURS)
+    │   ├─ MoneoApiClient.get_processdata(device_id, datasource_ref, from_ms, to_ms, page=1…N)
+    │   │   └─ Retries on 429/5xx; no retry on 401/403/404
+    │   ├─ Bulk INSERT … ON CONFLICT DO NOTHING (dialect-branched for PostgreSQL/SQLite)
+    │   ├─ Update sensor.last_seen_at = max timestamp written
+    │   └─ SyncHealthService.record_error(...) on any failure
     │
-    ├─ HTTP POST /api/dashboards
-    │
-    ▼
-dashboard_routes.py (Backend)
-    │
-    ├─ Validate request (Pydantic)
-    ├─ Extract JWT user
-    │
-    ▼
-DashboardService
-    │
-    ├─ Create Dashboard object
-    ├─ Set owner_id from JWT
-    ├─ Persist to DB
-    │
-    ▼
-PostgreSQL
-    │
-    ├─ INSERT INTO dashboards
-    ├─ COMMIT
-    │
-    ▼
-Response: DashboardRead
-    │
-    ├─ Back through service → route → API service
-    ├─ Update UI with dashboard ID
-    │
-    ▼
-User adds widget via UI
-    │
-    ├─ Select widget type, sensors
-    ├─ Configure settings
-    ├─ Position on grid
-    │
-    ▼
-WidgetConfigComponent
-    │
-    ├─ HTTP POST /api/dashboards/{id}/widgets
-    │
-    ▼
-dashboard_routes.py
-    │
-    ├─ Create DashboardWidget with settings
-    │
-    ▼
-DashboardWidget persisted
-    │
-    ├─ Response includes widget config
-    │
-    ▼
-DashboardGridComponent
-    │
-    ├─ Add widget to grid
-    ├─ Render ApexChart with sensor data
+    └─ SyncHealthService exits context-mgr → finalises SyncRun (status, records, duration)
 ```
 
-### 2. Sensor Data Flow
-
-```
-IFM MONEO API
-    │
-    ├─ Continuously publishes sensor readings
-    │
-    ▼
-MoneoPollingScheduler (Background Job)
-    │
-    ├─ Runs every 5 minutes (configurable)
-    ├─ Calls MoneoApiClient
-    │
-    ▼
-MoneoApiClient
-    │
-    ├─ GET /v1/devices/{device_id}/sensors
-    ├─ GET /v1/sensors/{sensor_id}/latest
-    ├─ Handle auth & retries
-    │
-    ▼
-PostgreSQL
-    │
-    ├─ INSERT INTO sensor_readings
-    ├─ INSERT INTO sensors (metadata sync)
-    │
-    ▼
-Cache (Redis)
-    │
-    ├─ Update recent readings cache
-    ├─ TTL: 5 minutes
-    │
-    ▼
-Frontend Dashboard
-    │
-    ├─ On-demand: HTTP GET /api/sensors/{id}/readings
-    │    (with time range: last 24h, 7d, 30d, etc.)
-    │
-    ▼
-SensorReadingsService
-    │
-    ├─ Query PostgreSQL
-    ├─ Check Redis cache first
-    ├─ Apply aggregation if requested
-    ├─ Format for ApexCharts
-    │
-    ▼
-SensorTimeSeriesData (Response Model)
-    │
-    ├─ Points: [{timestamp, value}, ...]
-    ├─ Stats: min, max, avg
-    │
-    ▼
-Frontend ApexChart
-    │
-    ├─ Render line/area/bar chart
-    ├─ Display trend with min/max/avg
-    │
-    ▼
-User views real-time dashboard
-```
-
-### 3. Real-Time Update Flow (WebSocket Optional)
-
-```
-Frontend Dashboard
-    │
-    ├─ User opens dashboard
-    ├─ Connects to: ws://server/ws/sensor/{sensor_id}
-    │
-    ▼
-Backend WebSocket Handler
-    │
-    ├─ Accept connection
-    ├─ Validate JWT token
-    ├─ Store client connection
-    │
-    ▼
-MoneoPollingScheduler
-    │
-    ├─ Polls new sensor reading
-    ├─ Persists to database
-    │
-    ▼
-Event Broadcasting
-    │
-    ├─ Broadcast to all connected WebSocket clients
-    │  JSON: {event: "reading_update", data: {...}}
-    │
-    ▼
-Frontend WebSocket Client
-    │
-    ├─ Receive message
-    ├─ Update RxJS Subject
-    │
-    ▼
-ApexChart Component
-    │
-    ├─ Subscribe to data stream
-    ├─ Update chart with new data point
-    ├─ Animations play
-    │
-    ▼
-User sees real-time update (< 1 second latency)
-```
-
-### 4. Widget Layout Update Flow (Drag & Drop)
-
-```
-User drags widget on grid
-    │
-    ▼
-DashboardGridComponent
-    │
-    ├─ GridsterItem.itemChange event
-    ├─ Extract new position: {id, x, y, cols, rows}
-    │
-    ▼
-WidgetApiService
-    │
-    ├─ HTTP PUT /api/dashboards/{id}/widgets/layout
-    ├─ Send all item positions as batch
-    │
-    ▼
-dashboard_routes.py
-    │
-    ├─ Validate layout (no overlaps if required)
-    │
-    ▼
-Database
-    │
-    ├─ UPDATE dashboard_widgets
-    │    SET x=?, y=?, cols=?, rows=?
-    │    WHERE id=?
-    ├─ COMMIT (transaction)
-    │
-    ▼
-Response: {updated_count: N}
-    │
-    ├─ Front-end receives success
-    ├─ Layout persisted
-    │
-    ▼
-User continues using dashboard
-```
+**Key identifiers:**
+- `moneo_sensor_id` — topology node `id` from `/nodes`; used to identify sensors in our DB
+- `moneo_datasource_ref` — inner `reference.dataSource.id` (128-char hex) from `/nodes`; required
+  by `/processdata/device/{deviceId}/datasource/{datasourceRef}` to actually get readings
 
 ---
 
-## Request/Response Flow
-
-### Authentication Flow
+## Data Flow: Sync Health Surface
 
 ```
-1. User enters credentials
-2. POST /api/auth/login
-3. Backend validates password
-4. JWT token generated
-5. Token returned to client
-6. Client stores in localStorage
-7. All subsequent requests include: Authorization: Bearer <token>
-8. Backend validates token on every request
-9. Request rejected if token invalid/expired
-```
+Frontend SyncHealthService (every 30 s, visibility-paused)
+    │
+    ├─ GET /api/admin/sync/health  (Bearer + admin)
+    │   └─ 403 → emit null (hide surface for non-admins)
+    │
+    ▼
+SyncStatusIndicatorComponent (in AppPageHeaderComponent)
+    ├─ overall=healthy → green pill "Sync OK"
+    ├─ overall=degraded → amber pill "Sync degraded"
+    ├─ overall=failed → red pill "Sync failed" + triggers banner
+    └─ overall=pending → gray pill "Awaiting first sync"
+    └─ click → opens SyncStatusPanelComponent (popover)
 
-### Typical API Request
-
-```
-Frontend:
-GET /api/dashboards?limit=10
-Header: Authorization: Bearer <token>
-
-Backend:
-1. middleware: Validate JWT
-2. dependency injection: get_db()
-3. route: Extract parameters
-4. service: Query database
-5. database: Execute SQL
-6. response model: Serialize objects
-7. return JSON response
-
-Frontend:
-Response: 200 OK
-Body: [{id: 1, name: "...", ...}]
-Update component state
+SyncStatusBannerComponent (in AppShellComponent, below header)
+    └─ only visible when overall=failed (not pending, not degraded)
 ```
 
 ---
@@ -542,103 +238,63 @@ Update component state
 ## Scalability Considerations
 
 ### Current Architecture (Single Server)
+- Suitable for the facility-level operator use-case (~10–50 concurrent users)
+- APScheduler runs inside the same process — single instance required
+- Redis is configured but not yet active (planned for Iteration 2 caching)
 
-- ✅ Suitable for 1-100 concurrent users
-- ✅ 1 database server
-- ✅ 1 API server
-- ✅ Optional Redis for caching
-- ✅ Background schedulers on same server
-
-### Scaling to Multiple Servers
-
-```
-Load Balancer (NGINX / HAProxy)
-    │
-    ├─ Round-robin distribution
-    │
-    ├─ API Server 1
-    ├─ API Server 2
-    ├─ API Server 3
-    │
-Database Pool
-    │
-    ├─ PostgreSQL Primary
-    ├─ PostgreSQL Replicas (read-only)
-    │
-Redis Cluster
-    │
-    ├─ Shared cache layer
-    │
-Schedulers (Dedicated Server)
-    │
-    ├─ MoneoPollingScheduler (single instance)
-    ├─ AggregationScheduler
-```
-
-### Performance Optimizations
-
-1. **Database**: Connection pooling, query optimization, indexes
-2. **Caching**: Redis for frequent reads
-3. **API**: Pagination, filtering, compression
-4. **Frontend**: Lazy loading, change detection, virtual scrolling
-5. **Async Processing**: Background jobs don't block API
+### Horizontal Scaling Notes
+- APScheduler must run on exactly **one** instance (no distributed locking today).
+  Deploy the background scheduler as a separate process/container, separate from the
+  stateless API replicas, before adding API replicas.
+- `sync_runs` / `sync_errors` provide durable state even if the scheduler process restarts
+  mid-run; the poller is watermark-driven (resumes from `sensor.last_seen_at`).
 
 ---
 
 ## Security Architecture
 
 ```
-┌────────────────────────────────┐
-│  HTTPS/TLS Layer               │
-│  (SSL certificate)             │
-└────────────────────────────────┘
-         ▼
-┌────────────────────────────────┐
-│  CORS Policy                   │
-│  (Whitelist allowed origins)   │
-└────────────────────────────────┘
-         ▼
-┌────────────────────────────────┐
-│  JWT Authentication            │
-│  (Bearer token validation)     │
-└────────────────────────────────┘
-         ▼
-┌────────────────────────────────┐
-│  Authorization (RBAC)          │
-│  (User owns dashboard?)        │
-└────────────────────────────────┘
-         ▼
-┌────────────────────────────────┐
-│  Database Layer                │
-│  (SQL injection prevention)    │
-│  (ORM parameterized queries)   │
-└────────────────────────────────┘
+HTTPS/TLS (production; NGINX/HAProxy in front)
+    ▼
+CORS whitelist (ALLOWED_ORIGINS in config.py)
+    ▼
+JWT Bearer validation on every protected request
+    ▼
+Admin check (username == "admin") for admin-only endpoints
+    ▼
+SQLAlchemy ORM (parameterised queries — no SQL injection risk)
 ```
+
+**Token separation:**
+| Token | Location | Lifetime |
+|---|---|---|
+| MONEO PAT | `backend/.env` only (never sent to frontend) | Manual; rotate on leak or quarterly |
+| User JWT | `localStorage['auth_token']` | 24 h; no refresh |
+| Kiosk JWT | `sessionStorage`; DB row `kiosk_tokens.expires_at` | Set at issuance |
 
 ---
 
-## Deployment Architecture
+## Deployment Topologies
 
 ### Development
-- Single machine
-- SQLite or local PostgreSQL
-- Frontend dev server (ng serve)
-- Backend dev server (uvicorn --reload)
+```
+pg (local)     redis (local, optional)
+      ▼
+uvicorn main:app --reload --port 8000    ←→    ng serve (port 4200)
+```
 
-### Staging
-- Docker containers
-- PostgreSQL instance
-- Redis instance
-- Docker Compose orchestration
+### Docker Compose (staging / demo)
+```
+docker-compose.yml:
+  postgres     redis     backend     frontend(nginx)
+```
 
-### Production
-- Kubernetes cluster (recommended)
-  - API deployment (replicas)
-  - Database StatefulSet
-  - Redis StatefulSet
-  - Scheduler job
-- Docker registry
-- Persistent volumes
-- Monitoring & logging
-- Backup strategy
-
+### Production (Kubernetes)
+```
+Ingress (HTTPS)
+    ├─ frontend  Deployment (nginx, replicas)
+    └─ backend   Deployment (uvicorn, replicas — stateless API only)
+         + backend-scheduler  Deployment (1 replica — APScheduler)
+    └─ postgres  StatefulSet
+    └─ redis     StatefulSet (when caching is enabled)
+```
