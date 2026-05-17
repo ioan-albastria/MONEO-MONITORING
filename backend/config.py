@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     smtp_tls: bool = True
     webhook_hmac_secret: str = "changeme"
     notification_dispatch_enabled: bool = True
+    sync_history_retention_days: int = 90
     debug: bool = False
     allowed_origins: list[str] = ["http://localhost:4200", "http://localhost:3000"]
     seed_admin_username: str = "admin"

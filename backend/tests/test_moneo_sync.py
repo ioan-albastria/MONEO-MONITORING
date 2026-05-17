@@ -21,6 +21,7 @@ Slice 2 scenarios (TestMoneoSyncSlice2):
 import logging
 import pytest
 import pytest_asyncio
+from contextlib import contextmanager
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch, call
 
@@ -116,10 +117,30 @@ PROCESSDATA_ONE_READING = {
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _make_no_op_health():
+    """Return a mock SyncHealthService whose run() is a no-op context manager."""
+    mock_health = MagicMock()
+    mock_run = MagicMock()
+    # Attributes mutated by the poller must be real ints so += works.
+    mock_run.error_count = 0
+    mock_run.records_in = 0
+    mock_run.records_written = 0
+    mock_run.last_cursor = None
+
+    @contextmanager
+    def _run_ctx(source):
+        yield mock_run
+
+    mock_health.run = _run_ctx
+    mock_health.record_error = MagicMock()
+    return mock_health
+
+
 def _make_poller() -> MoneoPoller:
-    """Instantiate MoneoPoller and replace its HTTP client with a no-op mock."""
+    """Instantiate MoneoPoller and replace its HTTP client and health service with mocks."""
     p = MoneoPoller()
     p.client = MagicMock()
+    p._health = _make_no_op_health()
     return p
 
 

@@ -6,6 +6,7 @@ from config import settings
 from services.moneo_poller import MoneoPoller
 from services.notification_dispatcher import dispatch_outbox
 from services.schedulers.alert_no_data_scheduler import check_no_data_alerts
+from services.sync_health_service import prune_sync_history
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,15 @@ def start_scheduler():
         trigger="interval",
         seconds=30,
         id="dispatch_notifications",
+        replace_existing=True,
+    )
+
+    _scheduler.add_job(
+        prune_sync_history,
+        trigger="cron",
+        hour=3,
+        minute=0,
+        id="prune_sync_history",
         replace_existing=True,
     )
 

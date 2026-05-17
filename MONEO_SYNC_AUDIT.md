@@ -503,6 +503,11 @@ hasn't pulled the new `.env.example`. Coordinate with team.
   acknowledged in backend/CLAUDE.md as a known gap.
 - **Switching to a "push" model.** MONEO does not document WebSocket
   / webhook / SSE endpoints. Polling is the only mechanism available.
+- **Alert-evaluator rollback coupling** — Slice 2 moved
+  AlertEvaluator to once-per-sensor on the latest persisted
+  reading just before the per-sensor commit; if that commit
+  rolls back, the alert side effects (outbox rows, etc.) roll
+  back with it. Tracked separately for a later slice.
 
 ---
 

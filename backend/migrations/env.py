@@ -25,6 +25,8 @@ import DAL.models.alert_route              # noqa: F401
 import DAL.models.alert_notification_outbox  # noqa: F401
 import DAL.models.annotation               # noqa: F401
 import DAL.models.kiosk_token              # noqa: F401
+import DAL.models.sync_run                 # noqa: F401
+import DAL.models.sync_error               # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

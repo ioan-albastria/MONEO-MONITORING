@@ -19,6 +19,7 @@ from routes.dashboard_routes import dashboard_router
 from routes.widget_routes import widget_router
 from routes.sensor_routes import sensor_router
 from routes.analytics_routes import analytics_router
+from routes.admin_sync_routes import admin_sync_router
 from routes.moneo_routes import moneo_router
 from routes.websocket_routes import ws_router
 from services.auth_service import AuthService
@@ -99,6 +100,7 @@ app.include_router(widget_router)
 app.include_router(sensor_router)
 app.include_router(analytics_router)
 app.include_router(moneo_router)
+app.include_router(admin_sync_router)
 app.include_router(ws_router)
 app.include_router(alert_router)
 app.include_router(annotation_router)

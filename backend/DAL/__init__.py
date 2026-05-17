@@ -11,6 +11,8 @@ from DAL.models import (
     AlertState,
     AlertRoute,
     AlertNotificationOutbox,
+    SyncRun,
+    SyncError,
 )
 
 __all__ = [
@@ -30,4 +32,6 @@ __all__ = [
     "AlertState",
     "AlertRoute",
     "AlertNotificationOutbox",
+    "SyncRun",
+    "SyncError",
 ]
