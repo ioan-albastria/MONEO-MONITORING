@@ -97,6 +97,17 @@ Two intentional deviations where style bindings could not be changed (constraint
 
 ---
 
+## Slice 4 Token Additions
+
+Added four sync-status palette tokens to the `@theme` block in `src/styles.css` (after the existing `--color-info` entry):
+
+- `--color-status-ok: oklch(0.70 0.12 155)` — mirrors `--color-success`; used for the "healthy" dot/badge.
+- `--color-status-warn: oklch(0.78 0.14 85)` — mirrors `--color-warning`; used for the "degraded" dot/badge.
+- `--color-status-error: oklch(0.62 0.16 30)` — mirrors `--color-danger`; used for the "failed" dot/badge and error banner.
+- `--color-status-pending: oklch(0.66 0.01 255)` — muted neutral; used for the "Awaiting first sync" (never-synced) dot.
+
+These are semantic aliases — keeping them separate from the raw `--color-success/warning/danger` tokens makes intent clear and lets us adjust sync-status colour independently in future without touching the base palette.
+
 ## TypeScript Changes
 
 None. All changes are limited to HTML templates, CSS files, build config, and e2e test selectors.

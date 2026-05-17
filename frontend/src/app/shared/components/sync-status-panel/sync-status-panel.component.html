@@ -1,0 +1,206 @@
+<div class="sync-panel">
+
+  <!-- Header -->
+  <div class="sync-panel__header">
+    <span class="sync-panel__title">Sync Status</span>
+    <button
+      type="button"
+      class="sync-panel__close-btn"
+      (click)="close()"
+      aria-label="Close sync status panel"
+    >
+      <span class="icon" style="font-size:18px">close</span>
+    </button>
+  </div>
+
+  <!-- Readings source -->
+  <div class="sync-panel__source">
+    <div class="sync-panel__source-header">
+      <span class="sync-panel__source-label">Readings</span>
+      <span class="sync-badge" [ngClass]="badgeClass(health.readings)">
+        {{ health.readings.derivedStatus }}
+      </span>
+    </div>
+
+    <ng-container *ngIf="health.readings.neverSynced; else readingsDetail">
+      <p class="sync-panel__never-synced">Awaiting first sync</p>
+    </ng-container>
+
+    <ng-template #readingsDetail>
+      <div class="sync-panel__rows">
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Last success</span>
+          <span class="sync-panel__row-value">
+            <ng-container *ngIf="health.readings.lastSuccessAt; else neverR">
+              {{ health.readings.lastSuccessAt | date:'medium' }}
+            </ng-container>
+            <ng-template #neverR><em>Never</em></ng-template>
+          </span>
+        </div>
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Lag</span>
+          <span class="sync-panel__row-value">{{ humanizeLag(health.readings.lagSeconds) }}</span>
+        </div>
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Last run</span>
+          <span class="sync-panel__row-value">
+            <ng-container *ngIf="health.readings.lastRunStartedAt; else noRunR">
+              {{ health.readings.lastRunStartedAt | date:'short' }}
+              <ng-container *ngIf="health.readings.lastRunFinishedAt">
+                → {{ health.readings.lastRunFinishedAt | date:'short' }}
+              </ng-container>
+              <ng-container *ngIf="!health.readings.lastRunFinishedAt">
+                → <em>in progress</em>
+              </ng-container>
+            </ng-container>
+            <ng-template #noRunR>—</ng-template>
+          </span>
+        </div>
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Records in / written</span>
+          <span class="sync-panel__row-value">
+            {{ health.readings.recordsIn }} / {{ health.readings.recordsWritten }}
+          </span>
+        </div>
+
+        <div
+          class="sync-panel__row"
+          title="Counts both 'failed' runs and 'partial' runs (where some sensors errored but readings still flowed)."
+        >
+          <span class="sync-panel__row-label sync-panel__row-label--hint">
+            Consecutive failures
+            <span class="sync-panel__hint-icon" aria-hidden="true">ⓘ</span>
+          </span>
+          <span class="sync-panel__row-value">{{ health.readings.consecutiveFailures }}</span>
+        </div>
+
+        <div class="sync-panel__row" *ngIf="health.readings.lastErrorKind">
+          <span class="sync-panel__row-label">Last error</span>
+          <span class="sync-panel__row-value sync-panel__error-text">
+            <strong>{{ health.readings.lastErrorKind }}:</strong>&nbsp;
+            <ng-container *ngIf="health.readings.lastErrorMessage as msg">
+              <ng-container *ngIf="msg.length <= 120 || showMoreReadingsError">{{ msg }}</ng-container>
+              <ng-container *ngIf="msg.length > 120 && !showMoreReadingsError">
+                {{ msg | slice:0:120 }}&hellip;
+                <button
+                  type="button"
+                  class="sync-panel__expand-btn"
+                  (click)="showMoreReadingsError = true"
+                >show more</button>
+              </ng-container>
+            </ng-container>
+          </span>
+        </div>
+
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Metadata source -->
+  <div class="sync-panel__source">
+    <div class="sync-panel__source-header">
+      <span class="sync-panel__source-label">Metadata</span>
+      <span class="sync-badge" [ngClass]="badgeClass(health.metadata)">
+        {{ health.metadata.derivedStatus }}
+      </span>
+    </div>
+
+    <ng-container *ngIf="health.metadata.neverSynced; else metadataDetail">
+      <p class="sync-panel__never-synced">Awaiting first sync</p>
+    </ng-container>
+
+    <ng-template #metadataDetail>
+      <div class="sync-panel__rows">
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Last success</span>
+          <span class="sync-panel__row-value">
+            <ng-container *ngIf="health.metadata.lastSuccessAt; else neverM">
+              {{ health.metadata.lastSuccessAt | date:'medium' }}
+            </ng-container>
+            <ng-template #neverM><em>Never</em></ng-template>
+          </span>
+        </div>
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Lag</span>
+          <span class="sync-panel__row-value">{{ humanizeLag(health.metadata.lagSeconds) }}</span>
+        </div>
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Last run</span>
+          <span class="sync-panel__row-value">
+            <ng-container *ngIf="health.metadata.lastRunStartedAt; else noRunM">
+              {{ health.metadata.lastRunStartedAt | date:'short' }}
+              <ng-container *ngIf="health.metadata.lastRunFinishedAt">
+                → {{ health.metadata.lastRunFinishedAt | date:'short' }}
+              </ng-container>
+              <ng-container *ngIf="!health.metadata.lastRunFinishedAt">
+                → <em>in progress</em>
+              </ng-container>
+            </ng-container>
+            <ng-template #noRunM>—</ng-template>
+          </span>
+        </div>
+
+        <div class="sync-panel__row">
+          <span class="sync-panel__row-label">Records in / written</span>
+          <span class="sync-panel__row-value">
+            {{ health.metadata.recordsIn }} / {{ health.metadata.recordsWritten }}
+          </span>
+        </div>
+
+        <div
+          class="sync-panel__row"
+          title="Counts both 'failed' runs and 'partial' runs (where some sensors errored but readings still flowed)."
+        >
+          <span class="sync-panel__row-label sync-panel__row-label--hint">
+            Consecutive failures
+            <span class="sync-panel__hint-icon" aria-hidden="true">ⓘ</span>
+          </span>
+          <span class="sync-panel__row-value">{{ health.metadata.consecutiveFailures }}</span>
+        </div>
+
+        <div class="sync-panel__row" *ngIf="health.metadata.lastErrorKind">
+          <span class="sync-panel__row-label">Last error</span>
+          <span class="sync-panel__row-value sync-panel__error-text">
+            <strong>{{ health.metadata.lastErrorKind }}:</strong>&nbsp;
+            <ng-container *ngIf="health.metadata.lastErrorMessage as msg">
+              <ng-container *ngIf="msg.length <= 120 || showMoreMetadataError">{{ msg }}</ng-container>
+              <ng-container *ngIf="msg.length > 120 && !showMoreMetadataError">
+                {{ msg | slice:0:120 }}&hellip;
+                <button
+                  type="button"
+                  class="sync-panel__expand-btn"
+                  (click)="showMoreMetadataError = true"
+                >show more</button>
+              </ng-container>
+            </ng-container>
+          </span>
+        </div>
+
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Footer -->
+  <div class="sync-panel__footer">
+    <span class="sync-panel__updated">
+      Updated {{ relativeTime(health.fetchedAt) }}
+    </span>
+    <button
+      type="button"
+      class="sync-panel__refresh-btn"
+      (click)="refresh()"
+      title="Refresh now"
+    >
+      <span class="icon" style="font-size:16px">refresh</span>
+      Refresh
+    </button>
+  </div>
+
+</div>

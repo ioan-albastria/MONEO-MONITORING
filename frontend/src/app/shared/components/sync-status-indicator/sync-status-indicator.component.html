@@ -1,0 +1,29 @@
+<ng-container *ngIf="health">
+  <div class="sync-indicator-wrapper">
+    <button
+      type="button"
+      class="sync-indicator-pill"
+      [attr.aria-label]="ariaLabel"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="isPanelOpen"
+      (click)="togglePanel()"
+      (keydown.enter)="$event.preventDefault(); togglePanel()"
+      (keydown.space)="$event.preventDefault(); togglePanel()"
+    >
+      <span class="sync-dot" [ngClass]="dotClass"></span>
+      <span class="sync-label">{{ label }}</span>
+    </button>
+
+    <div
+      *ngIf="isPanelOpen"
+      class="sync-panel-anchor"
+      role="dialog"
+      aria-label="Sync status details"
+    >
+      <app-sync-status-panel
+        [health]="health"
+        (closePanel)="closePanel()"
+      ></app-sync-status-panel>
+    </div>
+  </div>
+</ng-container>

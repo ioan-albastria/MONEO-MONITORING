@@ -1,0 +1,29 @@
+<ng-container *ngIf="showBanner && health">
+  <div class="sync-error-banner" role="alert" aria-live="assertive">
+    <span class="sync-error-banner__icon icon" aria-hidden="true">sync_problem</span>
+    <span class="sync-error-banner__text">
+      Sync failed — readings may be stale.
+    </span>
+    <button
+      type="button"
+      class="sync-error-banner__details-btn"
+      (click)="openPanel()"
+    >View details</button>
+    <button
+      type="button"
+      class="sync-error-banner__dismiss-btn"
+      (click)="dismiss()"
+      aria-label="Dismiss sync failure banner"
+    >
+      <span class="icon" style="font-size:18px">close</span>
+    </button>
+  </div>
+
+  <!-- Inline panel opened from the banner's "View details" link -->
+  <div *ngIf="isPanelOpen && health" class="sync-error-banner__panel-wrapper">
+    <app-sync-status-panel
+      [health]="health"
+      (closePanel)="closePanel()"
+    ></app-sync-status-panel>
+  </div>
+</ng-container>
