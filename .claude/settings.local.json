@@ -4,7 +4,8 @@
       "Bash",
       "PowerShell",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "WebFetch(domain:api-docs.moneo.ifm)"
     ],
     "deny": []
   },

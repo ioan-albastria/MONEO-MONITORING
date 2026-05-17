@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Float, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Float, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from DAL.db_context import Base
 
@@ -9,6 +9,7 @@ class SensorReading(Base):
     __table_args__ = (
         Index("idx_sensor_timestamp", "sensor_id", "timestamp"),
         Index("idx_timestamp", "timestamp"),
+        UniqueConstraint("sensor_id", "timestamp", name="uq_sensor_reading_sensor_timestamp"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

@@ -13,6 +13,9 @@ class Sensor(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     moneo_sensor_id: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    # The deep reference.dataSource.id from /nodes — required by /processdata.
+    # Distinct from moneo_sensor_id, which is the topology node id (our stable public handle).
+    moneo_datasource_ref: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     sensor_type: Mapped[str] = mapped_column(String, nullable=False)

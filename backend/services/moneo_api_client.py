@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import Any, Optional
 
 import httpx
@@ -23,7 +22,7 @@ class MoneoApiClient:
         )
 
     async def get_devices(self) -> list[dict]:
-        """Fetch all devices/assets registered in MONEO."""
+        """Fetch all topology nodes from MONEO (/nodes)."""
         try:
             response = await self._client.get(f"{self.base_url}/nodes")
             response.raise_for_status()
@@ -35,64 +34,101 @@ class MoneoApiClient:
             logger.error("MONEO get_devices error: %s", e)
             raise
 
-    async def get_sensor_readings(
+    async def get_processdata(
         self,
-        sensor_id: str,
-        from_timestamp: datetime,
-        to_timestamp: datetime,
-    ) -> list[dict]:
-        """Fetch sensor readings within a time range."""
+        device_id: str,
+        datasource_id: str,
+        from_ms: int | None = None,
+        to_ms: int | None = None,
+        order: str = "+timestamp",
+        page: int = 1,
+        page_size: int = 500,
+    ) -> dict:
+        """
+        Fetch process data from MONEO for a specific device + datasource pair.
+
+        WHY TWO IDS:
+          Every MONEO node has a topology "id" (UUID). DataSource nodes also carry a
+          separate reference.dataSource.id — a 128-char hex hash. These are different
+          values. The /processdata endpoint requires:
+            device_id     = reference.deviceId   (NOT the Device node's own "id")
+            datasource_id = reference.dataSource.id  (NOT the DataSource node's own "id")
+          Using the topology node ids returns 200 with totalCount=0 — a silent failure.
+          Verified against the live sandbox (see tmp/moneo-samples/).
+
+        TIMESTAMPS:
+          fromTimestamp / toTimestamp are UTC int64 milliseconds since epoch.
+          Response data[*].timestamp is also UTC int64 ms — parse with:
+            datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+
+        QUALITY FIELD:
+          The API docs describe a per-reading "quality" field. The live API omits it
+          entirely in observed responses. Do not rely on it being present.
+
+        Returns the full envelope: {pageNumber, pageSize, totalPages, totalCount, data}.
+        """
+        params: dict[str, Any] = {
+            "orderBy": order,
+            "pageNumber": page,
+            "pageSize": page_size,
+        }
+        if from_ms is not None:
+            params["fromTimestamp"] = from_ms
+        if to_ms is not None:
+            params["toTimestamp"] = to_ms
+
         try:
-            params = {
-                "from": from_timestamp.isoformat(),
-                "to": to_timestamp.isoformat(),
-            }
             response = await self._client.get(
-                f"{self.base_url}/sensors/{sensor_id}/readings",
+                f"{self.base_url}/processdata/device/{device_id}/datasource/{datasource_id}",
                 params=params,
             )
             response.raise_for_status()
-            return response.json().get("readings", [])
-        except httpx.HTTPStatusError as e:
-            logger.error("MONEO get_sensor_readings HTTP error %s: %s", e.response.status_code, e)
-            raise
-        except Exception as e:
-            logger.error("MONEO get_sensor_readings error: %s", e)
-            raise
-
-    async def get_latest_sensor_reading(self, sensor_id: str) -> Optional[dict]:
-        """Fetch the most recent reading for a sensor. Returns None on failure."""
-        try:
-            response = await self._client.get(f"{self.base_url}/sensors/{sensor_id}/latest")
-            response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            logger.warning(
-                "MONEO latest reading HTTP error %s for sensor %s",
+            logger.error(
+                "MONEO get_processdata HTTP error %s for device=%s datasource=%s: %s",
                 e.response.status_code,
-                sensor_id,
+                device_id,
+                datasource_id,
+                e,
             )
-            return None
+            raise
         except Exception as e:
-            logger.warning("MONEO latest reading error for sensor %s: %s", sensor_id, e)
-            return None
+            logger.error(
+                "MONEO get_processdata error for device=%s datasource=%s: %s",
+                device_id,
+                datasource_id,
+                e,
+            )
+            raise
 
     async def raw_get(self, path: str, params: dict[str, str] | None = None) -> Any:
         """Proxy a raw GET request to the MONEO API."""
         try:
-            response = await self._client.get(f"{self.base_url}/{path.lstrip('/')}", params=params)
+            response = await self._client.get(
+                f"{self.base_url}/{path.lstrip('/')}", params=params
+            )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error("MONEO raw GET HTTP error %s for path %s: %s", e.response.status_code, path, e)
+            logger.error(
+                "MONEO raw GET HTTP error %s for path %s: %s",
+                e.response.status_code,
+                path,
+                e,
+            )
             raise
         except Exception as e:
             logger.error("MONEO raw GET error for path %s: %s", path, e)
             raise
 
-    async def raw_get_response(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
+    async def raw_get_response(
+        self, path: str, params: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Proxy a raw GET request and return HTTP response diagnostics."""
-        response = await self._client.get(f"{self.base_url}/{path.lstrip('/')}", params=params)
+        response = await self._client.get(
+            f"{self.base_url}/{path.lstrip('/')}", params=params
+        )
         try:
             body = response.json()
         except ValueError:
