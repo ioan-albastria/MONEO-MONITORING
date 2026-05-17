@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
 from DAL import SessionLocal, Sensor, SensorReading, Asset
@@ -12,6 +11,63 @@ from services.moneo_api_client import MoneoApiClient
 logger = logging.getLogger(__name__)
 
 
+def bulk_upsert_readings(db, sensor_id: int, rows: list[dict]) -> "datetime | None":
+    """
+    Bulk-insert one page of MONEO process-data rows for a single sensor.
+
+    Uses dialect-specific INSERT … ON CONFLICT DO NOTHING so that overlapping
+    windows (e.g. the +1 ms watermark boundary) are handled without exceptions.
+
+    Returns the max-observed timestamp across *all input rows* as a UTC datetime,
+    or None if rows is empty.
+
+    Why max-observed, not max-newly-inserted:
+      last_seen_at must reflect what MONEO returned, not just what was new.
+      If a row already existed (duplicate conflict) it still represents data that
+      MONEO has emitted — advancing the watermark past it prevents the next cycle
+      from re-fetching the same window forever.
+    """
+    if not rows:
+        return None
+
+    values = []
+    max_ts: "datetime | None" = None
+    for row in rows:
+        raw_ts = row.get("timestamp")
+        if raw_ts is None:
+            continue
+        ts = datetime.fromtimestamp(raw_ts / 1000, tz=timezone.utc)
+        values.append({
+            "sensor_id": sensor_id,
+            "timestamp": ts,
+            "value": row["value"],
+            # "quality" is documented but omitted from live responses; default to "ok".
+            "status": row.get("quality", "ok"),
+        })
+        if max_ts is None or ts > max_ts:
+            max_ts = ts
+
+    if not values:
+        return None
+
+    dialect = db.get_bind().dialect.name
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        stmt = pg_insert(SensorReading).values(values).on_conflict_do_nothing(
+            index_elements=["sensor_id", "timestamp"]
+        )
+    elif dialect == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+        stmt = sqlite_insert(SensorReading).values(values).on_conflict_do_nothing(
+            index_elements=["sensor_id", "timestamp"]
+        )
+    else:
+        raise NotImplementedError(f"Dialect {dialect!r} not supported")
+
+    db.execute(stmt)
+    return max_ts
+
+
 class MoneoPoller:
     """Polls the MONEO API and persists sensor readings to the database."""
 
@@ -19,21 +75,20 @@ class MoneoPoller:
         self.client = MoneoApiClient()
 
     async def poll_latest_readings(self):
-        """Fetch the latest reading for every active sensor and store it."""
+        """Watermark-driven catch-up: fetch every point since last_seen_at, paginating
+        until caught up or the MAX_BACKFILL_HOURS cap is reached.  After a 30-min outage
+        the next cycle automatically recovers all missed readings."""
         db = SessionLocal()
         try:
-            # Eager-load asset to avoid N+1 queries across sensors.
             sensors = (
                 db.query(Sensor)
                 .filter(Sensor.is_active == True)
                 .options(joinedload(Sensor.asset))
                 .all()
             )
-            new_readings = 0
 
             for sensor in sensors:
-                # Both the parent device id and the deep datasource ref are required
-                # by /processdata. Skip with a single WARNING if either is missing.
+                # Both ids are required by /processdata; skip with a WARNING if either is absent.
                 if sensor.asset is None:
                     logger.warning(
                         "Sensor %d (%s): asset is None — skipping poll (run metadata sync)",
@@ -49,61 +104,93 @@ class MoneoPoller:
                     )
                     continue
 
-                try:
-                    envelope = await self.client.get_processdata(
-                        device_id=sensor.asset.moneo_asset_id,
-                        datasource_id=sensor.moneo_datasource_ref,
-                        page_size=1,
-                    )
-                except Exception as e:
-                    logger.error("Sensor %d: get_processdata failed: %s", sensor.id, e)
-                    continue
+                # Compute the fetch window.
+                now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+                cap_ms = now_ms - settings.max_backfill_hours * 3600 * 1000
 
-                for raw in envelope.get("data", []):
-                    raw_ts = raw.get("timestamp")
-                    if raw_ts is None:
-                        continue
+                if sensor.last_seen_at:
+                    watermark_ms = int(sensor.last_seen_at.timestamp() * 1000)
+                    from_ms = max(watermark_ms + 1, cap_ms)
+                    if watermark_ms < cap_ms:
+                        gap_s = (cap_ms - watermark_ms) / 1000
+                        logger.info(
+                            "Sensor %d: last_seen_at is %.0fs older than the %dh backfill cap; "
+                            "gap will not be recovered",
+                            sensor.id, gap_s, settings.max_backfill_hours,
+                        )
+                else:
+                    from_ms = cap_ms
 
-                    # Live API returns UTC int64 milliseconds.
-                    # datetime.fromisoformat() would raise TypeError on an int.
-                    timestamp = datetime.fromtimestamp(raw_ts / 1000, tz=timezone.utc)
+                to_ms = now_ms
 
-                    reading = SensorReading(
-                        sensor_id=sensor.id,
-                        value=raw.get("value"),
-                        timestamp=timestamp,
-                        # "quality" is documented but omitted from live responses;
-                        # fall back to "ok" to keep the column non-null.
-                        status=raw.get("quality", "ok"),
-                    )
+                page = 1
+                max_ts_seen: "datetime | None" = None
 
-                    # Portable ON CONFLICT DO NOTHING via savepoint:
-                    #   A SAVEPOINT rolls back only the nested transaction on IntegrityError,
-                    #   leaving the outer transaction intact. This works on both PostgreSQL
-                    #   and SQLite (both support SAVEPOINTs via ANSI SQL), so the same code
-                    #   path covers production Postgres and the in-memory SQLite test fixture.
-                    #   The Postgres-native alternative — sqlalchemy.dialects.postgresql.insert
-                    #   with on_conflict_do_nothing() — is faster for bulk inserts but not
-                    #   SQLite-portable; savepoints are the right choice here since Slice 1
-                    #   only inserts one row per sensor per poll cycle.
+                while page <= settings.moneo_poll_max_pages_per_sensor:
                     try:
-                        with db.begin_nested():
-                            db.add(reading)
-                            db.flush()
-                        # Only reached when the INSERT succeeded (no duplicate).
-                        sensor.last_seen_at = timestamp
-                        new_readings += 1
-                        if settings.alert_evaluation_enabled:
-                            AlertEvaluator().evaluate(db, sensor, reading)
-                    except IntegrityError:
-                        pass  # duplicate (sensor_id, timestamp) — already stored
+                        env = await self.client.get_processdata(
+                            device_id=sensor.asset.moneo_asset_id,
+                            datasource_id=sensor.moneo_datasource_ref,
+                            from_ms=from_ms,
+                            to_ms=to_ms,
+                            order="+timestamp",
+                            page=page,
+                            page_size=500,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "Sensor %d: get_processdata page %d failed: %s",
+                            sensor.id, page, e,
+                        )
+                        break
 
-            db.commit()
-            logger.info(
-                "Poll complete: %d new readings from %d active sensors",
-                new_readings,
-                len(sensors),
-            )
+                    rows = env.get("data") or []
+                    if not rows:
+                        break
+
+                    page_max_ts = bulk_upsert_readings(db, sensor.id, rows)
+                    if page_max_ts is not None:
+                        max_ts_seen = (
+                            page_max_ts
+                            if max_ts_seen is None
+                            else max(max_ts_seen, page_max_ts)
+                        )
+
+                    total_count = env.get("totalCount") or 0
+                    if page * 500 >= total_count:
+                        break
+                    page += 1
+                else:
+                    # while-else: runs only when the condition became False (page cap hit),
+                    # NOT when the loop was exited via break.
+                    logger.warning(
+                        "Sensor %d hit max_pages cap (%d); remaining backlog "
+                        "will be picked up next cycle",
+                        sensor.id,
+                        settings.moneo_poll_max_pages_per_sensor,
+                    )
+
+                if max_ts_seen is not None:
+                    sensor.last_seen_at = max_ts_seen
+                    if settings.alert_evaluation_enabled:
+                        latest = (
+                            db.query(SensorReading)
+                            .filter(SensorReading.sensor_id == sensor.id)
+                            .order_by(SensorReading.timestamp.desc())
+                            .first()
+                        )
+                        if latest:
+                            AlertEvaluator().evaluate(db, sensor, latest)
+
+                # Commit once per sensor so a failure mid-fleet does not lose
+                # already-fetched data for sensors processed earlier in this cycle.
+                try:
+                    db.commit()
+                except Exception as e:
+                    logger.error("Sensor %d: commit failed: %s", sensor.id, e)
+                    db.rollback()
+
+            logger.info("Poll complete: processed %d active sensors", len(sensors))
         except Exception as e:
             logger.error("poll_latest_readings failed: %s", e)
             db.rollback()
@@ -151,6 +238,7 @@ class MoneoPoller:
                         description=device.get("description"),
                         location=device.get("location"),
                         extra_metadata=device,
+                        kind="device",
                     )
                     db.add(asset)
                     db.flush()

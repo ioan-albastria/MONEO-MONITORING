@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     sensor_poll_interval_seconds: int = 300
     auto_migrate: bool = True
     alert_evaluation_enabled: bool = True
+    max_backfill_hours: int = 24
+    moneo_poll_max_pages_per_sensor: int = 100
     smtp_host: str = "localhost"
     smtp_port: int = 587
     smtp_username: str = ""

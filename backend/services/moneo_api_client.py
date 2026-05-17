@@ -1,9 +1,23 @@
+import asyncio
 import logging
+import random
 from typing import Any, Optional
 
 import httpx
 
 from config import settings
+
+# Retry policy for get_processdata (applied per-call, not per-sensor-cycle).
+#   Retryable:   ConnectError / ReadTimeout; HTTP 429, 500, 502, 503, 504.
+#   Not retried: 401, 403, 404 — these are config bugs or auth failures that must
+#                surface immediately rather than be silently retried (see Slice 5).
+#   Strategy:    Full jitter — delay = uniform(0, base * 2^attempt), base=0.5 s.
+#   On 429:      Retry-After header (seconds) is honoured as a lower bound on the delay.
+#   Max attempts: 3 (initial try + up to 2 retries).
+_RETRY_ON_STATUS = frozenset({429, 500, 502, 503, 504})
+_NO_RETRY_STATUS = frozenset({401, 403, 404})
+_MAX_ATTEMPTS = 3
+_BASE_DELAY_S = 0.5
 
 logger = logging.getLogger(__name__)
 
@@ -77,30 +91,54 @@ class MoneoApiClient:
         if to_ms is not None:
             params["toTimestamp"] = to_ms
 
-        try:
-            response = await self._client.get(
-                f"{self.base_url}/processdata/device/{device_id}/datasource/{datasource_id}",
-                params=params,
-            )
+        url = f"{self.base_url}/processdata/device/{device_id}/datasource/{datasource_id}"
+
+        for attempt in range(_MAX_ATTEMPTS):
+            try:
+                response = await self._client.get(url, params=params)
+            except (httpx.ConnectError, httpx.ReadTimeout) as exc:
+                if attempt == _MAX_ATTEMPTS - 1:
+                    logger.error(
+                        "MONEO get_processdata connection error after %d attempts "
+                        "for device=%s datasource=%s: %s",
+                        _MAX_ATTEMPTS, device_id, datasource_id, exc,
+                    )
+                    raise
+                delay = random.uniform(0, _BASE_DELAY_S * (2 ** attempt))
+                await asyncio.sleep(delay)
+                continue
+
+            if response.status_code in _NO_RETRY_STATUS:
+                logger.error(
+                    "MONEO get_processdata HTTP %s for device=%s datasource=%s (no retry)",
+                    response.status_code, device_id, datasource_id,
+                )
+                response.raise_for_status()
+
+            if response.status_code in _RETRY_ON_STATUS:
+                if attempt == _MAX_ATTEMPTS - 1:
+                    logger.error(
+                        "MONEO get_processdata HTTP %s after %d attempts "
+                        "for device=%s datasource=%s",
+                        response.status_code, _MAX_ATTEMPTS, device_id, datasource_id,
+                    )
+                    response.raise_for_status()
+                if response.status_code == 429:
+                    try:
+                        retry_after = float(response.headers.get("Retry-After", 0))
+                    except (ValueError, TypeError):
+                        retry_after = 0.0
+                    delay = max(retry_after, random.uniform(0, _BASE_DELAY_S * (2 ** attempt)))
+                else:
+                    delay = random.uniform(0, _BASE_DELAY_S * (2 ** attempt))
+                await asyncio.sleep(delay)
+                continue
+
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                "MONEO get_processdata HTTP error %s for device=%s datasource=%s: %s",
-                e.response.status_code,
-                device_id,
-                datasource_id,
-                e,
-            )
-            raise
-        except Exception as e:
-            logger.error(
-                "MONEO get_processdata error for device=%s datasource=%s: %s",
-                device_id,
-                datasource_id,
-                e,
-            )
-            raise
+
+        # Unreachable: every branch on the final attempt raises or returns.
+        raise RuntimeError("get_processdata exhausted retries without returning or raising")
 
     async def raw_get(self, path: str, params: dict[str, str] | None = None) -> Any:
         """Proxy a raw GET request to the MONEO API."""

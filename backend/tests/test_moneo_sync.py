@@ -1,19 +1,31 @@
 """
-Integration-style tests for the MONEO sync pipeline (Slice 1).
+Integration-style tests for the MONEO sync pipeline (Slices 1 and 2).
 
 Uses an in-memory SQLite DB created via Base.metadata.create_all() (same pattern
 as conftest.py) and AsyncMock stubs in place of the live MONEO API client.
 
-Three scenarios:
-  (i)  /nodes response → sensors carry the deep moneo_datasource_ref id.
-  (ii) /processdata response → reading row appears; re-poll with same timestamp
-       does not insert a duplicate (idempotency via UniqueConstraint + savepoint).
+Slice 1 scenarios:
+  (i)   /nodes response → sensors carry the deep moneo_datasource_ref id.
+  (ii)  /processdata response → reading row appears; re-poll with same timestamp
+        does not insert a duplicate (idempotency via UniqueConstraint + bulk upsert).
   (iii) CalcDataSource node → persisted as sensor with correct sensor_type.
+
+Slice 2 scenarios (TestMoneoSyncSlice2):
+  (i)   Watermark resumption: last_seen_at advances to max(returned timestamps).
+  (ii)  Backfill cap: from_ms is clamped to now-MAX_BACKFILL_HOURS when watermark is stale.
+  (iii) Pagination: totalCount=1200 triggers three pages; idempotent on re-run.
+  (iv)  Backoff: 503×2 then 200 → success in 3 attempts; 401 → 1 attempt, no retry.
+  (v)   First-poll-ever: no last_seen_at → from_ms == now - MAX_BACKFILL_HOURS.
+  (vi)  Page-cap safety: loop exits after moneo_poll_max_pages_per_sensor pages.
 """
+import logging
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock, patch, call
 
+import httpx
+from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -179,6 +191,8 @@ class TestMoneoPollSync:
         with patch("services.moneo_poller.SessionLocal", side_effect=Session):
             with patch("services.moneo_poller.settings") as mock_cfg:
                 mock_cfg.alert_evaluation_enabled = False
+                mock_cfg.max_backfill_hours = 24
+                mock_cfg.moneo_poll_max_pages_per_sensor = 100
                 await poller.poll_latest_readings()
 
         session = Session()
@@ -191,6 +205,8 @@ class TestMoneoPollSync:
         with patch("services.moneo_poller.SessionLocal", side_effect=Session):
             with patch("services.moneo_poller.settings") as mock_cfg:
                 mock_cfg.alert_evaluation_enabled = False
+                mock_cfg.max_backfill_hours = 24
+                mock_cfg.moneo_poll_max_pages_per_sensor = 100
                 await poller.poll_latest_readings()
 
         session = Session()
@@ -222,3 +238,367 @@ class TestMoneoPollSync:
             assert sensor.moneo_datasource_ref == "deepid-calc456"
         finally:
             session.close()
+
+
+# ── Slice 2 test helpers ──────────────────────────────────────────────────────
+
+def _seed_sensor(Session, *, moneo_sensor_id, asset_moneo_id, last_seen_at=None):
+    """Create an Asset + Sensor and return the sensor id."""
+    session = Session()
+    try:
+        asset = Asset(moneo_asset_id=asset_moneo_id, name=f"Dev-{asset_moneo_id}")
+        session.add(asset)
+        session.flush()
+        sensor = Sensor(
+            moneo_sensor_id=moneo_sensor_id,
+            name=moneo_sensor_id,
+            sensor_type="DataSource",
+            unit="°C",
+            asset_id=asset.id,
+            moneo_datasource_ref=f"deepid-{moneo_sensor_id}",
+            last_seen_at=last_seen_at,
+        )
+        session.add(sensor)
+        session.commit()
+        return sensor.id
+    finally:
+        session.close()
+
+
+def _get_sensor(Session, moneo_sensor_id):
+    session = Session()
+    try:
+        return session.query(Sensor).filter(Sensor.moneo_sensor_id == moneo_sensor_id).first()
+    finally:
+        session.close()
+
+
+def _mock_settings(mock_cfg, *, max_backfill_hours=24, max_pages=100, alerts=False):
+    mock_cfg.alert_evaluation_enabled = alerts
+    mock_cfg.max_backfill_hours = max_backfill_hours
+    mock_cfg.moneo_poll_max_pages_per_sensor = max_pages
+
+
+def _make_processdata(rows_ms, total_count=None):
+    """Build a /processdata envelope from a list of (timestamp_ms, value) pairs."""
+    data = [{"timestamp": ts, "value": float(i)} for i, ts in enumerate(rows_ms)]
+    return {
+        "totalCount": total_count if total_count is not None else len(data),
+        "data": data,
+    }
+
+
+def _strip_tz(dt):
+    """Strip tzinfo for SQLite-safe comparison."""
+    return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+
+
+# ── Slice 2 tests ─────────────────────────────────────────────────────────────
+
+class TestMoneoSyncSlice2:
+
+    # (i) Watermark resumption ────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_watermark_resumption(self, Session):
+        """
+        After a poll that returns rows at T+1s and T+2s, last_seen_at advances
+        to T+2s regardless of what the previous watermark was.
+        """
+        T = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        T1_ms = int((T + timedelta(seconds=1)).timestamp() * 1000)
+        T2_ms = int((T + timedelta(seconds=2)).timestamp() * 1000)
+
+        _seed_sensor(Session, moneo_sensor_id="wm-sensor", asset_moneo_id="wm-device",
+                     last_seen_at=T)
+
+        stub = _make_processdata([T1_ms, T2_ms])
+        poller = _make_poller()
+        poller.client.get_processdata = AsyncMock(return_value=stub)
+
+        with patch("services.moneo_poller.SessionLocal", side_effect=Session):
+            with patch("services.moneo_poller.settings") as mock_cfg:
+                _mock_settings(mock_cfg)
+                await poller.poll_latest_readings()
+
+        sensor = _get_sensor(Session, "wm-sensor")
+        expected = _strip_tz(datetime.fromtimestamp(T2_ms / 1000, tz=timezone.utc))
+        actual = _strip_tz(sensor.last_seen_at)
+        assert actual == expected, f"last_seen_at should be T+2s; got {actual}"
+
+    # (ii) Backfill cap ───────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_backfill_cap_applied(self, Session):
+        """
+        When last_seen_at is 48h ago and MAX_BACKFILL_HOURS=24, from_ms passed to
+        the API client must be ~(now - 24h), not last_seen_at + 1ms.
+        """
+        now = datetime.now(timezone.utc)
+        stale = now - timedelta(hours=48)
+
+        _seed_sensor(Session, moneo_sensor_id="cap-sensor", asset_moneo_id="cap-device",
+                     last_seen_at=stale)
+
+        recent_ts = int((now - timedelta(hours=6)).timestamp() * 1000)
+        stub = _make_processdata([recent_ts])
+        poller = _make_poller()
+        poller.client.get_processdata = AsyncMock(return_value=stub)
+
+        before_ms = int(now.timestamp() * 1000)
+        with patch("services.moneo_poller.SessionLocal", side_effect=Session):
+            with patch("services.moneo_poller.settings") as mock_cfg:
+                _mock_settings(mock_cfg, max_backfill_hours=24)
+                await poller.poll_latest_readings()
+        after_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        actual_from_ms = poller.client.get_processdata.call_args.kwargs["from_ms"]
+        cap_lower = before_ms - 24 * 3600 * 1000
+        cap_upper = after_ms - 24 * 3600 * 1000
+
+        # from_ms must be near now-24h, not near stale+1ms (which would be ~now-48h)
+        assert cap_lower <= actual_from_ms <= cap_upper, (
+            f"from_ms ({actual_from_ms}) should be ~now-24h [{cap_lower}, {cap_upper}]"
+        )
+        stale_ms_plus1 = int(stale.timestamp() * 1000) + 1
+        assert actual_from_ms != stale_ms_plus1, "Should use cap, not raw watermark+1"
+
+    # (iii) Pagination + idempotency ──────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_pagination_all_pages_fetched(self, Session):
+        """
+        totalCount=1200 with page_size=500 triggers three get_processdata calls.
+        bulk_upsert_readings is called once per page.
+        A second pass with identical data inserts zero new rows.
+        """
+        BASE_TS = 1_700_000_000_000
+        sensor_id = _seed_sensor(
+            Session, moneo_sensor_id="pg-sensor", asset_moneo_id="pg-device"
+        )
+
+        def make_page(offset, count=500):
+            return {
+                "totalCount": 1200,
+                "data": [
+                    {"timestamp": BASE_TS + (offset + i) * 1000, "value": float(i)}
+                    for i in range(count)
+                ],
+            }
+
+        page1 = make_page(0, 500)
+        page2 = make_page(500, 500)
+        page3 = make_page(1000, 200)
+
+        poller = _make_poller()
+        poller.client.get_processdata = AsyncMock(side_effect=[page1, page2, page3])
+
+        # Spy on bulk_upsert_readings call count
+        from services import moneo_poller as mp_module
+        bulk_calls = []
+        original_bulk = mp_module.bulk_upsert_readings
+
+        def spy_bulk(db, sid, rows):
+            bulk_calls.append(len(rows))
+            return original_bulk(db, sid, rows)
+
+        with patch("services.moneo_poller.bulk_upsert_readings", side_effect=spy_bulk):
+            with patch("services.moneo_poller.SessionLocal", side_effect=Session):
+                with patch("services.moneo_poller.settings") as mock_cfg:
+                    _mock_settings(mock_cfg)
+                    await poller.poll_latest_readings()
+
+        assert poller.client.get_processdata.call_count == 3, "Should fetch exactly 3 pages"
+        assert len(bulk_calls) == 3, "bulk_upsert_readings called once per page"
+        assert bulk_calls == [500, 500, 200]
+
+        session = Session()
+        count_first = session.query(SensorReading).filter(
+            SensorReading.sensor_id == sensor_id
+        ).count()
+        session.close()
+        assert count_first == 1200, f"Expected 1200 rows after first pass; got {count_first}"
+
+        # Second pass with same data — ON CONFLICT DO NOTHING must prevent duplicates
+        poller.client.get_processdata = AsyncMock(side_effect=[page1, page2, page3])
+        with patch("services.moneo_poller.SessionLocal", side_effect=Session):
+            with patch("services.moneo_poller.settings") as mock_cfg:
+                _mock_settings(mock_cfg)
+                await poller.poll_latest_readings()
+
+        session = Session()
+        count_second = session.query(SensorReading).filter(
+            SensorReading.sensor_id == sensor_id
+        ).count()
+        session.close()
+        assert count_second == 1200, "Second pass must not insert duplicate rows"
+
+    # (iv-a) Backoff: 503 × 2 then 200 ───────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_backoff_retries_on_503(self):
+        """
+        Two 503 responses followed by 200 must succeed and make exactly 3 HTTP calls.
+        asyncio.sleep is mocked so the test runs instantly.
+        """
+        from services.moneo_api_client import MoneoApiClient
+
+        client = MoneoApiClient()
+        attempt_log = []
+
+        def make_resp(status, json_body=None):
+            r = MagicMock()
+            r.status_code = status
+            r.headers = {}
+            r.json.return_value = json_body
+            if status >= 400:
+                r.raise_for_status.side_effect = httpx.HTTPStatusError(
+                    f"HTTP {status}", request=MagicMock(), response=r
+                )
+            else:
+                r.raise_for_status.return_value = None
+            return r
+
+        responses = [
+            make_resp(503),
+            make_resp(503),
+            make_resp(200, {"pageNumber": 1, "pageSize": 1, "totalPages": 1,
+                            "totalCount": 1, "data": [{"timestamp": 1_700_000_000_000, "value": 7.0}]}),
+        ]
+
+        async def mock_get(*args, **kwargs):
+            r = responses[len(attempt_log)]
+            attempt_log.append(r.status_code)
+            return r
+
+        with patch.object(client._client, "get", side_effect=mock_get):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                result = await client.get_processdata("dev-1", "ds-1")
+
+        assert len(attempt_log) == 3, f"Expected 3 attempts; got {len(attempt_log)}: {attempt_log}"
+        assert result["totalCount"] == 1
+
+    # (iv-b) No retry on 401 ──────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_no_retry_on_401(self):
+        """
+        A 401 response must raise immediately with exactly 1 HTTP call — no retry.
+        """
+        from services.moneo_api_client import MoneoApiClient
+        import pytest
+
+        client = MoneoApiClient()
+        call_count = 0
+
+        def make_401():
+            r = MagicMock()
+            r.status_code = 401
+            r.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "401 Unauthorized", request=MagicMock(), response=r
+            )
+            return r
+
+        async def mock_get(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return make_401()
+
+        with patch.object(client._client, "get", side_effect=mock_get):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(httpx.HTTPStatusError):
+                    await client.get_processdata("dev-1", "ds-1")
+
+        assert call_count == 1, f"Should not retry on 401; got {call_count} calls"
+
+    # (v) First-poll-ever ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_first_poll_uses_backfill_cap(self, Session):
+        """
+        When last_seen_at is None, from_ms must equal now - MAX_BACKFILL_HOURS * 3600 * 1000
+        (within a small tolerance to account for test execution time).
+        """
+        _seed_sensor(
+            Session, moneo_sensor_id="new-sensor", asset_moneo_id="new-device",
+            last_seen_at=None
+        )
+
+        stub = {"totalCount": 0, "data": []}
+        poller = _make_poller()
+        poller.client.get_processdata = AsyncMock(return_value=stub)
+
+        before_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        with patch("services.moneo_poller.SessionLocal", side_effect=Session):
+            with patch("services.moneo_poller.settings") as mock_cfg:
+                _mock_settings(mock_cfg, max_backfill_hours=24)
+                await poller.poll_latest_readings()
+        after_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        actual_from_ms = poller.client.get_processdata.call_args.kwargs["from_ms"]
+        cap_lower = before_ms - 24 * 3600 * 1000
+        cap_upper = after_ms - 24 * 3600 * 1000
+
+        assert cap_lower <= actual_from_ms <= cap_upper, (
+            f"from_ms ({actual_from_ms}) should be ~now-24h [{cap_lower}, {cap_upper}]"
+        )
+
+    # (vi) Page-cap safety ────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_cap_pages_safety(self, Session, caplog):
+        """
+        When totalCount=200_000, the loop must exit after moneo_poll_max_pages_per_sensor
+        pages, log a WARNING, and advance last_seen_at to the max timestamp of the
+        pages that were fetched.
+        """
+        MAX_PAGES = 2
+        ROWS_PER_PAGE = 500
+        BASE_TS = 1_700_000_000_000
+
+        _seed_sensor(
+            Session, moneo_sensor_id="cap-pg-sensor", asset_moneo_id="cap-pg-device",
+            last_seen_at=None
+        )
+
+        def make_capped_page(page_num):
+            offset = (page_num - 1) * ROWS_PER_PAGE
+            return {
+                "totalCount": 200_000,
+                "data": [
+                    {"timestamp": BASE_TS + (offset + i) * 1000, "value": float(i)}
+                    for i in range(ROWS_PER_PAGE)
+                ],
+            }
+
+        poller = _make_poller()
+        poller.client.get_processdata = AsyncMock(
+            side_effect=[make_capped_page(1), make_capped_page(2)]
+        )
+
+        with caplog.at_level(logging.WARNING, logger="services.moneo_poller"):
+            with patch("services.moneo_poller.SessionLocal", side_effect=Session):
+                with patch("services.moneo_poller.settings") as mock_cfg:
+                    _mock_settings(mock_cfg, max_pages=MAX_PAGES)
+                    await poller.poll_latest_readings()
+
+        assert poller.client.get_processdata.call_count == MAX_PAGES, (
+            f"Should stop after {MAX_PAGES} pages; "
+            f"got {poller.client.get_processdata.call_count}"
+        )
+
+        assert any("max_pages cap" in r.message for r in caplog.records), (
+            "Expected a WARNING about hitting the page cap"
+        )
+
+        # last_seen_at must advance to the max timestamp from the fetched pages
+        max_fetched_ts = BASE_TS + (MAX_PAGES * ROWS_PER_PAGE - 1) * 1000
+        expected = _strip_tz(
+            datetime.fromtimestamp(max_fetched_ts / 1000, tz=timezone.utc)
+        )
+        sensor = _get_sensor(Session, "cap-pg-sensor")
+        actual = _strip_tz(sensor.last_seen_at)
+        assert actual == expected, (
+            f"last_seen_at should advance to last fetched page's max; "
+            f"got {actual}, expected {expected}"
+        )
