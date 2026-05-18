@@ -33,6 +33,8 @@ class Settings(BaseSettings):
 
     @field_validator("debug", mode="before")
     def parse_debug(cls, value):
+        # Accept env-style values ("debug"/"production"/"prod") in addition to the
+        # standard truthy/falsy strings, so DEBUG=debug or DEBUG=prod in .env works.
         if isinstance(value, str):
             normalized = value.strip().lower()
             if normalized in {"true", "1", "yes", "on", "debug"}:

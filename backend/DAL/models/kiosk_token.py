@@ -1,13 +1,14 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from DAL.db_context import Base
+from DAL.models._mixins import CreatedAtMixinTZ
 
 
-class KioskToken(Base):
+class KioskToken(CreatedAtMixinTZ, Base):
     __tablename__ = 'kiosk_tokens'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -20,7 +21,3 @@ class KioskToken(Base):
         ForeignKey('users.id', ondelete='SET NULL'), nullable=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-    )

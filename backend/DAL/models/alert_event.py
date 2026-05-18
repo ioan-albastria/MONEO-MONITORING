@@ -1,12 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from DAL.db_context import Base
+from DAL.models._mixins import CreatedAtMixinTZ
 
 
-class AlertEvent(Base):
+class AlertEvent(CreatedAtMixinTZ, Base):
     __tablename__ = "alert_event"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -24,9 +25,6 @@ class AlertEvent(Base):
     )
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
 
     rule = relationship("AlertRule", back_populates="events")
     sensor = relationship("Sensor")

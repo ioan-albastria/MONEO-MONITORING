@@ -11,22 +11,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import settings
 from DAL.db_context import Base
 
-# Register all models so autogenerate sees every table mapper.
-import DAL.models.user            # noqa: F401
-import DAL.models.sensor          # noqa: F401
-import DAL.models.sensor_reading  # noqa: F401
-import DAL.models.asset           # noqa: F401
-import DAL.models.dashboard       # noqa: F401
-import DAL.models.dashboard_widget  # noqa: F401
-import DAL.models.alert_rule               # noqa: F401
-import DAL.models.alert_event              # noqa: F401
-import DAL.models.alert_state              # noqa: F401
-import DAL.models.alert_route              # noqa: F401
-import DAL.models.alert_notification_outbox  # noqa: F401
-import DAL.models.annotation               # noqa: F401
-import DAL.models.kiosk_token              # noqa: F401
-import DAL.models.sync_run                 # noqa: F401
-import DAL.models.sync_error               # noqa: F401
+# Register all models so autogenerate sees every table mapper. DAL.models.__init__
+# imports every model module, so a single import keeps env.py and the package in sync.
+import DAL.models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

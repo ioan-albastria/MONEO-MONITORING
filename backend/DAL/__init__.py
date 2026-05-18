@@ -1,4 +1,4 @@
-from DAL.db_context import Base, SessionLocal, engine, get_db, init_db
+from DAL.db_context import Base, SessionLocal, engine, get_db, session_scope
 from DAL.models import (
     User,
     Dashboard,
@@ -11,6 +11,8 @@ from DAL.models import (
     AlertState,
     AlertRoute,
     AlertNotificationOutbox,
+    Annotation,
+    KioskToken,
     SyncRun,
     SyncError,
 )
@@ -20,7 +22,7 @@ __all__ = [
     "SessionLocal",
     "engine",
     "get_db",
-    "init_db",
+    "session_scope",
     "User",
     "Dashboard",
     "DashboardWidget",
@@ -32,6 +34,8 @@ __all__ = [
     "AlertState",
     "AlertRoute",
     "AlertNotificationOutbox",
+    "Annotation",
+    "KioskToken",
     "SyncRun",
     "SyncError",
 ]

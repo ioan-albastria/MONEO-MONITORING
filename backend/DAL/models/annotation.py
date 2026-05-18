@@ -1,12 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from DAL.db_context import Base
+from DAL.models._mixins import CreatedAtMixinTZ
 
 
-class Annotation(Base):
+class Annotation(CreatedAtMixinTZ, Base):
     __tablename__ = "annotation"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -23,7 +24,4 @@ class Annotation(Base):
     )
     created_by: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

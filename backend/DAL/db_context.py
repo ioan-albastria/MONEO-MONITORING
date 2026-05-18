@@ -1,5 +1,8 @@
+from contextlib import contextmanager
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
 from config import settings
 
 engine = create_engine(settings.database_url, pool_pre_ping=True)
@@ -15,5 +18,13 @@ def get_db():
         db.close()
 
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
+@contextmanager
+def session_scope() -> "Session":
+    # Mirrors the manual `db = SessionLocal(); try: ...; finally: db.close()` pattern
+    # used at numerous call sites. Commit/rollback is left to the caller — this
+    # helper only guarantees the session is closed.
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

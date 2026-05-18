@@ -1,12 +1,11 @@
-from datetime import datetime, timezone
-
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from DAL.db_context import Base
+from DAL.models._mixins import CreatedAtMixinTZ
 
 
-class AlertRoute(Base):
+class AlertRoute(CreatedAtMixinTZ, Base):
     __tablename__ = "alert_route"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -18,8 +17,5 @@ class AlertRoute(Base):
     on_fire: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     on_recover: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
 
     outbox_entries = relationship("AlertNotificationOutbox", back_populates="route", cascade="all, delete-orphan")

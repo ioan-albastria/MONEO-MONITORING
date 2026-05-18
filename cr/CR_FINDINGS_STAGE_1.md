@@ -84,3 +84,24 @@
 ## Out-of-scope findings
 
 Recorded in [cr/CR_OUT_OF_SCOPE.md](cr/CR_OUT_OF_SCOPE.md).
+
+---
+
+## Pass 2 — Applied
+
+- **Applied: S1-M1** — Added `DAL/models/_mixins.py` (`TimestampMixin`, `TimestampMixinTZ`, `CreatedAtMixinTZ`); refactored 8 models (`user`, `dashboard`, `dashboard_widget`, `alert_rule`, `alert_event`, `alert_route`, `annotation`, `kiosk_token`). Skipped `sensor`/`asset` because they declare columns AFTER `created_at`/`updated_at`, so mixin would reorder DDL. DDL byte-equivalence verified by compiling `CreateTable` against the postgresql dialect — column order, types, and timezone-awareness preserved per model.
+- **Applied: S1-M4** — Split `main.py` `lifespan()` into `_run_migrations()`, `_seed_initial_data()`, and `_probe_moneo_auth()` helpers. `lifespan` is now a thin orchestrator.
+- **Applied: S1-M5** — Added `session_scope()` context manager to `DAL/db_context.py`; adopted at the single in-scope call site (`main.py` seed block). Listed remaining out-of-scope call sites in CR_OUT_OF_SCOPE.
+- **Applied: S1-m1** — Removed `init_db()` from `DAL/db_context.py` and dropped it from `DAL/__init__.py` (imports + `__all__`). No callers existed.
+- **Applied: S1-m2** — Re-exported `Annotation` and `KioskToken` from both `DAL/models/__init__.py` and `DAL/__init__.py`.
+- **Applied: S1-m3** — Extracted `_MONEO_PROBE_TIMEOUT_SECONDS = 5` module constant in `main.py`.
+- **Applied: S1-m4** — Replaced 14 explicit `import DAL.models.X  # noqa` lines in `migrations/env.py` with a single `import DAL.models  # noqa`. The package `__init__` now reigns as the single registration source.
+- **Applied: S1-n2** — Added a comment on `config.py:parse_debug` documenting why `"debug"`/`"prod"` style values are accepted.
+
+## Pass 2 — Skipped
+
+- **S1-M2** (`extra_metadata` n=2): below DRY threshold, self-deferred.
+- **S1-M3** (Integer vs BigInteger PK mismatch): rejected by orchestrator — deliberate SQLite trade-off per in-code comments.
+- **S1-m5** (`sa.text('now()')` vs `sa.func.now()`): already-applied migration; do not edit.
+- **S1-m6** (`logging.basicConfig` at import): acceptable for current arch.
+- **S1-n1, S1-n3**: pure style; skipped.

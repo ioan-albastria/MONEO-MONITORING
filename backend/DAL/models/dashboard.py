@@ -1,10 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from DAL.db_context import Base
+from DAL.models._mixins import TimestampMixin
 
 
-class Dashboard(Base):
+class Dashboard(TimestampMixin, Base):
     __tablename__ = "dashboards"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -16,14 +17,6 @@ class Dashboard(Base):
     default_from:             Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     default_to:               Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     auto_refresh_seconds:     Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
 
     widgets = relationship("DashboardWidget", back_populates="dashboard", cascade="all, delete-orphan")
     owner = relationship("User", back_populates="dashboards")

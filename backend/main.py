@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from DAL import SessionLocal
+from DAL import session_scope
 from routes.admin_kiosk_routes import admin_kiosk_router
 from routes.admin_user_routes import admin_user_router
 from routes.alert_routes import alert_router
@@ -35,39 +35,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Bounded so a slow/unreachable upstream cannot block FastAPI startup.
+_MONEO_PROBE_TIMEOUT_SECONDS = 5
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    # ── Startup ──────────────────────────────────────────────────────────────
-    if settings.auto_migrate:
-        logger.info("Running Alembic migrations …")
-        try:
-            alembic_cfg = AlembicConfig(str(Path(__file__).parent / "alembic.ini"))
-            alembic_command.upgrade(alembic_cfg, "head")
-            logger.info("Alembic migrations complete.")
-        except Exception:
-            logger.exception("Alembic migration failed — aborting startup.")
-            raise
-    else:
+
+def _run_migrations() -> None:
+    if not settings.auto_migrate:
         logger.info("auto_migrate=False — skipping migrations.")
-
-    logger.info("Seeding admin user …")
-    db = SessionLocal()
+        return
+    logger.info("Running Alembic migrations …")
     try:
+        alembic_cfg = AlembicConfig(str(Path(__file__).parent / "alembic.ini"))
+        alembic_command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations complete.")
+    except Exception:
+        logger.exception("Alembic migration failed — aborting startup.")
+        raise
+
+
+def _seed_initial_data() -> None:
+    logger.info("Seeding admin user …")
+    with session_scope() as db:
         AuthService().seed_admin(db)
         logger.info("Seeding demo data …")
         seed_demo_data(db)
-    finally:
-        db.close()
 
-    logger.info("Starting polling scheduler …")
-    start_scheduler()
 
-    # Boot-time MONEO auth probe — logs OK or FAILED; never blocks startup.
+async def _probe_moneo_auth() -> None:
+    # Best-effort boot-time auth probe — logs OK or FAILED; never blocks startup.
     try:
         client = MoneoApiClient()
         try:
-            result = await asyncio.wait_for(client.verify_auth(), timeout=5)
+            result = await asyncio.wait_for(
+                client.verify_auth(), timeout=_MONEO_PROBE_TIMEOUT_SECONDS
+            )
         finally:
             await client.close()
         if result["ok"]:
@@ -77,9 +78,17 @@ async def lifespan(_app: FastAPI):
     except Exception as e:
         logger.error("MONEO auth probe crashed: %s", e)
 
-    yield  # application runs here
 
-    # ── Shutdown ─────────────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _run_migrations()
+    _seed_initial_data()
+    logger.info("Starting polling scheduler …")
+    start_scheduler()
+    await _probe_moneo_auth()
+
+    yield
+
     stop_scheduler()
 
 

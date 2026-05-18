@@ -1,12 +1,11 @@
-from datetime import datetime, timezone
-
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from DAL.db_context import Base
+from DAL.models._mixins import TimestampMixinTZ
 
 
-class AlertRule(Base):
+class AlertRule(TimestampMixinTZ, Base):
     __tablename__ = "alert_rule"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -27,14 +26,6 @@ class AlertRule(Base):
     policy: Mapped[str] = mapped_column(String(20), nullable=False, default="auto_clear")
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
 
     sensor = relationship("Sensor")
     state = relationship("AlertState", back_populates="rule", uselist=False, cascade="all, delete-orphan")
