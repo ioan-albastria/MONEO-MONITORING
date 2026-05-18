@@ -33,6 +33,7 @@ logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
 )
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Bounded so a slow/unreachable upstream cannot block FastAPI startup.
@@ -44,6 +45,12 @@ def _run_migrations() -> None:
         logger.info("auto_migrate=False — skipping migrations.")
         return
     logger.info("Running Alembic migrations …")
+    # fileConfig in migrations/env.py resets the root logger (clears handlers, sets
+    # level to WARN). Save state before and restore after so the app's logging config
+    # survives the migration run.
+    root = logging.getLogger()
+    saved_level = root.level
+    saved_handlers = root.handlers[:]
     try:
         alembic_cfg = AlembicConfig(str(Path(__file__).parent / "alembic.ini"))
         alembic_command.upgrade(alembic_cfg, "head")
@@ -51,6 +58,11 @@ def _run_migrations() -> None:
     except Exception:
         logger.exception("Alembic migration failed — aborting startup.")
         raise
+    finally:
+        root.handlers[:] = []
+        for h in saved_handlers:
+            root.addHandler(h)
+        root.setLevel(saved_level)
 
 
 def _seed_initial_data() -> None:

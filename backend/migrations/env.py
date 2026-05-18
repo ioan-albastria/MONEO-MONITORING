@@ -17,7 +17,9 @@ import DAL.models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False prevents fileConfig from disabling loggers
+    # created before migrations run (e.g. services.moneo_poller).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

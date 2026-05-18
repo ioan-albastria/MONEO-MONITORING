@@ -196,6 +196,7 @@ class MoneoPoller:
                                 len(rows),
                                 written,
                             )
+
                             if page_max_ts is not None:
                                 max_ts_seen = (
                                     page_max_ts
