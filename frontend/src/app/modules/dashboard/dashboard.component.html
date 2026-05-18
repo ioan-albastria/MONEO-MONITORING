@@ -1,4 +1,4 @@
-<section class="dashboard-page canvas-view h-[calc(100dvh-var(--app-header-h)-1.5rem)] min-h-0 flex flex-col gap-3">
+<section class="dashboard-page canvas-view flex flex-col gap-3">
 
   <!-- ─── Toolbar ─────────────────────────────────────────────────────────── -->
   <div class="dashboard-toolbar">
@@ -320,7 +320,7 @@
 
   <!-- ─── Widget editor modal ──────────────────────────────────────────────── -->
   <div class="dashboard-modal" *ngIf="widgetEditorOpen">
-    <button type="button" class="dashboard-modal__backdrop" (click)="closeWidgetEditor()"></button>
+    <div class="dashboard-modal__backdrop"></div>
     <section class="dashboard-modal__panel dashboard-modal__panel--wide">
       <header class="dashboard-modal__header">
         <div>
@@ -386,23 +386,7 @@
           </div>
         </div>
 
-        <!-- Section 2: Sensor multi-select -->
-        <div class="dashboard-editor-section">
-          <div class="dashboard-editor-section__eyebrow">Data</div>
-          <div class="dashboard-editor-section__title">
-            Sensors
-            <span class="text-xs text-fg-faint">required — pick at least one</span>
-          </div>
-          <app-asset-tree-picker
-            [selectedIds]="widgetForm.sensorIds"
-            (selectedIdsChange)="onWidgetSensorIdsChanged($event)"
-          ></app-asset-tree-picker>
-          <div class="dashboard-editor-section__hint">
-            Browse the asset tree or type to filter. Click a sensor to select it.
-          </div>
-        </div>
-
-        <!-- Section 3: Time range -->
+        <!-- Section 2: Time range -->
         <div class="dashboard-editor-section">
           <div class="dashboard-editor-section__eyebrow">Time window</div>
           <div class="dashboard-editor-section__title">Time Range</div>
@@ -436,6 +420,24 @@
             </label>
           </div>
           <div class="dashboard-editor-section__hint">Used to query sensor readings.</div>
+        </div>
+
+        <!-- Section 3: Sensor multi-select -->
+        <div class="dashboard-editor-section">
+          <div class="dashboard-editor-section__eyebrow">Data</div>
+          <div class="dashboard-editor-section__title">
+            Sensors
+            <span class="text-xs text-fg-faint">required — pick at least one</span>
+          </div>
+          <app-asset-tree-picker
+            [selectedIds]="widgetForm.sensorIds"
+            (selectedIdsChange)="onWidgetSensorIdsChanged($event)"
+            [timeFrom]="effectiveTimeFrom"
+            [timeTo]="effectiveTimeTo"
+          ></app-asset-tree-picker>
+          <div class="dashboard-editor-section__hint">
+            Browse the asset tree or type to filter. Click a sensor to select it.
+          </div>
         </div>
 
         <!-- Section 4: Gauge bounds (gauge type only) -->

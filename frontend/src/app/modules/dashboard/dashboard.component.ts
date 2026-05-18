@@ -553,6 +553,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.editingWidget = null;
   }
 
+  get effectiveTimeFrom(): string {
+    if (this.widgetForm.timeMode === 'relative') {
+      const ms = (this.widgetForm.timeRangeHours || 24) * 3_600_000;
+      return new Date(Date.now() - ms).toISOString();
+    }
+    return this.widgetForm.from ? new Date(this.widgetForm.from).toISOString() : '';
+  }
+
+  get effectiveTimeTo(): string {
+    if (this.widgetForm.timeMode === 'relative') {
+      return new Date().toISOString();
+    }
+    return this.widgetForm.to ? new Date(this.widgetForm.to).toISOString() : '';
+  }
+
   selectWidgetType(type: DashboardWidgetType): void {
     this.widgetForm = { ...this.widgetForm, type };
   }

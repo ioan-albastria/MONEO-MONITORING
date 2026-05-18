@@ -303,6 +303,52 @@ test.describe('WIDGET', () => {
     }
   });
 
+  // WIDGET-16
+  test('WIDGET-16 sensor picker — "With data only" checkbox checked by default', async ({ page }) => {
+    const token = await goToDashboard(page);
+    const { id, dispose } = await createTestDashboard(page, token, 'E2E-W16');
+    try {
+      await selectDashboard(page, id);
+      await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
+      await page.click('button[aria-label="Add widget"]');
+      await page.waitForSelector('.dashboard-modal__panel--wide', { timeout: 5_000 });
+      await page.waitForSelector('.tree-picker__filters', { timeout: 8_000 });
+
+      const withDataCheck = page.locator('.tree-picker__filter-check').filter({ hasText: 'With data only' }).locator('input[type="checkbox"]');
+      await expect(withDataCheck).toBeChecked();
+    } finally {
+      await page.keyboard.press('Escape').catch(() => {});
+      await dispose();
+    }
+  });
+
+  // WIDGET-17
+  test('WIDGET-17 sensor picker — "Active in time window" checkbox disabled until time window set', async ({ page }) => {
+    const token = await goToDashboard(page);
+    const { id, dispose } = await createTestDashboard(page, token, 'E2E-W17');
+    try {
+      await selectDashboard(page, id);
+      await page.waitForSelector('button[aria-label="Add widget"]:not([disabled])', { timeout: 5_000 });
+      await page.click('button[aria-label="Add widget"]');
+      await page.waitForSelector('.dashboard-modal__panel--wide', { timeout: 5_000 });
+      await page.waitForSelector('.tree-picker__filters', { timeout: 8_000 });
+
+      // "Active in time window" should be enabled (relative mode with hours is always set)
+      const timeWindowCheck = page.locator('.tree-picker__filter-check').filter({ hasText: 'Active in time window' }).locator('input[type="checkbox"]');
+      await expect(timeWindowCheck).not.toBeDisabled();
+
+      // Unchecking by default
+      await expect(timeWindowCheck).not.toBeChecked();
+
+      // Toggling on should not throw
+      await timeWindowCheck.check();
+      await expect(timeWindowCheck).toBeChecked();
+    } finally {
+      await page.keyboard.press('Escape').catch(() => {});
+      await dispose();
+    }
+  });
+
   // WIDGET-15
   test('WIDGET-15 delete widget — confirm dialog, widget removed', async ({ page }) => {
     const token = await goToDashboard(page);

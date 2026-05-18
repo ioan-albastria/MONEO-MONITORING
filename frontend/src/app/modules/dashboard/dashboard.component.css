@@ -1,7 +1,5 @@
 :host {
   display: block;
-  height: 100%;
-  min-height: 0;
 }
 
 .dashboard-ranges-grid {
@@ -33,6 +31,9 @@
 }
 
 .dashboard-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -147,10 +148,6 @@
 
 .dashboard-grid-shell {
   position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
 }
 
 .dashboard-grid-shell--loading {

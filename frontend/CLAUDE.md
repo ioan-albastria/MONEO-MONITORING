@@ -102,8 +102,10 @@ Hard-coded array of `WidgetCatalogItem` with label, description, default grid di
 | `stat_card` | 4 cols × 3 rows | Big number + delta arrow + 30-point sparkline |
 
 **Widget editor modal** (dashboard.component.ts ~line 405):
-- Fields: type, title, subtitle, sensor IDs (multi-select), time mode (relative hours or absolute from/to), gauge min/max.
+- Fields: type, title, subtitle, time range (now above sensors), sensor IDs (multi-select with data filters), gauge min/max.
+- Section order: Widget type → Details → **Time window** → **Data (sensors)** → Gauge → Thresholds.
 - Create: `POST /api/dashboards/{id}/widgets`; Update: `PUT /api/widgets/{id}`.
+- `effectiveTimeFrom` / `effectiveTimeTo` getters compute ISO strings from `widgetForm` and are passed as `[timeFrom]`/`[timeTo]` inputs to `<app-asset-tree-picker>`.
 
 ## Widget system
 
@@ -199,14 +201,14 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 - Screenshots on failure, trace on first retry
 - HTML report: `frontend/playwright-report/index.html`
 
-**Test inventory (57 Playwright e2e cases, 11 files):**
+**Test inventory (59 Playwright e2e cases, 11 files):**
 
 | File | IDs | Coverage |
 |---|---|---|
 | `auth.spec.ts` | AUTH-01–05 | Login success/failure, guard redirect, interceptor header, 401 handling |
 | `dashboards.spec.ts` | DASH-01–08 | Dashboard CRUD, public catalog, selection, empty state |
 | `edit-mode.spec.ts` | EDIT-01–06 | Edit mode toggle, ownership guards, button states |
-| `widgets.spec.ts` | WIDGET-01–15 | Widget editor, type picker, sensor select, time range, all 4 types |
+| `widgets.spec.ts` | WIDGET-01–17 | Widget editor, type picker, sensor select, time range, all 4 types, sensor data filters |
 | `layout.spec.ts` | LAYOUT-01 | Drag & debounced layout persistence POST |
 | `charts.spec.ts` | CHART-01–05 | Line/bar/gauge/stat render, empty-state overlay |
 | `realtime.spec.ts` | RT-01–03 | WS connection, lifecycle, gauge live update |
@@ -252,6 +254,7 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 | Widget editor modal | `modules/dashboard/dashboard.component.ts` ~line 405 |
 | REST calls for dashboards/widgets | `modules/dashboard/dashboard-api.service.ts` |
 | REST calls for sensor data | `core/sensors/sensor-api.service.ts` |
+| Sensor data filters (has data / active in window) | `modules/dashboard/asset-tree-picker.component.ts` — `filterWithDataOnly`, `filterInTimeWindow`, `_sensorPassesDataFilter()`, `_applyDataVisibility()` |
 | Gauge CSS conic-gradient render | `modules/dashboard/dashboard-widget.component.ts` `applyGauge()` ~line 346 |
 | Stat card sparkline / delta | `modules/dashboard/dashboard-widget.component.ts` `applyStatCard()` ~line 359 |
 | Ambient tinting hex palette + alpha ramps | `modules/widgets/app-widgets-shell.component.ts` — `TONE_HEX`, `TINT_SUBTLE`, `EDGE_ALPHA`, `TEXT_LIGHT/DARK` |

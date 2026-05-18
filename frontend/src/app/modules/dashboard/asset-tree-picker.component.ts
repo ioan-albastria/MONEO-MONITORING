@@ -1,6 +1,6 @@
 import {
   ChangeDetectionStrategy, ChangeDetectorRef,
-  Component, EventEmitter, Input, OnInit, Output,
+  Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges,
 } from '@angular/core';
 import { AssetNode } from '../../types/asset';
 import { Sensor } from '../../types/sensor';
@@ -29,11 +29,17 @@ interface FlatDisplayNode {
   styleUrl: './asset-tree-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AssetTreePickerComponent implements OnInit {
+export class AssetTreePickerComponent implements OnInit, OnChanges {
   @Input()  selectedIds: number[] = [];
   @Output() selectedIdsChange = new EventEmitter<number[]>();
 
+  @Input() timeFrom = '';
+  @Input() timeTo = '';
+
   filterText = '';
+  filterWithDataOnly = true;
+  filterInTimeWindow = false;
+
   roots: TreeNode[] = [];
   flatDisplayNodes: FlatDisplayNode[] = [];
   unassignedSensors: Sensor[] = [];
@@ -48,6 +54,13 @@ export class AssetTreePickerComponent implements OnInit {
     private readonly sensorApi: SensorApiService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ((changes['timeFrom'] || changes['timeTo']) && !this.loading) {
+      this._applyFilter();
+      this.cdr.markForCheck();
+    }
+  }
 
   async ngOnInit(): Promise<void> {
     try {
@@ -101,6 +114,20 @@ export class AssetTreePickerComponent implements OnInit {
   onFilterChange(): void {
     this._applyFilter();
     this.cdr.markForCheck();
+  }
+
+  onFilterToggle(): void {
+    this._applyFilter();
+    this.cdr.markForCheck();
+  }
+
+  private _sensorPassesDataFilter(s: Sensor): boolean {
+    if (this.filterWithDataOnly && !s.has_readings) return false;
+    if (this.filterInTimeWindow && this.timeFrom) {
+      if (s.last_seen_at === null) return false;
+      if (s.last_seen_at < this.timeFrom) return false;
+    }
+    return true;
   }
 
   toggleNode(node: TreeNode): void {
@@ -172,6 +199,8 @@ export class AssetTreePickerComponent implements OnInit {
     } else {
       this._filterNodes(this.roots, q);
     }
+    // Second pass: hide asset nodes where no sensor survives the data filter
+    this._applyDataVisibility(this.roots);
     this._rebuildFlat();
   }
 
@@ -188,7 +217,9 @@ export class AssetTreePickerComponent implements OnInit {
     for (const n of nodes) {
       const nameMatch = n.asset.name.toLowerCase().includes(q)
         || (n.asset.path ?? '').toLowerCase().includes(q);
-      const sensorMatch = n.sensors.some(s => s.name.toLowerCase().includes(q));
+      const sensorMatch = n.sensors.some(
+        s => this._sensorPassesDataFilter(s) && s.name.toLowerCase().includes(q)
+      );
       const childVisible = this._filterNodes(n.children, q);
       n.visible = nameMatch || sensorMatch || childVisible;
       n.expanded = n.visible;
@@ -197,16 +228,37 @@ export class AssetTreePickerComponent implements OnInit {
     return anyVisible;
   }
 
+  // Hide nodes (and propagate up) where no sensor passes the data filter.
+  // Returns true if this subtree has at least one visible node after the pass.
+  private _applyDataVisibility(nodes: TreeNode[]): boolean {
+    let anyVisible = false;
+    for (const n of nodes) {
+      if (!n.visible) continue;
+      const childHasVisible = this._applyDataVisibility(n.children);
+      const ownSensorVisible = n.sensors.some(s => this._sensorPassesDataFilter(s));
+      if (!ownSensorVisible && !childHasVisible) {
+        n.visible = false;
+      } else {
+        anyVisible = true;
+      }
+    }
+    return anyVisible;
+  }
+
   visibleSensors(node: TreeNode): Sensor[] {
     const q = this.filterText.trim().toLowerCase();
-    if (!q) return node.sensors;
-    return node.sensors.filter(s => s.name.toLowerCase().includes(q));
+    return node.sensors.filter(s => {
+      if (!this._sensorPassesDataFilter(s)) return false;
+      return !q || s.name.toLowerCase().includes(q);
+    });
   }
 
   visibleUnassigned(): Sensor[] {
     const q = this.filterText.trim().toLowerCase();
-    if (!q) return this.unassignedSensors;
-    return this.unassignedSensors.filter(s => s.name.toLowerCase().includes(q));
+    return this.unassignedSensors.filter(s => {
+      if (!this._sensorPassesDataFilter(s)) return false;
+      return !q || s.name.toLowerCase().includes(q);
+    });
   }
 
   trackById(_i: number, item: { id: number }): number { return item.id; }

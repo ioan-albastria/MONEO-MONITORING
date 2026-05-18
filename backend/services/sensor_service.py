@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 
 from DAL import Sensor
+from DAL.models.sensor_reading import SensorReading
 from routes.response_models.sensor import SensorRead
 
 
@@ -11,7 +12,19 @@ class SensorService:
         if active_only:
             query = query.filter(Sensor.is_active == True)
         sensors = query.order_by(Sensor.name).all()
-        return [SensorRead.model_validate(s) for s in sensors]
+
+        # Single query: which sensor IDs have at least one reading row?
+        ids_with_readings: set[int] = {
+            row[0]
+            for row in db.query(SensorReading.sensor_id).distinct().all()
+        }
+
+        return [
+            SensorRead.model_validate(s).model_copy(
+                update={"has_readings": s.id in ids_with_readings}
+            )
+            for s in sensors
+        ]
 
     def get_sensor(self, db: Session, sensor_id: int) -> SensorRead:
         sensor = (

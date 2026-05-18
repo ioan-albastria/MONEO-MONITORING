@@ -1,12 +1,49 @@
 <div class="admin-section">
   <div class="admin-section__header">
     <h2 class="admin-section__title">Users</h2>
+    <button class="btn btn-sm"
+      [class.btn-primary]="!showCreateForm"
+      [class.btn-ghost]="showCreateForm"
+      (click)="showCreateForm = !showCreateForm">
+      <span class="icon">{{ showCreateForm ? 'close' : 'add' }}</span>
+      {{ showCreateForm ? 'Cancel' : 'New User' }}
+    </button>
   </div>
 
-  <div *ngIf="loading" class="admin-state">Loading&hellip;</div>
-  <div *ngIf="loadError" class="admin-alert admin-alert--error">{{ loadError }}</div>
+  <div *ngIf="showCreateForm" class="admin-create-form">
+    <div class="form-row--inline">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" [(ngModel)]="createUsername" placeholder="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" [(ngModel)]="createEmail" placeholder="user@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" [(ngModel)]="createPassword" placeholder="Password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-select" [(ngModel)]="createRole">
+          <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary"
+        (click)="createUser()"
+        [disabled]="creating || !createUsername.trim() || !createEmail.trim() || !createPassword">
+        {{ creating ? 'Creating…' : 'Create' }}
+      </button>
+    </div>
+  </div>
 
-  <table *ngIf="!loading && rows.length" class="admin-table">
+  <div *ngIf="error" class="admin-alert admin-alert--error">{{ error }}</div>
+  <div *ngIf="loading" class="admin-state">Loading…</div>
+
+  <table *ngIf="!loading" class="admin-table">
     <thead>
       <tr>
         <th>ID</th>
@@ -15,6 +52,7 @@
         <th>Role</th>
         <th>Active</th>
         <th>Created</th>
+        <th>New password</th>
         <th></th>
       </tr>
     </thead>
@@ -22,30 +60,50 @@
       <tr *ngFor="let row of rows; trackBy: trackUser">
         <td class="mono">{{ row.id }}</td>
         <td>
-          {{ row.username }}
+          <input class="form-input form-input--inline"
+                 [(ngModel)]="row.editUsername"
+                 [disabled]="isCurrentUser(row)"
+                 (ngModelChange)="markDirty(row)">
           <span *ngIf="isCurrentUser(row)" class="badge badge--you">(you)</span>
         </td>
-        <td class="text-fg-muted">{{ row.email }}</td>
+        <td>
+          <input class="form-input form-input--inline"
+                 type="email"
+                 [(ngModel)]="row.editEmail"
+                 (ngModelChange)="markDirty(row)">
+        </td>
         <td>
           <select class="form-select form-select--sm"
                   [(ngModel)]="row.editRole"
-                  [disabled]="isCurrentUser(row) || row.saving">
+                  [disabled]="isCurrentUser(row) || row.saving"
+                  (ngModelChange)="markDirty(row)">
             <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
           </select>
         </td>
         <td>
-          <span class="status-chip" [attr.data-status]="row.is_active ? 'active' : 'inactive'">
-            {{ row.is_active ? 'Yes' : 'No' }}
-          </span>
+          <input type="checkbox"
+                 [(ngModel)]="row.editIsActive"
+                 [disabled]="isCurrentUser(row)"
+                 (ngModelChange)="markDirty(row)">
         </td>
-        <td>{{ row.created_at | date:'dd MMM yyyy' }}</td>
+        <td class="text-fg-muted" style="font-size:0.8rem">{{ row.created_at | date:'dd MMM yyyy' }}</td>
         <td>
-          <button
-            class="btn btn-primary btn-sm"
-            [disabled]="!isDirty(row) || row.saving || isCurrentUser(row)"
-            (click)="saveRole(row)"
-          >
-            {{ row.saving ? '&hellip;' : 'Save' }}
+          <input class="form-input form-input--inline"
+                 type="password"
+                 [(ngModel)]="row.editPassword"
+                 placeholder="Leave blank to keep"
+                 (ngModelChange)="markDirty(row)">
+        </td>
+        <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm"
+                  [disabled]="!row.dirty || row.saving"
+                  (click)="saveRow(row)">
+            {{ row.saving ? '…' : 'Save' }}
+          </button>
+          <button class="btn btn-danger btn-sm"
+                  [disabled]="isCurrentUser(row)"
+                  (click)="deleteRow(row)">
+            Del
           </button>
           <span *ngIf="row.saveError" class="save-error">{{ row.saveError }}</span>
         </td>

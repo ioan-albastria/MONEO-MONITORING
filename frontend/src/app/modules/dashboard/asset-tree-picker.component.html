@@ -11,6 +11,19 @@
     />
   </div>
 
+  <!-- Data filters -->
+  <div class="tree-picker__filters">
+    <label class="tree-picker__filter-check">
+      <input type="checkbox" [(ngModel)]="filterWithDataOnly" (ngModelChange)="onFilterToggle()" />
+      <span>With data only</span>
+    </label>
+    <label class="tree-picker__filter-check" [class.is-disabled]="!timeFrom">
+      <input type="checkbox" [(ngModel)]="filterInTimeWindow" (ngModelChange)="onFilterToggle()"
+             [disabled]="!timeFrom" />
+      <span>Active in time window</span>
+    </label>
+  </div>
+
   <!-- Status bar -->
   <div class="tree-picker__status">
     <span class="text-fg-faint">{{ selectedIds.length }} selected</span>

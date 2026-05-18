@@ -236,7 +236,7 @@ Shape is FROZEN — do not add fields without explicit approval.
 
 Tables are managed by Alembic migrations (see Migrations section above). On startup, `main.py` runs `alembic upgrade head` when `settings.auto_migrate=True`.
 
-**SensorRead** (`routes/response_models/sensor.py`) exposes: `id`, `moneo_sensor_id`, `name`, `description`, `sensor_type`, `unit`, `asset_id`, `min_value`, `max_value`, `is_active`, `created_at`, `expected_poll_seconds` (nullable), `last_seen_at` (nullable). The six range-bound columns and `ranges_source` are schema-only (Slice 2 opens the API surface for them).
+**SensorRead** (`routes/response_models/sensor.py`) exposes: `id`, `moneo_sensor_id`, `name`, `description`, `sensor_type`, `unit`, `asset_id`, `min_value`, `max_value`, `is_active`, `created_at`, `expected_poll_seconds` (nullable), `last_seen_at` (nullable), `has_readings` (bool, default false). The six range-bound columns and `ranges_source` are schema-only (Slice 2 opens the API surface for them). `has_readings` is computed in `sensor_service.get_all_sensors()` via a single `SELECT DISTINCT sensor_id FROM sensor_readings` query — no migration needed.
 
 ## Upstream MONEO API
 

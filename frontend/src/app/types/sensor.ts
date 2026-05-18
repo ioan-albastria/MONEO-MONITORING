@@ -19,6 +19,7 @@ export interface Sensor {
   critical_min:  number | null;
   critical_max:  number | null;
   ranges_source: string;
+  has_readings: boolean;
 }
 
 export interface SensorReading {

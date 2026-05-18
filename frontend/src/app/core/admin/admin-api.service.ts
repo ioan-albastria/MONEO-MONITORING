@@ -58,6 +58,20 @@ export class AdminApiService {
     );
   }
 
+  createUser(body: UserCreate): Promise<UserAdminRead> {
+    return firstValueFrom(this.http.post<UserAdminRead>('/api/admin/users', body));
+  }
+
+  updateUser(userId: number, body: UserUpdate): Promise<UserAdminRead> {
+    return firstValueFrom(
+      this.http.patch<UserAdminRead>(`/api/admin/users/${userId}`, body)
+    );
+  }
+
+  deleteUser(userId: number): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/admin/users/${userId}`));
+  }
+
   // ── Kiosk tokens ────────────────────────────────────────────────────────
 
   listKioskTokens(): Promise<KioskTokenAdminRead[]> {

@@ -29,6 +29,27 @@
 }
 .tree-picker__search-input::placeholder { color: var(--color-fg-faint); }
 
+.tree-picker__filters {
+  display: flex;
+  gap: 14px;
+  padding: 5px 10px;
+  background: var(--color-surface-0);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tree-picker__filter-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.tree-picker__filter-check input[type="checkbox"] { cursor: pointer; accent-color: var(--color-brand); }
+.tree-picker__filter-check.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.tree-picker__filter-check.is-disabled input[type="checkbox"] { cursor: not-allowed; }
+
 .tree-picker__status {
   display: flex;
   align-items: center;
