@@ -82,6 +82,7 @@ class MoneoApiClient:
 
         Returns the full envelope: {pageNumber, pageSize, totalPages, totalCount, data}.
         """
+        order = f"{order.lstrip('+')}"
         params: dict[str, Any] = {
             "orderBy": order,
             "pageNumber": page,

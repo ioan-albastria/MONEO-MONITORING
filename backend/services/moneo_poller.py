@@ -102,9 +102,13 @@ class MoneoPoller:
                     .options(joinedload(Sensor.asset))
                     .all()
                 )
+                logger.info("Poll started: %d active sensor(s)", len(sensors))
 
                 for sensor in sensors:
                     try:
+                        sensor_rows_in_before = run.records_in
+                        sensor_rows_written_before = run.records_written
+
                         # Both ids are required by /processdata; skip with a WARNING if
                         # either is absent and record a sensor_skipped error.
                         if sensor.asset is None:
@@ -123,24 +127,29 @@ class MoneoPoller:
                             )
                             continue
 
+                        watermark = (
+                            sensor.last_seen_at.isoformat()
+                            if sensor.last_seen_at
+                            else "no watermark"
+                        )
+                        logger.debug(
+                            "Sensor %d (%s): polling — watermark=%s",
+                            sensor.id,
+                            sensor.name,
+                            watermark,
+                        )
+
                         # Compute the fetch window.
                         now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-                        cap_ms = now_ms - settings.max_backfill_hours * 3600 * 1000
 
                         if sensor.last_seen_at:
-                            watermark_ms = int(sensor.last_seen_at.timestamp() * 1000)
-                            from_ms = max(watermark_ms + 1, cap_ms)
-                            if watermark_ms < cap_ms:
-                                gap_s = (cap_ms - watermark_ms) / 1000
-                                logger.info(
-                                    "Sensor %d: last_seen_at is %.0fs older than the "
-                                    "%dh backfill cap; gap will not be recovered",
-                                    sensor.id,
-                                    gap_s,
-                                    settings.max_backfill_hours,
-                                )
+                            # Resume exactly from where we left off — no backfill cap.
+                            # The per-cycle page limit controls how much is fetched per run.
+                            from_ms: int | None = int(sensor.last_seen_at.timestamp() * 1000) + 1
                         else:
-                            from_ms = cap_ms
+                            # No watermark: omit fromTimestamp so MONEO returns all data
+                            # from the beginning of recorded history.
+                            from_ms = None
 
                         to_ms = now_ms
 
@@ -180,6 +189,13 @@ class MoneoPoller:
                                 db, sensor.id, rows
                             )
                             run.records_written += written
+                            logger.info(
+                                "Sensor %d: page %d — %d row(s) received, %d written",
+                                sensor.id,
+                                page,
+                                len(rows),
+                                written,
+                            )
                             if page_max_ts is not None:
                                 max_ts_seen = (
                                     page_max_ts
@@ -234,6 +250,22 @@ class MoneoPoller:
                         # already-fetched data for sensors processed earlier in this cycle.
                         try:
                             db.commit()
+                            sensor_rows_in = run.records_in - sensor_rows_in_before
+                            sensor_rows_written = run.records_written - sensor_rows_written_before
+                            if sensor_rows_in:
+                                logger.info(
+                                    "Sensor %d (%s): %d row(s) in, %d written",
+                                    sensor.id,
+                                    sensor.name,
+                                    sensor_rows_in,
+                                    sensor_rows_written,
+                                )
+                            else:
+                                logger.debug(
+                                    "Sensor %d (%s): no new rows",
+                                    sensor.id,
+                                    sensor.name,
+                                )
                         except Exception as exc:
                             logger.error("Sensor %d: commit failed: %s", sensor.id, exc)
                             db.rollback()
@@ -277,7 +309,10 @@ class MoneoPoller:
                         db.rollback()
 
                 logger.info(
-                    "Poll complete: processed %d active sensors", len(sensors)
+                    "Poll complete: %d active sensor(s), %d record(s) in, %d written",
+                    len(sensors),
+                    run.records_in,
+                    run.records_written,
                 )
             except Exception as exc:
                 logger.error("poll_latest_readings failed: %s", exc)

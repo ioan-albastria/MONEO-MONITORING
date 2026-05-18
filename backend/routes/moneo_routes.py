@@ -93,25 +93,25 @@ async def get_moneo_sensor_readings(
     from_datetime: datetime = Query(
         default=None,
         description="Start of the time range (ISO 8601, UTC).",
-        example="2026-04-26T00:00:00Z",
+        examples={"default": {"value": "2026-04-26T00:00:00Z"}},
     ),
     to_datetime: datetime = Query(
         default=None,
         description="End of the time range (ISO 8601, UTC).",
-        example="2026-04-27T00:00:00Z",
+        examples={"default": {"value": "2026-04-27T00:00:00Z"}},
     ),
     page_number: int = Query(
         default=1,
         ge=1,
         description="Page number to fetch (1-based).",
-        example=1,
+        examples={"default": {"value": 1}},
     ),
     page_size: int = Query(
         default=500,
         ge=1,
         le=2147483647,
         description="Number of readings per page (default 500, max 2 147 483 647).",
-        example=500,
+        examples={"default": {"value": 500}},
     ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -165,5 +165,19 @@ async def trigger_metadata_sync(current_user: User = Depends(get_current_user)):
     try:
         await poller.sync_sensor_metadata()
         return {"status": "success", "message": "Metadata sync triggered"}
+    finally:
+        await poller.close()
+
+
+@moneo_router.post("/admin/poll-readings")
+async def trigger_poll_readings(current_user: User = Depends(get_current_user)):
+    """Manually trigger a readings poll from MONEO (admin only)."""
+    if current_user.username != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+
+    poller = MoneoPoller()
+    try:
+        await poller.poll_latest_readings()
+        return {"status": "success", "message": "Readings poll triggered"}
     finally:
         await poller.close()

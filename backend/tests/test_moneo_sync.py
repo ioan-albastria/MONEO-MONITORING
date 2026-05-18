@@ -12,10 +12,10 @@ Slice 1 scenarios:
 
 Slice 2 scenarios (TestMoneoSyncSlice2):
   (i)   Watermark resumption: last_seen_at advances to max(returned timestamps).
-  (ii)  Backfill cap: from_ms is clamped to now-MAX_BACKFILL_HOURS when watermark is stale.
+  (ii)  No cap on watermarked sensors: from_ms = last_seen_at + 1ms, no matter how old.
   (iii) Pagination: totalCount=1200 triggers three pages; idempotent on re-run.
   (iv)  Backoff: 503×2 then 200 → success in 3 attempts; 401 → 1 attempt, no retry.
-  (v)   First-poll-ever: no last_seen_at → from_ms == now - MAX_BACKFILL_HOURS.
+  (v)   First-poll-ever: no last_seen_at → from_ms omitted (MONEO returns from beginning).
   (vi)  Page-cap safety: loop exits after moneo_poll_max_pages_per_sensor pages.
 """
 import logging
@@ -347,13 +347,13 @@ class TestMoneoSyncSlice2:
         actual = _strip_tz(sensor.last_seen_at)
         assert actual == expected, f"last_seen_at should be T+2s; got {actual}"
 
-    # (ii) Backfill cap ───────────────────────────────────────────────────────
+    # (ii) No cap on watermarked sensors ────────────────────────────────────────
 
     @pytest.mark.asyncio
-    async def test_backfill_cap_applied(self, Session):
+    async def test_stale_watermark_used_without_cap(self, Session):
         """
-        When last_seen_at is 48h ago and MAX_BACKFILL_HOURS=24, from_ms passed to
-        the API client must be ~(now - 24h), not last_seen_at + 1ms.
+        When last_seen_at is 48h ago, from_ms must be last_seen_at + 1ms — NOT
+        capped to now-24h. The scheduler pages through the backlog automatically.
         """
         now = datetime.now(timezone.utc)
         stale = now - timedelta(hours=48)
@@ -361,28 +361,31 @@ class TestMoneoSyncSlice2:
         _seed_sensor(Session, moneo_sensor_id="cap-sensor", asset_moneo_id="cap-device",
                      last_seen_at=stale)
 
+        # Read back last_seen_at as SQLite will return it (possibly naive) so that
+        # expected_from_ms uses the same .timestamp() interpretation as the poller.
+        seeded = _get_sensor(Session, "cap-sensor")
+        expected_from_ms = int(seeded.last_seen_at.timestamp() * 1000) + 1
+
         recent_ts = int((now - timedelta(hours=6)).timestamp() * 1000)
         stub = _make_processdata([recent_ts])
         poller = _make_poller()
         poller.client.get_processdata = AsyncMock(return_value=stub)
 
-        before_ms = int(now.timestamp() * 1000)
         with patch("services.moneo_poller.SessionLocal", side_effect=Session):
             with patch("services.moneo_poller.settings") as mock_cfg:
                 _mock_settings(mock_cfg, max_backfill_hours=24)
                 await poller.poll_latest_readings()
-        after_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
 
         actual_from_ms = poller.client.get_processdata.call_args.kwargs["from_ms"]
-        cap_lower = before_ms - 24 * 3600 * 1000
-        cap_upper = after_ms - 24 * 3600 * 1000
 
-        # from_ms must be near now-24h, not near stale+1ms (which would be ~now-48h)
-        assert cap_lower <= actual_from_ms <= cap_upper, (
-            f"from_ms ({actual_from_ms}) should be ~now-24h [{cap_lower}, {cap_upper}]"
+        assert actual_from_ms == expected_from_ms, (
+            f"from_ms should be watermark+1ms ({expected_from_ms}); got {actual_from_ms}"
         )
-        stale_ms_plus1 = int(stale.timestamp() * 1000) + 1
-        assert actual_from_ms != stale_ms_plus1, "Should use cap, not raw watermark+1"
+        # Sanity: must NOT be the 24h cap (48h-ago watermark is ~24h older than the cap).
+        cap_ms = int((datetime.now(timezone.utc) - timedelta(hours=24)).timestamp() * 1000)
+        assert abs(actual_from_ms - cap_ms) > 60_000, (
+            "from_ms should NOT equal the 24h cap; stale watermark must be used directly"
+        )
 
     # (iii) Pagination + idempotency ──────────────────────────────────────────
 
@@ -535,10 +538,10 @@ class TestMoneoSyncSlice2:
     # (v) First-poll-ever ─────────────────────────────────────────────────────
 
     @pytest.mark.asyncio
-    async def test_first_poll_uses_backfill_cap(self, Session):
+    async def test_first_poll_omits_from_ms(self, Session):
         """
-        When last_seen_at is None, from_ms must equal now - MAX_BACKFILL_HOURS * 3600 * 1000
-        (within a small tolerance to account for test execution time).
+        When last_seen_at is None, from_ms must be None (omitted from the API call)
+        so MONEO returns readings from the very beginning of recorded history.
         """
         _seed_sensor(
             Session, moneo_sensor_id="new-sensor", asset_moneo_id="new-device",
@@ -549,19 +552,14 @@ class TestMoneoSyncSlice2:
         poller = _make_poller()
         poller.client.get_processdata = AsyncMock(return_value=stub)
 
-        before_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
         with patch("services.moneo_poller.SessionLocal", side_effect=Session):
             with patch("services.moneo_poller.settings") as mock_cfg:
                 _mock_settings(mock_cfg, max_backfill_hours=24)
                 await poller.poll_latest_readings()
-        after_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
 
         actual_from_ms = poller.client.get_processdata.call_args.kwargs["from_ms"]
-        cap_lower = before_ms - 24 * 3600 * 1000
-        cap_upper = after_ms - 24 * 3600 * 1000
-
-        assert cap_lower <= actual_from_ms <= cap_upper, (
-            f"from_ms ({actual_from_ms}) should be ~now-24h [{cap_lower}, {cap_upper}]"
+        assert actual_from_ms is None, (
+            f"from_ms should be None for a sensor with no watermark; got {actual_from_ms!r}"
         )
 
     # (vi) Page-cap safety ────────────────────────────────────────────────────
