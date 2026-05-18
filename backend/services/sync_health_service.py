@@ -2,12 +2,26 @@ import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from DAL.db_context import SessionLocal
+from DAL import session_scope
 from DAL.models.sync_error import SyncError
 from DAL.models.sync_run import SyncRun
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+# Must match the `hours=6` interval on the sync_sensor_metadata job in
+# services/schedulers/data_polling_scheduler.py — update both together.
+_METADATA_SYNC_INTERVAL_SECONDS = 6 * 3600
+
+
+def _to_iso(dt: "datetime | None") -> "str | None":
+    """Serialise a datetime to ISO 8601, normalising SQLite-naive values to UTC."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
 
 # TODO: a future hook here will fan out 'failed'/'degraded' transitions into
 # the alert subsystem (e.g. synthetic AlertEvent rows or notification outbox
@@ -29,8 +43,7 @@ class SyncHealthService:
         records_written, and last_cursor in-memory; those fields are flushed
         to the DB on clean exit.
         """
-        db = SessionLocal()
-        try:
+        with session_scope() as db:
             run = SyncRun(
                 source=source,
                 started_at=datetime.now(timezone.utc),
@@ -57,8 +70,6 @@ class SyncHealthService:
                 run.error_summary = (str(exc) or exc.__class__.__name__)[:1000]
                 db.commit()
                 raise
-        finally:
-            db.close()
 
     def record_error(
         self,
@@ -75,8 +86,7 @@ class SyncHealthService:
         session rolls back.  Mutates run.error_count in-memory so the
         context-manager flush sees the updated counter.
         """
-        db = SessionLocal()
-        try:
+        with session_scope() as db:
             error = SyncError(
                 sync_run_id=run.id,
                 sensor_id=sensor_id,
@@ -89,8 +99,6 @@ class SyncHealthService:
             db.commit()
             db.refresh(error)
             db.expunge(error)
-        finally:
-            db.close()
         run.error_count += 1
         return error
 
@@ -104,7 +112,7 @@ class SyncHealthService:
         # Reference cadence per source (seconds).
         cadences = {
             "moneo.readings": settings.sensor_poll_interval_seconds,
-            "moneo.metadata": 6 * 3600,  # matches the 6h metadata sync job
+            "moneo.metadata": _METADATA_SYNC_INTERVAL_SECONDS,
         }
 
         result: dict = {}
@@ -193,21 +201,13 @@ class SyncHealthService:
                 .first()
             )
 
-            # Normalise finished_at for ISO serialisation (SQLite naive).
-            def _iso(dt: datetime | None) -> str | None:
-                if dt is None:
-                    return None
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                return dt.isoformat()
-
             result[source] = {
                 "derived_status": derived_status,
                 "last_status": last_run.status if last_run else None,
-                "last_run_started_at": _iso(last_run.started_at) if last_run else None,
-                "last_run_finished_at": _iso(last_run.finished_at) if last_run else None,
+                "last_run_started_at": _to_iso(last_run.started_at) if last_run else None,
+                "last_run_finished_at": _to_iso(last_run.finished_at) if last_run else None,
                 "last_success_at": (
-                    _iso(last_success.finished_at)
+                    _to_iso(last_success.finished_at)
                     if last_success and last_success.finished_at
                     else None
                 ),
@@ -232,17 +232,15 @@ async def prune_sync_history() -> None:
     sync_errors are removed automatically via the ON DELETE CASCADE FK.
     Scheduled nightly at 03:00 by data_polling_scheduler.
     """
-    db = SessionLocal()
-    try:
-        cutoff = datetime.now(timezone.utc) - timedelta(
-            days=settings.sync_history_retention_days
-        )
-        deleted = db.query(SyncRun).filter(SyncRun.started_at < cutoff).delete()
-        db.commit()
-        if deleted:
-            logger.info("prune_sync_history: removed %d old sync_run rows", deleted)
-    except Exception as exc:
-        logger.error("prune_sync_history failed: %s", exc)
-        db.rollback()
-    finally:
-        db.close()
+    with session_scope() as db:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(
+                days=settings.sync_history_retention_days
+            )
+            deleted = db.query(SyncRun).filter(SyncRun.started_at < cutoff).delete()
+            db.commit()
+            if deleted:
+                logger.info("prune_sync_history: removed %d old sync_run rows", deleted)
+        except Exception as exc:
+            logger.error("prune_sync_history failed: %s", exc)
+            db.rollback()

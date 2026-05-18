@@ -6,13 +6,6 @@ from sqlalchemy.orm import Session
 
 from DAL import Dashboard, DashboardWidget, Sensor, SensorReading, User
 
-_DEMO_SENSOR_IDS = [
-    "DEMO-TEMP-001",
-    "DEMO-VIB-001",
-    "DEMO-PRESS-001",
-    "DEMO-HUM-001",
-]
-
 _DEMO_DASHBOARD_NAME = "Demo Dashboard"
 
 

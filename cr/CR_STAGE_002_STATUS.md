@@ -1,6 +1,6 @@
 # Stage 002 — Backend services: MONEO integration + scheduling
 
-**Status:** Audit complete
+**Status:** Stage complete
 **Date:** 2026-05-18
 **Files in scope:**
 - `backend/services/moneo_api_client.py`
@@ -96,28 +96,122 @@
 
 ## Orchestrator decisions
 
-- Baseline tests: _awaiting_
+- Baseline tests: GREEN (assumed per orchestrator instruction to proceed)
 - Approvals:
-  - S2-M1: _awaiting_
-  - Minors: auto-applied per rule (once baseline is green)
-  - Nits: trivial; will apply unless overridden
+  - S2-M1 ✗ — deferred; dedicated single-purpose task after Stage 2 closes
+  - S2-m1 ✓
+  - S2-m2 ✓
+  - S2-m3 ✓
+  - S2-m4 ✓ (constant must carry comment pointing at data_polling_scheduler.py as source of truth)
+  - S2-m5 ✓ (keep local to moneo_api_client.py — no cross-import)
+  - S2-m6 ✓
+  - S2-m7 ✓
+  - S2-n1 ✓
+  - S2-n2 ✓ — AlertEvaluator confirmed stateless (no instance variables, no per-call caches — read alert_evaluator.py); hoist approved
+  - S2-n3 ✗ — skipped (bulk_save_objects and add_all not semantically identical; demo seed code)
+  - Conditional scheduler-kwargs DRY cluster: NOT extracted — no repetitions without S2-M1 additions
 
 ---
 
 ## Pass 2 — Applied
 
-_n/a yet_
-
 ### Applied
+
+- **S2-m1** — Migrated 6 `SessionLocal()` hot spots to `session_scope()`:
+  - `moneo_poller.poll_latest_readings`: combined `with self._health.run(...) as run, session_scope() as db:` (avoids indentation change to body); removed `finally: db.close()`
+  - `moneo_poller.sync_sensor_metadata`: same combined-with pattern
+  - `sync_health_service.SyncHealthService.run()`: `with session_scope() as db:` wraps the body; `db.expunge` still fires before `session_scope` closes
+  - `sync_health_service.SyncHealthService.record_error()`: same; `db.expunge(error)` fires inside `with`, object is detached before session closes
+  - `sync_health_service.prune_sync_history()`: `with session_scope() as db:` with inner `try/except` for rollback
+  - `alert_no_data_scheduler.check_no_data_alerts()`: same pattern
+  - Import in each file updated: `SessionLocal` → `session_scope`
+
+- **S2-m2** — Removed unused `_DEMO_SENSOR_IDS` constant from `demo_seed_service.py`
+
+- **S2-m3** — Extracted `_POLL_PAGE_SIZE = 500` in `moneo_poller.py`; replaced both occurrences (call site + pagination guard); removed the now-redundant inline comment that flagged the maintenance risk
+
+- **S2-m4** — Extracted `_METADATA_SYNC_INTERVAL_SECONDS = 6 * 3600` in `sync_health_service.py` with comment pointing to `data_polling_scheduler.py` as the source of truth; replaced inline `6 * 3600` in `cadences` dict
+
+- **S2-m5** — Extracted `_VERIFY_AUTH_TIMEOUT_S = 5.0` in `moneo_api_client.py`; used in `verify_auth()`; kept local to the client file
+
+- **S2-m6** — Hoisted `_iso()` to module-level `_to_iso()` in `sync_health_service.py`; removed the loop-body definition; updated 3 call sites to `_to_iso()`
+
+- **S2-m7** — Replaced broad `except Exception` in `get_devices()` and `raw_get()` with classified handlers (`httpx.RequestError` + `ValueError`). Confirmed: the broad block previously caught exactly these two types (transport errors and `response.json()` parse errors) — no other exception type was actually reaching it before re-raise. Both methods still log and re-raise; no swallowing introduced.
+
+- **S2-n1** — Corrected inaccurate comment in `data_polling_scheduler.py` ("once at startup" → accurately describes 6 h interval with no startup-time trigger)
+
+- **S2-n2** — Hoisted `AlertEvaluator()` instantiation above the `for sensor in sensors:` loop in `poll_latest_readings`. Confirmed stateless: `AlertEvaluator` has no instance variables; all methods receive their state via arguments; `_SEVERITY_COLOR` is a module-level constant. Safe to share across iterations.
+
 ### Skipped
+
+- **S2-M1** — Deferred by orchestrator (dedicated scheduler-safety task)
+- **S2-n3** — Skipped by orchestrator (`bulk_save_objects` vs `add_all` not semantically identical)
+- Conditional scheduler-kwargs DRY cluster — not extracted (no repetitions without S2-M1 additions)
+
 ### Files modified
+
+- `backend/services/moneo_api_client.py`
+- `backend/services/moneo_poller.py`
+- `backend/services/sync_health_service.py`
+- `backend/services/demo_seed_service.py`
+- `backend/services/schedulers/data_polling_scheduler.py`
+- `backend/services/schedulers/alert_no_data_scheduler.py`
+
 ### Public surface changes inside scope
+
+- `sync_health_service._to_iso` — NEW module-level function (was anonymous loop-body closure; now public within the module, not exported)
+- `sync_health_service._METADATA_SYNC_INTERVAL_SECONDS` — NEW module constant (additive)
+- `moneo_poller._POLL_PAGE_SIZE` — NEW module constant (additive)
+- `moneo_api_client._VERIFY_AUTH_TIMEOUT_S` — NEW module constant (additive)
+- All other symbols unchanged
+
 ### Contract-preservation evidence
+
+**moneo_api_client.py**
+- `get_devices()`: HTTP method GET, URL `{base_url}/nodes`, headers unchanged (set at client init), no query params. Return shape `list[dict]` — unchanged. Only exception classification changed (narrow types vs broad; all still re-raise).
+- `raw_get()`: HTTP method GET, URL `{base_url}/{path}`, headers unchanged. Return shape unchanged. Same exception narrowing.
+- `raw_get_response()`: untouched.
+- `get_processdata()`: untouched except `page_size=_POLL_PAGE_SIZE` (same value 500). All params, URL pattern, retry policy, headers — unchanged.
+- `verify_auth()`: GET `/nodes?pageSize=1`, `timeout=_VERIFY_AUTH_TIMEOUT_S` (5.0 — same value). Return shape `{ok, status_code, message}` — unchanged. broad `except Exception` intentionally kept (probe must never throw).
+
+**moneo_poller.py**
+- `poll_latest_readings()`: fetch→transform→persist→commit order **preserved**. Per-sensor `db.commit()` and `db.rollback()` calls unchanged. Outer `db.rollback(); raise` on fatal error unchanged. `session_scope()` only adds guaranteed close — no commit semantics change.
+- `sync_sensor_metadata()`: single `db.commit()` after all upserts — unchanged. `db.rollback(); raise` on error — unchanged.
+- `bulk_upsert_readings()`: untouched.
+
+**APScheduler job parameters** (data_polling_scheduler.py): only the `sync_sensor_metadata` comment was changed (text, no code). All `add_job` arguments — `id`, `trigger`, `seconds`/`hours`/`hour`/`minute`, `replace_existing` — **unchanged**.
+
+**DB write order**: no changes to any INSERT/UPDATE/DELETE ordering or commit boundaries.
+
 ### Cross-stage notes
+
+- Stage 3 (other services): `notification_dispatcher.py:30` still has a `SessionLocal()` hot spot — not in this stage's scope.
+- Stage 3 should also investigate `moneo_poller.py:165` using `sensor.name` as `datasource_id` instead of `sensor.moneo_datasource_ref`.
+- Stage 5 (tests): test files reference `SessionLocal` directly — unchanged, per Stage 1 note.
+- S2-M1 (scheduler `max_instances=1`) is a standalone task — the conditional scheduler-kwargs DRY cluster becomes actionable once that lands.
+
 ### Test commands run
+
+```
+cd backend
+pytest
+```
+_(not run by this agent; orchestrator executes)_
 
 ---
 
 ## Commit message draft
 
-_n/a yet_
+```
+Stage 2 CR - Backend services: MONEO integration + scheduling
+
+* Adopt session_scope() at 6 service sites (moneo_poller ×2, sync_health_service ×3, alert_no_data_scheduler ×1); removes all manual SessionLocal/try-finally-close boilerplate in scope
+* Extract _POLL_PAGE_SIZE = 500 in moneo_poller.py; replace both call site and pagination guard literals
+* Extract _METADATA_SYNC_INTERVAL_SECONDS = 6 * 3600 in sync_health_service.py with cross-reference comment to data_polling_scheduler.py
+* Extract _VERIFY_AUTH_TIMEOUT_S = 5.0 in moneo_api_client.py; use in verify_auth()
+* Hoist _to_iso() to module level in sync_health_service.py; remove per-iteration redefinition
+* Classify transport/parse exceptions in get_devices() and raw_get() (httpx.RequestError, ValueError) instead of broad except Exception
+* Remove unused _DEMO_SENSOR_IDS constant from demo_seed_service.py
+* Hoist AlertEvaluator() above sensor loop in poll_latest_readings (stateless — confirmed)
+* Fix inaccurate scheduler comment: metadata sync fires on interval, not at startup
+```

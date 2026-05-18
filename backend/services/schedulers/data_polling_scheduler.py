@@ -25,7 +25,7 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Run a metadata sync once at startup and then every 6 hours
+    # Run a metadata sync every 6 hours (first run fires after the initial interval, not at startup)
     _scheduler.add_job(
         _poller.sync_sensor_metadata,
         trigger="interval",

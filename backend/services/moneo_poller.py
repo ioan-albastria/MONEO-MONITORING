@@ -4,13 +4,17 @@ from datetime import datetime, timezone
 import httpx
 from sqlalchemy.orm import joinedload
 
-from DAL import SessionLocal, Sensor, SensorReading, Asset
+from DAL import session_scope, Sensor, SensorReading, Asset
 from config import settings
 from services.alert_evaluator import AlertEvaluator
 from services.moneo_api_client import MoneoApiClient
 from services.sync_health_service import SyncHealthService
 
 logger = logging.getLogger(__name__)
+
+# Page size used for all get_processdata calls and the matching pagination guard.
+# Both sites must stay in sync — if you change this, update the pagination guard too.
+_POLL_PAGE_SIZE = 500
 
 
 def bulk_upsert_readings(
@@ -93,8 +97,7 @@ class MoneoPoller:
         """Watermark-driven catch-up: fetch every point since last_seen_at, paginating
         until caught up or the MAX_BACKFILL_HOURS cap is reached.  After a 30-min outage
         the next cycle automatically recovers all missed readings."""
-        with self._health.run("moneo.readings") as run:
-            db = SessionLocal()
+        with self._health.run("moneo.readings") as run, session_scope() as db:
             try:
                 sensors = (
                     db.query(Sensor)
@@ -104,6 +107,7 @@ class MoneoPoller:
                 )
                 logger.info("Poll started: %d active sensor(s)", len(sensors))
 
+                evaluator = AlertEvaluator()
                 for sensor in sensors:
                     try:
                         sensor_rows_in_before = run.records_in
@@ -165,7 +169,7 @@ class MoneoPoller:
                                     to_ms=to_ms,
                                     order="+timestamp",
                                     page=page,
-                                    page_size=500,
+                                    page_size=_POLL_PAGE_SIZE,
                                 )
                             except httpx.HTTPStatusError:
                                 # Let the per-sensor except handler classify and record
@@ -205,9 +209,7 @@ class MoneoPoller:
                                 )
 
                             total_count = env.get("totalCount") or 0
-                            # page_size is hardcoded to 500 above; if page_size is ever
-                            # parameterised, update this comparison to use the same variable.
-                            if page * 500 >= total_count:
+                            if page * _POLL_PAGE_SIZE >= total_count:
                                 break
                             page += 1
                         else:
@@ -245,7 +247,7 @@ class MoneoPoller:
                                     .first()
                                 )
                                 if latest:
-                                    AlertEvaluator().evaluate(db, sensor, latest)
+                                    evaluator.evaluate(db, sensor, latest)
 
                         # Commit once per sensor so a failure mid-fleet does not lose
                         # already-fetched data for sensors processed earlier in this cycle.
@@ -319,13 +321,10 @@ class MoneoPoller:
                 logger.error("poll_latest_readings failed: %s", exc)
                 db.rollback()
                 raise  # propagate so the health context manager records status=failed
-            finally:
-                db.close()
 
     async def sync_sensor_metadata(self):
         """Discover devices and sensors from MONEO and upsert them locally."""
-        with self._health.run("moneo.metadata") as run:
-            db = SessionLocal()
+        with self._health.run("moneo.metadata") as run, session_scope() as db:
             try:
                 nodes = await self.client.get_devices()
                 added_sensors = 0
@@ -441,8 +440,6 @@ class MoneoPoller:
                 logger.error("sync_sensor_metadata failed: %s", exc)
                 db.rollback()
                 raise  # propagate so the health context manager records status=failed
-            finally:
-                db.close()
 
     async def close(self):
         await self.client.close()

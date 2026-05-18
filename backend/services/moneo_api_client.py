@@ -19,6 +19,8 @@ _RETRY_ON_STATUS = frozenset({429, 500, 502, 503, 504})
 _NO_RETRY_STATUS = frozenset({401, 403, 404})
 _MAX_ATTEMPTS = 3
 _BASE_DELAY_S = 0.5
+# Timeout for verify_auth() one-shot probe — short cap so boot startup is not stalled.
+_VERIFY_AUTH_TIMEOUT_S = 5.0
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +47,11 @@ class MoneoApiClient:
         except httpx.HTTPStatusError as e:
             logger.error("MONEO get_devices HTTP error %s: %s", e.response.status_code, e)
             raise
-        except Exception as e:
-            logger.error("MONEO get_devices error: %s", e)
+        except httpx.RequestError as e:
+            logger.error("MONEO get_devices transport error %s: %s", type(e).__name__, e)
+            raise
+        except ValueError as e:
+            logger.error("MONEO get_devices JSON parse error: %s", e)
             raise
 
     async def get_processdata(
@@ -159,8 +164,11 @@ class MoneoApiClient:
                 e,
             )
             raise
-        except Exception as e:
-            logger.error("MONEO raw GET error for path %s: %s", path, e)
+        except httpx.RequestError as e:
+            logger.error("MONEO raw GET transport error %s for path %s: %s", type(e).__name__, path, e)
+            raise
+        except ValueError as e:
+            logger.error("MONEO raw GET JSON parse error for path %s: %s", path, e)
             raise
 
     async def raw_get_response(
@@ -191,7 +199,7 @@ class MoneoApiClient:
         """
         url = f"{self.base_url}/nodes"
         try:
-            response = await self._client.get(url, params={"pageSize": 1}, timeout=5.0)
+            response = await self._client.get(url, params={"pageSize": 1}, timeout=_VERIFY_AUTH_TIMEOUT_S)
         except Exception as exc:
             return {
                 "ok": False,
