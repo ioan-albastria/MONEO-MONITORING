@@ -123,22 +123,6 @@ class MoneoPoller:
                             )
                             continue
 
-                        if sensor.moneo_datasource_ref is None:
-                            logger.warning(
-                                "Sensor %d (%s): moneo_datasource_ref is None — "
-                                "skipping poll (run metadata sync)",
-                                sensor.id,
-                                sensor.moneo_sensor_id,
-                            )
-                            self._health.record_error(
-                                run,
-                                "sensor_skipped",
-                                f"Sensor {sensor.id} ({sensor.moneo_sensor_id}): "
-                                "moneo_datasource_ref is None",
-                                sensor_id=sensor.id,
-                            )
-                            continue
-
                         # Compute the fetch window.
                         now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
                         cap_ms = now_ms - settings.max_backfill_hours * 3600 * 1000
@@ -167,7 +151,7 @@ class MoneoPoller:
                             try:
                                 env = await self.client.get_processdata(
                                     device_id=sensor.asset.moneo_asset_id,
-                                    datasource_id=sensor.moneo_datasource_ref,
+                                    datasource_id=sensor.name,
                                     from_ms=from_ms,
                                     to_ms=to_ms,
                                     order="+timestamp",
@@ -385,9 +369,12 @@ class MoneoPoller:
                         "category", data_source.get("category", "DataSource")
                     )
 
-                    # The deep id required by /processdata. Stored separately from
+                    # The id required by /processdata. Stored separately from
                     # moneo_sensor_id (the topology node id, our stable public handle).
-                    moneo_datasource_ref = ds_info.get("id")
+                    # Try the spec-compliant flat field first (reference.datasourceId),
+                    # then fall back to the nested reference.dataSource.id seen in
+                    # live API samples (audit: tmp/moneo-samples/node_category_examples.json).
+                    moneo_datasource_ref = reference.get("datasourceId") or ds_info.get("id")
 
                     if not existing:
                         sensor = Sensor(

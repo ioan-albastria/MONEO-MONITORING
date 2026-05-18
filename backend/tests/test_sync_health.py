@@ -233,7 +233,8 @@ class TestPollerErrors:
         }
 
         async def processdata_side_effect(**kwargs):
-            if kwargs.get("datasource_id") == "deepid-err-sensor-a":
+            # Poller now uses sensor.name as datasource_id (not moneo_datasource_ref).
+            if kwargs.get("datasource_id") == "err-sensor-a":
                 raise httpx.HTTPStatusError(
                     "503", request=MagicMock(), response=mock_503_resp
                 )
@@ -366,10 +367,11 @@ class TestPollerErrors:
             session.close()
 
     @pytest.mark.asyncio
-    async def test_sensor_skipped_missing_datasource_ref(self, Session):
+    async def test_null_datasource_ref_polls_via_name(self, Session):
         """
-        A sensor with moneo_datasource_ref=None must produce kind='sensor_skipped'
-        in sync_errors.
+        A sensor with moneo_datasource_ref=None must NOT be skipped.
+        The poller now uses sensor.name as the datasource_id, so get_processdata
+        must be called with datasource_id equal to the sensor name.
         """
         session = Session()
         try:
@@ -378,11 +380,11 @@ class TestPollerErrors:
             session.flush()
             sensor = Sensor(
                 moneo_sensor_id="skip-sensor",
-                name="skip-sensor",
+                name="Temperature",
                 sensor_type="DataSource",
                 unit="",
                 asset_id=asset.id,
-                moneo_datasource_ref=None,  # missing — should be skipped
+                moneo_datasource_ref=None,  # missing — no longer causes a skip
             )
             session.add(sensor)
             session.commit()
@@ -401,13 +403,21 @@ class TestPollerErrors:
                     mock_cfg.moneo_poll_max_pages_per_sensor = 100
                     await poller.poll_latest_readings()
 
+        # get_processdata must have been called once with the sensor name as datasource_id.
+        poller.client.get_processdata.assert_called_once()
+        call_kwargs = poller.client.get_processdata.call_args.kwargs
+        assert call_kwargs.get("datasource_id") == "Temperature", (
+            f"Expected datasource_id='Temperature' (sensor.name); got {call_kwargs.get('datasource_id')!r}"
+        )
+
+        # No sensor_skipped errors — the sensor was polled, not skipped.
         session = Session()
         try:
             run = session.query(SyncRun).filter_by(source="moneo.readings").first()
-            err = session.query(SyncError).filter_by(
+            skipped = session.query(SyncError).filter_by(
                 sync_run_id=run.id, kind="sensor_skipped"
             ).first()
-            assert err is not None, "Expected sensor_skipped error"
+            assert skipped is None, "sensor with null moneo_datasource_ref must not produce sensor_skipped"
         finally:
             session.close()
 

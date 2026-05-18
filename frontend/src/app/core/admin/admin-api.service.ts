@@ -11,6 +11,21 @@ export interface UserAdminRead {
   created_at: string;
 }
 
+export interface UserCreate {
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+export interface UserUpdate {
+  username?: string;
+  email?: string;
+  role?: string;
+  is_active?: boolean;
+  password?: string;
+}
+
 export interface KioskTokenAdminRead {
   id: number;
   dashboard_ids: number[];

@@ -31,7 +31,7 @@
                 hover:bg-surface-3/40 transition
                 text-sm text-fg-muted hover:text-fg
                 flex items-center gap-2"
-        (click)="toggleDensity.emit()"
+        (click)="ui.toggleDensity()"
         title="Toggle density"
       >
         <span class="icon icon-muted">density_small</span>
@@ -45,11 +45,11 @@
                 hover:bg-surface-3/40 transition
                 text-sm text-fg-muted hover:text-fg
                 flex items-center gap-2"
-        (click)="toggleTheme.emit()"
+        (click)="ui.toggleTheme()"
         title="Toggle theme"
       >
         <span class="icon icon-muted">brightness_6</span>
-        <span class="text-xs">Theme</span>
+        <span class="text-xs">{{ ui.getCurrentTheme() === 'operational-dark' ? 'Dark' : 'Light' }}</span>
       </button>
 
       <!-- Sync status indicator (admin-only; hides itself on 403) -->

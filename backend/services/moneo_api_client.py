@@ -2,6 +2,7 @@ import asyncio
 import logging
 import random
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -54,7 +55,7 @@ class MoneoApiClient:
         datasource_id: str,
         from_ms: int | None = None,
         to_ms: int | None = None,
-        order: str = "+timestamp",
+        order: str = "timestamp",
         page: int = 1,
         page_size: int = 500,
     ) -> dict:
@@ -91,7 +92,8 @@ class MoneoApiClient:
         if to_ms is not None:
             params["toTimestamp"] = to_ms
 
-        url = f"{self.base_url}/processdata/device/{device_id}/datasource/{datasource_id}"
+        # quote() encodes spaces and special chars in the name; -_ are safe in URL paths.
+        url = f"{self.base_url}/processdata/device/{device_id}/datasource/{quote(datasource_id, safe='-_')}"
 
         for attempt in range(_MAX_ATTEMPTS):
             try:

@@ -59,42 +59,5 @@
 
     </ng-container>
 
-    <div class="my-2 h-px bg-divider/60"></div>
-
-    <button
-      type="button"
-      class="group flex items-center gap-[var(--nav-item-gap)] rounded-[var(--nav-item-radius)] px-[var(--nav-item-px)] py-[var(--nav-item-py)]
-              text-sm text-fg-muted hover:text-fg
-              hover:bg-surface-3/30 transition w-full"
-      (click)="ui.toggleDensity()"
-      [title]="'Density: ' + ui.getCurrentDensity()"
-    >
-      <span class="grid place-items-center flex-shrink-0 w-[var(--nav-icon-box)] h-[var(--nav-icon-box)] -m-0.5">
-        <span class="icon icon-muted">density_small</span>
-      </span>
-      <span class="whitespace-nowrap transition-opacity duration-150"
-            [class.opacity-0]="!navOpen"
-            [class.opacity-100]="navOpen">
-        {{ ui.getCurrentDensity() === 'density-compact' ? 'Compact' : 'Comfortable' }}
-      </span>
-    </button>
-
-    <button
-      type="button"
-      class="group flex items-center gap-[var(--nav-item-gap)] rounded-[var(--nav-item-radius)] px-[var(--nav-item-px)] py-[var(--nav-item-py)]
-              text-sm text-fg-muted hover:text-fg
-              hover:bg-surface-3/30 transition w-full"
-      (click)="ui.toggleTheme()"
-      [title]="'Theme: ' + ui.getCurrentTheme()"
-    >
-      <span class="grid place-items-center flex-shrink-0 w-[var(--nav-icon-box)] h-[var(--nav-icon-box)] -m-0.5">
-        <span class="icon icon-muted">brightness_6</span>
-      </span>
-      <span class="whitespace-nowrap transition-opacity duration-150"
-            [class.opacity-0]="!navOpen"
-            [class.opacity-100]="navOpen">
-        {{ ui.getCurrentTheme() === 'operational-dark' ? 'Dark' : 'Light' }}
-      </span>
-    </button>
   </nav>
 </aside>

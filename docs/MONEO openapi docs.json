@@ -1,0 +1,3596 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "moneo API",
+    "version": "1.0",
+    "description": "\n\nThe moneo API provides a standardized cloud interface for integrating external systems with the ifm IIoT platform moneo. Typical integrations include ERP, BI and analytics tools, MES, SCADA and third-party applications. The API exposes multiple endpoints for managing and retrieving moneo-related data.\n\n\n<div style=\"background:#f0f0f0;padding:10px;border-radius:5px;\">\n\n  This documentation currently covers two main APIs:<br><br>\n  <b>moneo Platform API</b><br>\n  The moneo Platform API provides endpoints for retrieving historical process data, managing tickets, and accessing topology information. Built for security and scalability, it supports token-based authentication as well as flexible queries with filtering and sorting options.\n  <br><br>\n  <b>moneo Track & Trace API</b><br>\n  The moneo Track & Trace API focuses on traceability and logistics data integration. It offers endpoints for real-time access to tracking information, supporting transparency across production and intralogistics processes.\n</div>\n\n<br>\n<br>\n<div style=\"background:#f0f0f0;padding:10px;border-radius:5px;\">\n\n  <b>Authentication and Rate Limiting Information</b><br>\n  All endpoints require Bearer authentication using Personal Access Tokens (PAT). Each token inherits the permissions of the user who created it. For guidance on creating and managing PATs, please refer to the moneo|Help documentation. <br><br>\n  To ensure fair usage and maintain optimal performance, the API enforces rate limiting. Clients are allowed a maximum of 100 requests per minute per endpoint. Exceeding this limit will result in a 429 Too Many Requests response. It is recommended to implement retry logic with exponential backoff in your client applications to handle rate limit responses gracefully.\n  The limit is based on the moneo instance and applies to all users and tokens collectively.\n</div>\n",
+    "x-logo": {
+      "url": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDMuNTE4IDMuNDU1KSI+PHBhdGggZD0iTTEyLjQ5MTg5ODMsMCBDMTkuMzkwNzExOSwwIDI0Ljk4Mzc5NjYsNS41OTI2NDQwNyAyNC45ODM3OTY2LDEyLjQ5MTQ1NzYgQzI0Ljk4Mzc5NjYsMTkuMzkwNzExOSAxOS4zOTA3MTE5LDI0Ljk4MzM1NTkgMTIuNDkxODk4MywyNC45ODMzNTU5IEM1LjU5MjY0NDA3LDI0Ljk4MzM1NTkgMCwxOS4zOTA3MTE5IDAsMTIuNDkxNDU3NiBDMCw1LjU5MjY0NDA3IDUuNTkyNjQ0MDcsMCAxMi40OTE4OTgzLDAiIGZpbGw9IiNGRjZFMDAiLz48cGF0aCBkPSJNMTIuNDkxODk4MywwIEMxOS4zOTA3MTE5LDAgMjQuOTgzNzk2Niw1LjU5MjY0NDA3IDI0Ljk4Mzc5NjYsMTIuNDkxNDU3NiBDMjQuOTgzNzk2NiwxOS4zOTA3MTE5IDE5LjM5MDcxMTksMjQuOTgzMzU1OSAxMi40OTE4OTgzLDI0Ljk4MzM1NTkgQzUuNTkyNjQ0MDcsMjQuOTgzMzU1OSAwLDE5LjM5MDcxMTkgMCwxMi40OTE0NTc2IEMwLDUuNTkyNjQ0MDcgNS41OTI2NDQwNywwIDEyLjQ5MTg5ODMsMCBaIiBzdHJva2U9IiNGRjZFMDAiIHN0cm9rZS13aWR0aD0iLjUiLz48cGF0aCBkPSJNMy4xMTkxMTkxNSw3LjI5MzIyMDUzIEMzLjExOTExOTE1LDYuNTIwNzEyMDUgMy43NDU3NjMyMiw1Ljg5NDA2Nzk4IDQuNTE4NzEyMzcsNS44OTQwNjc5OCBDNS4yOTEyMjA4NSw1Ljg5NDA2Nzk4IDUuOTE3ODY0OTIsNi41MjA3MTIwNSA1LjkxNzg2NDkyLDcuMjkzMjIwNTMgQzUuOTE3ODY0OTIsOC4wNjYxNjk2OCA1LjI5MTIyMDg1LDguNjkyMzczMDcgNC41MTg3MTIzNyw4LjY5MjM3MzA3IEMzLjc0NTc2MzIyLDguNjkyMzczMDcgMy4xMTkxMTkxNSw4LjA2NjE2OTY4IDMuMTE5MTE5MTUsNy4yOTMyMjA1MyBaIE02LjUzNzAxNzQ2LDYuNDE3NTkzNDEgQzYuNjUzMzU2NDQsNi42ODU1MjU2MSA2LjcxNjgxNDA3LDYuOTgyNTQyNTYgNi43MTY4MTQwNyw3LjI5MzIyMDUzIEM2LjcxNjgxNDA3LDguNTA3Mjg4MzIgNS43MzI3ODAxNyw5LjQ5MTc2MjkgNC41MTg3MTIzNyw5LjQ5MTc2MjkgQzMuMzA0MjAzOSw5LjQ5MTc2MjkgMi4zMjAxNyw4LjUwNzI4ODMyIDIuMzIwMTcsNy4yOTMyMjA1MyBDMi4zMjAxNyw2LjA3OTE1MjczIDMuMzA0MjAzOSw1LjA5NDY3ODE1IDQuNTE4NzEyMzcsNS4wOTQ2NzgxNSBDNC45Njk1MjU5Myw1LjA5NDY3ODE1IDUuMzg4NjEwNjgsNS4yMzEyODgzMiA1LjczNzYyNzYzLDUuNDY0NDA2OTcgTDUuNzM3NjI3NjMsNC44OTQ2MTAzNiBDNS43Mzc2Mjc2MywzLjg0NTc5NjggNi41ODc2OTU0MiwyLjk5NTcyOSA3LjYzNjUwODk4LDIuOTk1NzI5IEwxMy4wMTI3ODAyLDIuOTk2MTY5NjggTDEzLjAxMjc4MDIsNi4xOTM3MjkgTDkuODk0OTgzNTYsNi4xOTM3MjkgQzkuODI4ODgxODYsNi4xOTM3MjkgOS43NzUxMTkxNSw2LjI0NzQ5MTcxIDkuNzc1MTE5MTUsNi4zMTM1OTM0MSBMOS43NzUxMTkxNSw4LjI3MjQwNjk3IEM5Ljc3NTExOTE1LDguMzM4OTQ5MzQgOS44Mjg4ODE4Niw4LjM5MjcxMjA1IDkuODk0OTgzNTYsOC4zOTI3MTIwNSBMMTMuMDEyNzgwMiw4LjM5MjcxMjA1IEwxMy4wMTI3ODAyLDExLjA5MDk4MzIgTDkuOTc1MTg2OTUsMTEuMDkwOTgzMiBDOS44NjQ1NzY3OCwxMS4wOTA5ODMyIDkuNzc1MTE5MTUsMTEuMTgwMDAwMiA5Ljc3NTExOTE1LDExLjI5MDYxMDQgTDkuNzc1MTE5MTUsMTguMTg2MzM5MiBMMTIuMjEzODMxLDE4LjE4NjMzOTIgTDEyLjIxMzgzMSwxMy4yODkwODQ5IEMxMi4yMTM4MzEsMTIuOTAzMDUxIDEyLjUyNjcxMjQsMTIuNTg5NzI5IDEyLjkxMzE4NjksMTIuNTg5NzI5IEwxMy44MTI2MTA3LDEyLjU4OTcyOSBDMTQuMTk5MDg1MywxMi41ODk3MjkgMTQuNTEyNDA3MywxMi45MDMwNTEgMTQuNTEyNDA3MywxMy4yODkwODQ5IEwxNC41MTI0MDczLDE4LjE4NjMzOTIgTDE2Ljk1MDY3ODUsMTguMTg2MzM5MiBMMTYuOTUwNjc4NSwxMy4yODkwODQ5IEMxNi45NTA2Nzg1LDEyLjkwMzA1MSAxNy4yNjQwMDA1LDEyLjU4OTcyOSAxNy42NTAwMzQ0LDEyLjU4OTcyOSBMMTguNTQ5NDU4MSwxMi41ODk3MjkgQzE4LjkzNTkzMjcsMTIuNTg5NzI5IDE5LjI0OTI1NDcsMTIuOTAzMDUxIDE5LjI0OTI1NDcsMTMuMjg5MDg0OSBMMTkuMjQ5MjU0NywxOC4xODYzMzkyIEwyMS42ODc1MjU5LDE4LjE4NjMzOTIgTDIxLjY4NzUyNTksMTEuMjkwNjEwNCBDMjEuNjg3NTI1OSwxMS4xODAwMDAyIDIxLjU5ODA2ODMsMTEuMDkwOTgzMiAyMS40ODc4OTg4LDExLjA5MDk4MzIgTDEzLjcxMzAxNzUsMTEuMDkwOTgzMiBMMTMuNzEzMDE3NSwxMC4yOTExNTI3IEwyMS43ODc1NTk4LDEwLjI5MTE1MjcgQzIyLjE3NDAzNDQsMTAuMjkxMTUyNyAyMi40ODczNTY0LDEwLjYwNDQ3NDggMjIuNDg3MzU2NCwxMC45OTA5NDkzIEwyMi40ODczNTY0LDE4Ljk4NTcyOSBMMTguNDQ5NDI0MiwxOC45ODU3MjkgTDE4LjQ0OTQyNDIsMTMuNTA5NDIzOSBDMTguNDQ5NDI0MiwxMy40NDMzMjIyIDE4LjM5NjEwMjIsMTMuMzg5NTU5NSAxOC4zMjk1NTk4LDEzLjM4OTU1OTUgTDE3Ljg2OTkzMjcsMTMuMzg5NTU5NSBDMTcuODAzODMxLDEzLjM4OTU1OTUgMTcuNzUwNTA5LDEzLjQ0MzMyMjIgMTcuNzUwNTA5LDEzLjUwOTQyMzkgTDE3Ljc1MDUwOSwxOC45ODU3MjkgTDEzLjcxMzAxNzUsMTguOTg1NzI5IEwxMy43MTMwMTc1LDEzLjUwOTQyMzkgQzEzLjcxMzAxNzUsMTMuNDQzMzIyMiAxMy42NTk2OTU0LDEzLjM4OTU1OTUgMTMuNTkzMTUzMSwxMy4zODk1NTk1IEwxMy4xMzI2NDQ2LDEzLjM4OTU1OTUgQzEzLjA2NjEwMjIsMTMuMzg5NTU5NSAxMy4wMTI3ODAyLDEzLjQ0MzMyMjIgMTMuMDEyNzgwMiwxMy41MDk0MjM5IEwxMy4wMTI3ODAyLDE4Ljk4NTcyOSBMMy45OTg3MTIzNywxOC45ODU3MjkgTDMuOTk4NzEyMzcsMTguMTg2MzM5MiBMNS43Mzc2Mjc2MywxOC4xODYzMzkyIEw1LjczNzYyNzYzLDExLjI5MDYxMDQgQzUuNzM3NjI3NjMsMTEuMTgwMDAwMiA1LjY0ODE3LDExLjA5MDk4MzIgNS41Mzc1NTk4MywxMS4wOTA5ODMyIEwzLjI5ODkxNTc2LDExLjA5MDk4MzIgTDMuMjk4OTE1NzYsMTguOTg1NzI5IEwyLjQ5OTk2NjYxLDE4Ljk4NTcyOSBMMi40OTk5NjY2MSwxMC4yOTExNTI3IEw1LjgzNzY2MTUzLDEwLjI5MTE1MjcgQzYuMjI0MTM2MSwxMC4yOTExNTI3IDYuNTM3MDE3NDYsMTAuNjA0NDc0OCA2LjUzNzAxNzQ2LDEwLjk5MDk0OTMgTDYuNTM3MDE3NDYsMTguMTg2MzM5MiBMOC45NzU3MjkzMiwxOC4xODYzMzkyIEw4Ljk3NTcyOTMyLDEwLjk5MDk0OTMgQzguOTc1NzI5MzIsMTAuNjA0NDc0OCA5LjI4ODYxMDY4LDEwLjI5MTE1MjcgOS42NzUwODUyNSwxMC4yOTExNTI3IEwxMi4yMTM4MzEsMTAuMjkxMTUyNyBMMTIuMjEzODMxLDkuMTkyMTAxODggTDkuNjc1MDg1MjUsOS4xOTIxMDE4OCBDOS4yODg2MTA2OCw5LjE5MjEwMTg4IDguOTc1NzI5MzIsOC44Nzg3Nzk4NSA4Ljk3NTcyOTMyLDguNDkyMzA1MjcgTDguOTc1NzI5MzIsNi4wOTQxMzU3OCBDOC45NzU3MjkzMiw1LjcwNzY2MTIgOS4yODg2MTA2OCw1LjM5NDMzOTE3IDkuNjc1MDg1MjUsNS4zOTQzMzkxNyBMMTIuMjEzODMxLDUuMzk0MzM5MTcgTDEyLjIxMzgzMSwzLjc5NTU1OTUxIEw3LjYzNjUwODk4LDMuNzk1NTU5NTEgQzcuMDI5MjU0NzUsMy43OTU1NTk1MSA2LjUzNzAxNzQ2LDQuMjg3MzU2MTIgNi41MzcwMTc0Niw0Ljg5NDYxMDM2IEw2LjUzNzAxNzQ2LDYuNDE3NTkzNDEgTDYuNTM3MDE3NDYsNi40MTc1OTM0MSBaIiBmaWxsPSIjRkZGRkZFIi8+PHBhdGggZD0iTTIuMzIwMTcsNy4yOTMyMjAzNyBDMi4zMjAxNyw2LjA3OTE1MjU4IDMuMzA0MjAzOSw1LjA5NDY3OCA0LjUxODcxMjM3LDUuMDk0Njc4IEM1LjczMjc4MDE3LDUuMDk0Njc4IDYuNzE2ODE0MDcsNi4wNzkxNTI1OCA2LjcxNjgxNDA3LDcuMjkzMjIwMzcgQzYuNzE2ODE0MDcsOC41MDcyODgxNyA1LjczMjc4MDE3LDkuNDkxNzYyNzUgNC41MTg3MTIzNyw5LjQ5MTc2Mjc1IEMzLjMwNDIwMzksOS40OTE3NjI3NSAyLjMyMDE3LDguNTA3Mjg4MTcgMi4zMjAxNyw3LjI5MzIyMDM3IFogTTMuMTE5MTE5MTUsNy4yOTMyMjAzNyBDMy4xMTkxMTkxNSw2LjUyMDcxMTkgMy43NDU3NjMyMiw1Ljg5NDA2NzgzIDQuNTE4NzEyMzcsNS44OTQwNjc4MyBDNS4yOTEyMjA4NSw1Ljg5NDA2NzgzIDUuOTE3ODY0OTIsNi41MjA3MTE5IDUuOTE3ODY0OTIsNy4yOTMyMjAzNyBDNS45MTc4NjQ5Miw4LjA2NjE2OTUzIDUuMjkxMjIwODUsOC42OTIzNzI5MiA0LjUxODcxMjM3LDguNjkyMzcyOTIgQzMuNzQ1NzYzMjIsOC42OTIzNzI5MiAzLjExOTExOTE1LDguMDY2MTY5NTMgMy4xMTkxMTkxNSw3LjI5MzIyMDM3IEwzLjExOTExOTE1LDcuMjkzMjIwMzcgWiIgZmlsbD0iIzFBMTkxOSIvPjxwYXRoIGQ9Ik0yLjMyMDE3LDcuMjkzMjIwMzcgQzIuMzIwMTcsNi4wNzkxNTI1OCAzLjMwNDIwMzksNS4wOTQ2NzggNC41MTg3MTIzNyw1LjA5NDY3OCBDNS43MzI3ODAxNyw1LjA5NDY3OCA2LjcxNjgxNDA3LDYuMDc5MTUyNTggNi43MTY4MTQwNyw3LjI5MzIyMDM3IEM2LjcxNjgxNDA3LDguNTA3Mjg4MTcgNS43MzI3ODAxNyw5LjQ5MTc2Mjc1IDQuNTE4NzEyMzcsOS40OTE3NjI3NSBDMy4zMDQyMDM5LDkuNDkxNzYyNzUgMi4zMjAxNyw4LjUwNzI4ODE3IDIuMzIwMTcsNy4yOTMyMjAzNyBaIE0zLjExOTExOTE1LDcuMjkzMjIwMzcgQzMuMTE5MTE5MTUsNi41MjA3MTE5IDMuNzQ1NzYzMjIsNS44OTQwNjc4MyA0LjUxODcxMjM3LDUuODk0MDY3ODMgQzUuMjkxMjIwODUsNS44OTQwNjc4MyA1LjkxNzg2NDkyLDYuNTIwNzExOSA1LjkxNzg2NDkyLDcuMjkzMjIwMzcgQzUuOTE3ODY0OTIsOC4wNjYxNjk1MyA1LjI5MTIyMDg1LDguNjkyMzcyOTIgNC41MTg3MTIzNyw4LjY5MjM3MjkyIEMzLjc0NTc2MzIyLDguNjkyMzcyOTIgMy4xMTkxMTkxNSw4LjA2NjE2OTUzIDMuMTE5MTE5MTUsNy4yOTMyMjAzNyBaIiBzdHJva2U9IiMxQTE5MTkiIHN0cm9rZS13aWR0aD0iLjUiLz48L2c+PC9nPjwvc3ZnPg=="
+    }
+  },
+  "tags": [
+    {
+      "name": "Tickets",
+      "x-displayName": "Tickets",
+      "description": "Endpoints for updating tickets related to system events and issues."
+    },
+    {
+      "name": "Nodes",
+      "x-displayName": "Nodes",
+      "description": "The topology serves as a structural element between devices and data sources in moneo. This endpoint can be used to query the topology and use it as a structural element in external systems."
+    },
+    {
+      "name": "Process Data",
+      "x-displayName": "Process Data",
+      "description": "This endpoint provides historical process data for a particular data source from a particular device."
+    },
+    {
+      "name": "Attributes",
+      "x-displayName": "Attributes",
+      "description": "Attributes are custom information to describe items in more detail (e.g. production order number, material number)."
+    },
+    {
+      "name": "Items",
+      "x-displayName": "Items",
+      "description": "Items are unique entities that represent, for example, a semi-finished product, a product, a material, a workpiece carrier, or a reusable load carrier (e.g. special rack, IBC, or plastic box)."
+    },
+    {
+      "name": "Stations",
+      "x-displayName": "Stations",
+      "description": "Stations represent the physical location or process step within a tracking layout. They can contain items."
+    }
+  ],
+  "paths": {
+    "/api/platform/v1/tickets/{ticketId}": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Tickets"
+        ],
+        "summary": "Updates a ticket",
+        "description": "Changes the content (e.g. state) of a ticket",
+        "operationId": "ticket_update",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "description": "ID of the ticket",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "maxLength": 36
+            },
+            "example": "c77cbdd6-a17a-4a26-9d43-2fffc8887963"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "description": "Represents the current state of the ticket",
+                    "enum": [
+                      "accepted",
+                      "closed"
+                    ],
+                    "example": "accepted"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Error if the update cant be done. E.g. due to a wrong state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Invalid Ticket State",
+                  "status": 400,
+                  "detail": "The provided state transition is not allowed."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ticket not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "successful": false,
+                  "title": "Ticket Not Found",
+                  "status": 404,
+                  "detail": "Ticket with id 'c77cbdd6-a17a-4a26-9d43-2fffc8887963' not found."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/platform/v1/nodes": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Nodes"
+        ],
+        "summary": "Gets the topology nodes",
+        "description": "Gets the available topology nodes",
+        "operationId": "nodes_getlist",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "description": "Array of requested ids which should be used as a filter",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid",
+                "maxLength": 36
+              },
+              "maxItems": 500
+            },
+            "example": [
+              "fa2936a7-b27a-4395-9b8e-f323635791ec",
+              "fce412c8-7e04-4be3-b2bd-5bcca075ec4b"
+            ]
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "description": "Array of requested categories which should be used as a filter",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "root",
+                  "functionalLocation",
+                  "device",
+                  "dataSource",
+                  "calcDataSource"
+                ]
+              },
+              "maxItems": 5
+            },
+            "example": [
+              "root",
+              "functionalLocation"
+            ]
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": "+name",
+                "enum": [
+                  "+name",
+                  "-name"
+                ]
+              },
+              "maxItems": 1
+            },
+            "example": [
+              "+name"
+            ],
+            "description": "Defines the sorting of the result. The prefix '-' represents a descending sorting of the property, no indication or '+' leads to an ascending sorting."
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 500,
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/topologyNodesPagedResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 500,
+                  "items": [
+                    {
+                      "id": "fa2936a7-b27a-4395-9b8e-f323635791ec",
+                      "name": "Node 1",
+                      "category": "device"
+                    },
+                    {
+                      "id": "fce412c8-7e04-4be3-b2bd-5bcca075ec4b",
+                      "name": "Node 2",
+                      "category": "functionalLocation"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error if the request contains wrong data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Invalid Parameter",
+                  "status": 400,
+                  "detail": "The 'pageSize' parameter must be between 1 and 2147483647."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/platform/v1/processdata/device/{deviceId}/datasource/{datasourceId}": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Process Data"
+        ],
+        "summary": "Get process data",
+        "description": "Gets process data for a datasource of a device",
+        "operationId": "processdata_get",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "maxLength": 36
+            },
+            "example": "d8f3f705-02b9-47d1-8bf9-d239a12d9e3d"
+          },
+          {
+            "name": "datasourceId",
+            "in": "path",
+            "description": "ID of the datasource",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 150,
+              "pattern": "^[a-z0-9-_]*$"
+            },
+            "example": "temperature"
+          },
+          {
+            "name": "fromTimestamp",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0,
+              "maximum": 9223372036854776000
+            },
+            "description": "Filters the result by a minimum start timestamp (unix timestamp in milliseconds in UTC). Including the provided fromTimestamp.",
+            "example": 17301790441474
+          },
+          {
+            "name": "toTimestamp",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0,
+              "maximum": 9223372036854776000
+            },
+            "example": 17301790451474,
+            "description": "Filters the result by a maximum end timestamp (unix timestamp in milliseconds in UTC). Including the provided toTimestamp."
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "-timestamp"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "+timestamp",
+                  "-timestamp"
+                ]
+              },
+              "maxItems": 1
+            },
+            "example": [
+              "+timestamp"
+            ],
+            "description": "Defines the sorting of the result. The prefix '-' represents a descending sorting of the property, no indication or '+' leads to an ascending sorting."
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1,
+              "minimum": 0,
+              "maximum": 9223372036854776000
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 500,
+              "minimum": 0,
+              "maximum": 9223372036854776000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/processdataPagedResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 500,
+                  "items": [
+                    {
+                      "timestamp": 1730179044147,
+                      "value": 22.5,
+                      "quality": "Good"
+                    },
+                    {
+                      "timestamp": 1730179045147,
+                      "value": 23,
+                      "quality": "Good"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameter supplied",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Invalid Parameter",
+                  "status": 400,
+                  "detail": "The 'fromTimestamp' parameter must be less than 'toTimestamp'."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/tracking/v1/stations/{stationId}/items/current": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Stations"
+        ],
+        "summary": "Get a list of Items in specific Station",
+        "description": "Gets the current Items located in the specified Station with pagination support.",
+        "operationId": "station_getcurrentitems",
+        "parameters": [
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "id": 123
+                    },
+                    {
+                      "id": 456
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided stationId is not a valid UUID."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/tracking/v1/stations/{stationId}/items/historical/last": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Stations"
+        ],
+        "summary": "Gets the last item in and out of given station",
+        "description": "Gets the last items that have passed through the given station, with options to filter.",
+        "operationId": "station_getlasthistoricalitems",
+        "parameters": [
+          {
+            "name": "stationId",
+            "in": "path",
+            "description": "Station id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "itemsInProcess",
+            "in": "query",
+            "description": "If wanted items are in process",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "description": "Amount of items, max 25",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemViewModel"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 789
+                  },
+                  {
+                    "id": 101
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided stationId is not a valid UUID."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/tracking/v1/stations": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Stations"
+        ],
+        "summary": "Gets all stations",
+        "description": "Gets all available stations with filtering, sorting and pagination options.",
+        "operationId": "stations_getlist",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "names",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "activated",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "layoutIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "topologyNodeIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "properties",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/GetIdentStationProperty"
+              }
+            }
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentStationViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "name": "Station A",
+                      "activated": true
+                    },
+                    {
+                      "name": "Station B",
+                      "activated": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/tracking/v1/stations/{stationId}": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Stations"
+        ],
+        "summary": "Get specific Stations",
+        "description": "Gets detailed information about a specific identification station by its unique identifier.",
+        "operationId": "station_getbyid",
+        "parameters": [
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentStationDetailViewModel"
+                },
+                "example": {
+                  "identStationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                  "identStationName": "Station 1",
+                  "identStationDescription": "Beschreibung der Station",
+                  "identStationActivated": true,
+                  "createdByUserId": "b2c3d4e5-f678-90ab-cdef-1234567890ab",
+                  "createdByUser": {
+                    "moneoUserId": "b2c3d4e5-f678-90ab-cdef-1234567890ab",
+                    "firstName": "Max",
+                    "lastName": "Mustermann"
+                  },
+                  "createdAtTimestamp": "2024-06-13T10:00:00Z",
+                  "editedByUserId": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+                  "editedByUser": {
+                    "moneoUserId": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+                    "firstName": "Erika",
+                    "lastName": "Musterfrau"
+                  },
+                  "editedAtTimestamp": null,
+                  "pipelineTriggerThings": [],
+                  "inPipelineIdentRuleRelations": null,
+                  "outPipelineIdentRuleRelations": null,
+                  "scheduledPipelineIdentRuleRelations": null,
+                  "inPipelineIdentRulePassActivity": {},
+                  "outPipelineIdentRulePassActivity": {},
+                  "identStationSetup": {},
+                  "identStationRunMode": "Prod",
+                  "identStationTemplateId": "d4e5f678-90ab-cdef-1234-567890abcdef",
+                  "itemConfigurationId": null,
+                  "layoutId": null,
+                  "topologyNodeId": null,
+                  "signalThing": {},
+                  "processDataSources": null,
+                  "referenceId": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided stationId is not a valid UUID."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Station with id 'd290f1ee-6c54-4b01-90e6-d701748f0851' not found."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracking/v1/items/{itemId}/sequences": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Items"
+        ],
+        "summary": "Gets the sequences of the given item",
+        "description": "Gets the sequences assigned to the given item with filtering and pagination options.",
+        "operationId": "item_getsequences",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "Item id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "properties",
+            "in": "query",
+            "description": "Optional properties to shape result",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/ItemSequenceProperty"
+              }
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemSequenceViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "itemSequenceId": 1,
+                      "identStationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "identStationName": "Initial Processing",
+                      "entryTime": "2024-06-13T10:00:00Z",
+                      "exitTime": "2024-06-13T11:00:00Z",
+                      "durationInSeconds": 600,
+                      "manuallyTriggeredEntryByUserId": null,
+                      "manuallyTriggeredEntryByUser": {
+                        "moneoUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                        "firstName": "Max",
+                        "lastName": "Mustermann"
+                      },
+                      "manuallyTriggeredExitByUserId": null,
+                      "manuallyTriggeredExitByUser": {
+                        "moneoUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                        "firstName": "Max",
+                        "lastName": "Mustermann"
+                      },
+                      "itemSequenceDatas": [],
+                      "itemSequenceQualityData": {}
+                    },
+                    {
+                      "itemSequenceId": 2,
+                      "identStationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "identStationName": "Initial Processing",
+                      "entryTime": "2024-06-13T10:00:00Z",
+                      "exitTime": "2024-06-13T11:00:00Z",
+                      "durationInSeconds": 600,
+                      "manuallyTriggeredEntryByUserId": null,
+                      "manuallyTriggeredEntryByUser": {
+                        "moneoUserId": "a1b234d4-e5f6-7890-abcd-ef1234567890",
+                        "firstName": "Maxima",
+                        "lastName": "Musterfrau"
+                      },
+                      "manuallyTriggeredExitByUserId": null,
+                      "manuallyTriggeredExitByUser": {
+                        "moneoUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                        "firstName": "Max",
+                        "lastName": "Mustermann"
+                      },
+                      "itemSequenceDatas": [],
+                      "itemSequenceQualityData": {}
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided itemId is not valid."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerPatAuth": []
+          }
+        ]
+      }
+    },
+    "/api/tracking/v1/items/{itemId}/attributes": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Items"
+        ],
+        "summary": "Gets the global variables on given item",
+        "description": "Gets the global variables assigned to the given item with filtering and pagination options.",
+        "operationId": "item_getattributes",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "Item id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "properties",
+            "in": "query",
+            "description": "Optional properties to shape result",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/ItemVariableRelationProperty"
+              }
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemVariableRelationViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "globalVariableId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "value": "75.5",
+                      "state": "Attached",
+                      "globalVariableName": "Temperature",
+                      "globalVariableType": "Double"
+                    },
+                    {
+                      "globalVariableId": "b2c3d4e5-f678-90ab-cdef-1234567890ab",
+                      "value": "120",
+                      "state": "Attached",
+                      "globalVariableName": "Pressure",
+                      "globalVariableType": "Integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided itemId is not valid."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerPatAuth": []
+          }
+        ]
+      }
+    },
+    "/api/tracking/v1/items/attributes": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Items"
+        ],
+        "summary": "Puts global variables onto items",
+        "description": "Associates global variables with items by providing item IDs and corresponding global variable data.",
+        "operationId": "item_postattributes",
+        "requestBody": {
+          "description": "Global variables for items",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AddGlobalVariablesOntoItemDto"
+                }
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AddGlobalVariablesOntoItemDto"
+                }
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AddGlobalVariablesOntoItemDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemVariableRelationViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "globalVariableId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "value": "75.5",
+                      "state": "Attached",
+                      "globalVariableName": "Temperature",
+                      "globalVariableType": "Double"
+                    },
+                    {
+                      "globalVariableId": "b2c3d4e5-f678-90ab-cdef-1234567890ab",
+                      "value": "120",
+                      "state": "Attached",
+                      "globalVariableName": "Pressure",
+                      "globalVariableType": "Integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided itemId 'item-999' does not exist."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerPatAuth": []
+          }
+        ]
+      }
+    },
+    "/api/tracking/v1/items": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Items"
+        ],
+        "summary": "Gets a list of items fitting the given query",
+        "description": "Gets a list of items fitting the given query with filtering and pagination options.",
+        "operationId": "items_postlist",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Filter",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemFindFilters"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemFindFilters"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemFindFilters"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "id": 1234
+                    },
+                    {
+                      "id": 12345
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided filter criteria are invalid."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerPatAuth": []
+          }
+        ]
+      }
+    },
+    "/api/tracking/v1/items/{itemId}": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Items"
+        ],
+        "summary": "Gets an Item",
+        "description": "Gets the item for the given itemId.",
+        "operationId": "item_getbyid",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemViewModel"
+                },
+                "example": {
+                  "id": 12345,
+                  "uniqueIdentifier": {
+                    "value": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  },
+                  "itemId": "ITEM-123",
+                  "itemType": {
+                    "itemTypeId": 5
+                  },
+                  "firstSequence": {
+                    "itemSequenceId": 1,
+                    "identStationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "identStationName": "Station A",
+                    "entryTime": "2024-06-13T10:00:00Z",
+                    "exitTime": "2024-06-13T11:00:00Z",
+                    "durationInSeconds": 3600,
+                    "manuallyTriggeredEntryByUserId": null,
+                    "manuallyTriggeredEntryByUser": {
+                      "moneoUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "firstName": "Max",
+                      "lastName": "Mustermann"
+                    },
+                    "manuallyTriggeredExitByUserId": null,
+                    "manuallyTriggeredExitByUser": {
+                      "moneoUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "firstName": "Maxima",
+                      "lastName": "Musterfrau"
+                    },
+                    "itemSequenceDatas": [],
+                    "itemSequenceQualityData": {}
+                  },
+                  "latestSequence": {},
+                  "itemVariables": []
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The provided itemId is not valid."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerPatAuth": []
+          }
+        ]
+      }
+    },
+    "/api/tracking/v1/attributes": {
+      "servers": [
+        {
+          "url": "https://{region}.moneo.ifm",
+          "description": "moneo IIoT server",
+          "variables": {
+            "region": {
+              "default": "w-eu",
+              "description": "Deployment region subdomain for moneo"
+            }
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attributes"
+        ],
+        "summary": "Gets all Attributes",
+        "description": "Gets all available Attributes with filtering, sorting and pagination options.",
+        "operationId": "attributes_getlist",
+        "parameters": [
+          {
+            "name": "names",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "globalVariableTypes",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/GlobalVariableType"
+              }
+            }
+          },
+          {
+            "name": "activated",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "properties",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/GlobalVariableProperty"
+              }
+            }
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalVariableViewModelPagedResourceResult"
+                },
+                "example": {
+                  "totalCount": 2,
+                  "pageNumber": 1,
+                  "pageSize": 10,
+                  "data": [
+                    {
+                      "globalVariableId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "name": "Temperature",
+                      "description": "Ambient temperature",
+                      "globalVariableType": "Double",
+                      "activated": true
+                    },
+                    {
+                      "globalVariableId": "b2c3d4e5-f678-90ab-cdef-1234567890ab",
+                      "name": "Pressure",
+                      "description": "Atmospheric pressure",
+                      "globalVariableType": "Double",
+                      "activated": true
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Attributes"
+        ],
+        "summary": "Adds new Attributes",
+        "description": "Adds new Attributes to the system.",
+        "operationId": "attributes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddGlobalVariablesCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddGlobalVariablesCommand"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddGlobalVariablesCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GlobalVariableViewModel"
+                  }
+                },
+                "example": [
+                  {
+                    "globalVariableId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "name": "Temperature",
+                    "description": "test",
+                    "globalVariableType": "Double",
+                    "activated": true
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The 'name' field is required for each attribute."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized => token not given or token is invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication token is missing or invalid."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden => token does not provide the necessary rights",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                },
+                "example": {
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "You do not have permission to access this resource."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerPatAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "PersonalAccessToken"
+      }
+    },
+    "schemas": {
+      "error": {
+        "title": "ValidationResult",
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "RFC reference of the problem",
+            "type": "string",
+            "format": "^.{250}$",
+            "example": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+            "maxLength": 250
+          },
+          "title": {
+            "description": "Title of the problem",
+            "type": "string",
+            "format": "^.{250}$",
+            "example": "One or more validation errors occurred",
+            "maxLength": 250
+          },
+          "status": {
+            "description": "Http-StatusCode of the response",
+            "type": "integer",
+            "example": 400,
+            "format": "int32",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "errors": {
+            "description": "List of validation errors",
+            "type": "object"
+          }
+        }
+      },
+      "topologyNodesPagedResult": {
+        "description": "paged result for topology nodes",
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1,
+            "description": "page number",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1,
+            "description": "page size",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true,
+            "example": 1,
+            "description": "total pages",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1,
+            "description": "total amount of found nodes",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/topologyNode"
+            },
+            "description": "data of result, containing topology nodes",
+            "maxItems": 2147483647
+          }
+        }
+      },
+      "topologyNode": {
+        "description": "node in topology",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "maxLength": 36,
+            "description": "id of node"
+          },
+          "parentNodeId": {
+            "type": "string",
+            "format": "uuid",
+            "maxLength": 36,
+            "description": "id of parent node"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "name of node",
+            "pattern": "^[A-Za-z0-9]+$"
+          },
+          "hasChildren": {
+            "type": "boolean",
+            "description": "true if node has children"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "root",
+              "functionalLocation",
+              "device",
+              "dataSource",
+              "calcDataSource"
+            ],
+            "description": "type of node"
+          },
+          "reference": {
+            "description": "reference to the device or datasource",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "deviceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "maxLength": 36,
+                    "description": "id of referenced device"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "datasourceId": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "pattern": "^[a-z0-9-_]*$",
+                    "description": "id of referenced datasource"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "processdataPagedResult": {
+        "type": "object",
+        "title": "Paged processdata response",
+        "properties": {
+          "pageNumber": {
+            "description": "Represents the current page number",
+            "type": "integer",
+            "format": "int32",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 9223372036854776000
+          },
+          "pageSize": {
+            "description": "Represents the size of the page",
+            "type": "integer",
+            "format": "int32",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "totalPages": {
+            "description": "Represents the total pages",
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true,
+            "example": 1,
+            "minimum": 0,
+            "maximum": 9223372036854776000
+          },
+          "totalCount": {
+            "description": "Represents the total amount of the ressource",
+            "type": "integer",
+            "format": "int32",
+            "example": 1,
+            "minimum": 0,
+            "maximum": 9223372036854776000
+          },
+          "data": {
+            "description": "Data of the current request",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/processdata"
+            },
+            "maxItems": 1000
+          }
+        }
+      },
+      "processdata": {
+        "type": "object",
+        "description": "Represents the sensor value at a certain time",
+        "properties": {
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix timestamp (UTC) in milliseconds",
+            "example": 1559827217145,
+            "minimum": 0,
+            "maximum": 9223372036854776000
+          },
+          "value": {
+            "type": "number",
+            "description": "Sensor value",
+            "example": 42.5
+          }
+        }
+      },
+      "ItemViewModelPagedResourceResult": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HttpLink"
+            },
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HttpLink": {
+        "type": "object",
+        "properties": {
+          "rel": {
+            "$ref": "#/components/schemas/HttpRel"
+          },
+          "href": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HttpRel": {
+        "enum": [
+          "Next",
+          "Prev"
+        ],
+        "type": "string"
+      },
+      "ItemViewModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uniqueIdentifier": {
+            "$ref": "#/components/schemas/UniqueIdentifier"
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true
+          },
+          "itemType": {
+            "$ref": "#/components/schemas/ItemTypeViewModel"
+          },
+          "firstSequence": {
+            "$ref": "#/components/schemas/ItemSequenceViewModel"
+          },
+          "latestSequence": {
+            "$ref": "#/components/schemas/ItemSequenceViewModel"
+          },
+          "itemVariables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemVariableRelationViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UniqueIdentifier": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemTypeViewModel": {
+        "type": "object",
+        "properties": {
+          "itemTypeId": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemSequenceViewModel": {
+        "type": "object",
+        "properties": {
+          "itemSequenceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "identStationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identStationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "entryTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "exitTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "durationInSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "manuallyTriggeredEntryByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "manuallyTriggeredEntryByUser": {
+            "$ref": "#/components/schemas/MoneoUserViewModel"
+          },
+          "manuallyTriggeredExitByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "manuallyTriggeredExitByUser": {
+            "$ref": "#/components/schemas/MoneoUserViewModel"
+          },
+          "itemSequenceDatas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemSequenceDataViewModel"
+            },
+            "nullable": true
+          },
+          "itemSequenceQualityData": {
+            "$ref": "#/components/schemas/ItemSequenceQualityDataViewModel"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MoneoUserViewModel": {
+        "type": "object",
+        "properties": {
+          "moneoUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemSequenceDataViewModel": {
+        "type": "object",
+        "properties": {
+          "itemSequenceDataId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "itemSequenceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "moneoThingWithPropertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "moneoThingWithPropertyUniqueIdentifier": {
+            "type": "string",
+            "nullable": true
+          },
+          "moneoThingWithPropertyTopologyNodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entryValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "entryTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "exitValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "exitTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "durationMinValueTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMaxValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "durationMaxValueTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationAverageValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/ItemSequenceDataState"
+          },
+          "customName": {
+            "type": "string",
+            "nullable": true
+          },
+          "recordingType": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemSequenceDataState": {
+        "enum": [
+          "Pending",
+          "Done",
+          "Aborted"
+        ],
+        "type": "string"
+      },
+      "ItemSequenceQualityDataViewModel": {
+        "type": "object",
+        "properties": {
+          "itemSequenceQualityDataId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "itemSequenceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "moneoThingWithPropertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "moneoThingWithPropertyUniqueIdentifier": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "timeStamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "qualitySettings": {
+            "$ref": "#/components/schemas/ItemSequenceQualityDataSettingsViewModel"
+          },
+          "qualityResult": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ItemSequenceDataState"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemSequenceQualityDataSettingsViewModel": {
+        "type": "object",
+        "properties": {
+          "itemSequenceQualityDataSettingsId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/QualitySetting"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QualitySetting": {
+        "type": "object",
+        "properties": {
+          "qualityOperation": {
+            "$ref": "#/components/schemas/QualityOperation"
+          },
+          "qualityValues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DoubleValueMapping"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "QualityOperation": {
+        "enum": [
+          "InRange",
+          "ExactValues",
+          "Above",
+          "Below",
+          "None"
+        ],
+        "type": "string"
+      },
+      "DoubleValueMapping": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "format": "double"
+          },
+          "qualityState": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "activated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Quality": {
+        "enum": [
+          "Invalid",
+          "Pass",
+          "Fail",
+          "Scrap",
+          "NotAvailable"
+        ],
+        "type": "string"
+      },
+      "ItemVariableRelationViewModel": {
+        "type": "object",
+        "properties": {
+          "globalVariableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/ItemVariableRelationState"
+          },
+          "globalVariableName": {
+            "type": "string",
+            "nullable": true
+          },
+          "globalVariableType": {
+            "$ref": "#/components/schemas/GlobalVariableType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemVariableRelationState": {
+        "enum": [
+          "Attached",
+          "Detached"
+        ],
+        "type": "string"
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "GlobalVariableType": {
+        "enum": [
+          "String",
+          "Integer",
+          "Double"
+        ],
+        "type": "string"
+      },
+      "GetIdentStationProperty": {
+        "enum": [
+          "IdentStationId",
+          "Name",
+          "Description",
+          "Activated",
+          "RunMode",
+          "IdentStationTemplateId",
+          "TopologyNodeId"
+        ],
+        "type": "string"
+      },
+      "IdentStationViewModelPagedResourceResult": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HttpLink"
+            },
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentStationViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentStationViewModel": {
+        "type": "object",
+        "properties": {
+          "identStationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "activated": {
+            "type": "boolean"
+          },
+          "runMode": {
+            "$ref": "#/components/schemas/IdentStationRunMode"
+          },
+          "identStationTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topologyNodeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentStationRunMode": {
+        "enum": [
+          "Prod",
+          "Demo"
+        ],
+        "type": "string"
+      },
+      "IdentStationDetailViewModel": {
+        "type": "object",
+        "properties": {
+          "identStationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identStationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "identStationDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "identStationActivated": {
+            "type": "boolean"
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdByUser": {
+            "$ref": "#/components/schemas/MoneoUserViewModel"
+          },
+          "createdAtTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "editedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "editedByUser": {
+            "$ref": "#/components/schemas/MoneoUserViewModel"
+          },
+          "editedAtTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "pipelineTriggerThings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TriggerThingViewModel"
+            },
+            "nullable": true
+          },
+          "inPipelineIdentRuleRelations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentRuleRelationViewModel"
+            },
+            "nullable": true
+          },
+          "outPipelineIdentRuleRelations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentRuleRelationViewModel"
+            },
+            "nullable": true
+          },
+          "scheduledPipelineIdentRuleRelations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentRuleRelationViewModel"
+            },
+            "nullable": true
+          },
+          "inPipelineIdentRulePassActivity": {
+            "$ref": "#/components/schemas/IdentRuleActivityViewModel"
+          },
+          "outPipelineIdentRulePassActivity": {
+            "$ref": "#/components/schemas/IdentRuleActivityViewModel"
+          },
+          "identStationSetup": {
+            "$ref": "#/components/schemas/IdentStationSetupViewModel"
+          },
+          "identStationRunMode": {
+            "$ref": "#/components/schemas/IdentStationRunMode"
+          },
+          "identStationTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemConfigurationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "layoutId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "topologyNodeId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "signalThing": {
+            "$ref": "#/components/schemas/IdentStationSignalThingViewModel"
+          },
+          "processDataSources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentStationProcessDataSourceViewModel"
+            },
+            "nullable": true
+          },
+          "referenceId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TriggerThingViewModel": {
+        "type": "object",
+        "properties": {
+          "identStationTriggerThingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "thingWithProperty": {
+            "$ref": "#/components/schemas/MoneoThingWithPropertyViewModel"
+          },
+          "triggerThingType": {
+            "$ref": "#/components/schemas/IdentStationTriggerThingType"
+          },
+          "garageDelayInSeconds": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MoneoThingWithPropertyViewModel": {
+        "type": "object",
+        "properties": {
+          "thingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueIdentifier": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "topologyNodeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentStationTriggerThingType": {
+        "enum": [
+          "In",
+          "Out",
+          "InOut",
+          "Garage"
+        ],
+        "type": "string"
+      },
+      "IdentRuleRelationViewModel": {
+        "type": "object",
+        "properties": {
+          "identRuleRelationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identStationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "failActivityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identRuleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "failActivity": {
+            "$ref": "#/components/schemas/IdentRuleActivityViewModel"
+          },
+          "identRule": {
+            "$ref": "#/components/schemas/IdentRuleViewModel"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ruleOptions": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentRuleActivityViewModel": {
+        "type": "object",
+        "properties": {
+          "identRuleActivityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameTranslationKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "descriptionTranslationKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "activityType": {
+            "$ref": "#/components/schemas/IdentRuleActivityType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentRuleActivityType": {
+        "enum": [
+          "Stop",
+          "Pass"
+        ],
+        "type": "string"
+      },
+      "IdentRuleViewModel": {
+        "type": "object",
+        "properties": {
+          "identRuleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameTranslationKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "descriptionTranslationKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "identRuleType": {
+            "$ref": "#/components/schemas/IdentRuleType"
+          },
+          "activated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentRuleType": {
+        "enum": [
+          "In",
+          "Out",
+          "Scheduled"
+        ],
+        "type": "string"
+      },
+      "IdentStationSetupViewModel": {
+        "type": "object",
+        "properties": {
+          "identStationSetupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "activated": {
+            "type": "boolean"
+          },
+          "createdAtTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletable": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentStationSignalThingViewModel": {
+        "type": "object",
+        "properties": {
+          "identStationSignalThingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "triggerSignalWhenSuccess": {
+            "type": "boolean"
+          },
+          "triggerSignalWhenFailed": {
+            "type": "boolean"
+          },
+          "durationForSignalInSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "moneoThingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "segmentType": {
+            "$ref": "#/components/schemas/IdentStationSignalThingSegmentType"
+          },
+          "triggerSignalWhenSuccessOption": {
+            "$ref": "#/components/schemas/TriggerSignalOptionViewModel"
+          },
+          "triggerSignalWhenFailedOption": {
+            "$ref": "#/components/schemas/TriggerSignalOptionViewModel"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IdentStationSignalThingSegmentType": {
+        "enum": [
+          "OneSegment",
+          "ThreeSegment",
+          "FiveSegment"
+        ],
+        "type": "string"
+      },
+      "TriggerSignalOptionViewModel": {
+        "type": "object",
+        "properties": {
+          "triggerSignalOptionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "segmentNumber": {
+            "$ref": "#/components/schemas/SegmentNumber"
+          },
+          "segmentColor": {
+            "$ref": "#/components/schemas/SegmentColor"
+          },
+          "signalFunction": {
+            "$ref": "#/components/schemas/SignalFunction"
+          },
+          "signalBuzzer": {
+            "$ref": "#/components/schemas/SignalBuzzer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SegmentNumber": {
+        "enum": [
+          "SegmentOne",
+          "SegmentTwo",
+          "SegmentThree",
+          "SegmentFour",
+          "SegmentFive"
+        ],
+        "type": "string"
+      },
+      "SegmentColor": {
+        "enum": [
+          "Off",
+          "Red",
+          "Green",
+          "Amber",
+          "Blue",
+          "Purple",
+          "Cyan",
+          "White",
+          "Yellow"
+        ],
+        "type": "string"
+      },
+      "SignalFunction": {
+        "enum": [
+          "Continuous",
+          "BlinkingSlow",
+          "BlinkingMiddle",
+          "BlinkingFast",
+          "FlashingSlow",
+          "FlashingMiddle",
+          "FlashingFast"
+        ],
+        "type": "string"
+      },
+      "SignalBuzzer": {
+        "enum": [
+          "Off",
+          "RapidIntermittentBeep",
+          "RapidHiLo",
+          "Sweep",
+          "ContBeepOnOff",
+          "RapidBeepOnOff",
+          "RapidHiLoOnOff",
+          "SweepOnOff"
+        ],
+        "type": "string"
+      },
+      "IdentStationProcessDataSourceViewModel": {
+        "type": "object",
+        "properties": {
+          "moneoThingWithProperty": {
+            "$ref": "#/components/schemas/MoneoThingWithPropertyViewModel"
+          },
+          "recordingType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customName": {
+            "type": "string",
+            "nullable": true
+          },
+          "itemSequenceQualityDataSettingsId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "itemSequenceQualityDataSettings": {
+            "$ref": "#/components/schemas/ItemSequenceQualityDataSettingsViewModel"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemSequenceProperty": {
+        "enum": [
+          "IdentStationId",
+          "IdentStationName",
+          "EntryTime",
+          "ExitTime",
+          "DurationInSeconds"
+        ],
+        "type": "string"
+      },
+      "ItemSequenceViewModelPagedResourceResult": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HttpLink"
+            },
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemSequenceViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemVariableRelationProperty": {
+        "enum": [
+          "GlobalVariableId",
+          "GlobalVariableName",
+          "GlobalVariableType",
+          "Value"
+        ],
+        "type": "string"
+      },
+      "ItemVariableRelationViewModelPagedResourceResult": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HttpLink"
+            },
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemVariableRelationViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AddGlobalVariablesOntoItemDto": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "nullable": true
+          },
+          "globalVariables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemVariableRelationBaseViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemVariableRelationBaseViewModel": {
+        "type": "object",
+        "properties": {
+          "globalVariableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/ItemVariableRelationState"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemFindFilters": {
+        "type": "object",
+        "properties": {
+          "globalVariableFilter": {
+            "$ref": "#/components/schemas/ItemFindGlobalVariableFilter"
+          },
+          "identStationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "itemInGivenIdentStations": {
+            "type": "boolean",
+            "example": true
+          },
+          "startTimestamp": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "endTimestamp": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemFindGlobalVariableFilter": {
+        "type": "object",
+        "properties": {
+          "globalVariableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "globalVariableValue": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "globalVariableId": "123e4567-e89b-12d3-a456-426614174000",
+          "globalVariableValue": "SomeValue"
+        }
+      },
+      "GlobalVariableProperty": {
+        "enum": [
+          "GlobalVariableId",
+          "Name",
+          "Description",
+          "GlobalVariableType",
+          "Activated"
+        ],
+        "type": "string"
+      },
+      "GlobalVariableViewModelPagedResourceResult": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HttpLink"
+            },
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GlobalVariableViewModel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GlobalVariableViewModel": {
+        "type": "object",
+        "properties": {
+          "globalVariableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "globalVariableType": {
+            "$ref": "#/components/schemas/GlobalVariableType"
+          },
+          "activated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AddGlobalVariablesCommand": {
+        "type": "object",
+        "properties": {
+          "globalVariables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GlobalVariablesDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GlobalVariablesDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/GlobalVariableType"
+          },
+          "activated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-tagGroups": [
+    {
+      "name": "IIoT Core",
+      "tags": [
+        "Tickets",
+        "Nodes",
+        "Process Data"
+      ]
+    },
+    {
+      "name": "Track & Trace",
+      "tags": [
+        "Attributes",
+        "Items",
+        "Stations"
+      ]
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://{region}.moneo.ifm",
+      "description": "moneo IIoT server",
+      "variables": {
+        "region": {
+          "default": "w-eu",
+          "description": "Deployment region subdomain for moneo"
+        }
+      }
+    }
+  ]
+}

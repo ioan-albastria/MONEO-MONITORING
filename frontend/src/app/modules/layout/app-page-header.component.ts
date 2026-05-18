@@ -1,4 +1,5 @@
 import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
+import { UiPreferencesService } from '../../core/ui/ui-preferences.service';
 
 @Component({
   selector: 'app-page-header',
@@ -13,9 +14,9 @@ export class AppPageHeaderComponent {
   @Input() tenantName = 'Albastria Logistics';
   @Input() userName = '';
 
-  @Output() toggleTheme   = new EventEmitter<void>();
-  @Output() toggleDensity = new EventEmitter<void>();
-  @Output() logout        = new EventEmitter<void>();
+  @Output() logout = new EventEmitter<void>();
+
+  constructor(readonly ui: UiPreferencesService) {}
 
   isMenuOpen = false;
 

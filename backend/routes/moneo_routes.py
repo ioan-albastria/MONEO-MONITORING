@@ -54,11 +54,6 @@ def _resolve_sensor_for_processdata(sensor_id: str, db: Session) -> Sensor:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Sensor has no parent asset — run a metadata sync first",
         )
-    if sensor.moneo_datasource_ref is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Sensor moneo_datasource_ref not populated — run a metadata sync first",
-        )
     return sensor
 
 
@@ -79,7 +74,7 @@ async def get_moneo_sensor_latest(
     """Debug proxy: fetch the latest processdata reading for a sensor via /processdata."""
     sensor = _resolve_sensor_for_processdata(sensor_id, db)
     device_id = sensor.asset.moneo_asset_id
-    datasource_id = sensor.moneo_datasource_ref
+    datasource_id = sensor.name
     try:
         return await _with_moneo_client(
             lambda client: client.get_processdata(
@@ -92,35 +87,61 @@ async def get_moneo_sensor_latest(
         raise await _handle_moneo_error(exc)
 
 
-@moneo_router.get("/sensors/{sensor_id}/readings", response_model=list[Any])
+@moneo_router.get("/sensors/{sensor_id}/readings", response_model=Any)
 async def get_moneo_sensor_readings(
     sensor_id: str,
-    from_timestamp: datetime = Query(default=None),
-    to_timestamp: datetime = Query(default=None),
+    from_datetime: datetime = Query(
+        default=None,
+        description="Start of the time range (ISO 8601, UTC).",
+        example="2026-04-26T00:00:00Z",
+    ),
+    to_datetime: datetime = Query(
+        default=None,
+        description="End of the time range (ISO 8601, UTC).",
+        example="2026-04-27T00:00:00Z",
+    ),
+    page_number: int = Query(
+        default=1,
+        ge=1,
+        description="Page number to fetch (1-based).",
+        example=1,
+    ),
+    page_size: int = Query(
+        default=500,
+        ge=1,
+        le=2147483647,
+        description="Number of readings per page (default 500, max 2 147 483 647).",
+        example=500,
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Debug proxy: fetch historical processdata readings for a sensor via /processdata."""
-    if from_timestamp is None or to_timestamp is None:
+    """Debug proxy: fetch one page of historical processdata readings for a sensor.
+
+    Returns the full MONEO envelope — {pageNumber, pageSize, totalPages, totalCount, data} —
+    so callers can detect how many pages remain and request subsequent pages.
+    """
+    if from_datetime is None or to_datetime is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="from_timestamp and to_timestamp are required",
+            detail="from_datetime and to_datetime are required",
         )
     sensor = _resolve_sensor_for_processdata(sensor_id, db)
     device_id = sensor.asset.moneo_asset_id
-    datasource_id = sensor.moneo_datasource_ref
-    from_ms = int(from_timestamp.timestamp() * 1000)
-    to_ms = int(to_timestamp.timestamp() * 1000)
+    datasource_id = sensor.name
+    from_ms = int(from_datetime.timestamp() * 1000)
+    to_ms = int(to_datetime.timestamp() * 1000)
     try:
-        envelope = await _with_moneo_client(
+        return await _with_moneo_client(
             lambda client: client.get_processdata(
                 device_id=device_id,
                 datasource_id=datasource_id,
                 from_ms=from_ms,
                 to_ms=to_ms,
+                page=page_number,
+                page_size=page_size,
             )
         )
-        return envelope.get("data", [])
     except httpx.HTTPStatusError as exc:
         raise await _handle_moneo_error(exc)
 
