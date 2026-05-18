@@ -11,6 +11,11 @@ from DAL import User
 # Use bcrypt_sha256 to avoid bcrypt's 72-byte password length limit
 _pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 
+# Real bcrypt_sha256 hash used to equalise authenticate_user timing for nonexistent usernames.
+# Computed at import time (one bcrypt round, ~200 ms) so the cost factor always matches live hashes.
+# Never stored, logged, returned, or compared against real user credentials.
+_DUMMY_HASH = _pwd_context.hash("_dummy_constant_never_used")
+
 
 class AuthService:
 
@@ -46,9 +51,11 @@ class AuthService:
 
     def authenticate_user(self, db: Session, username: str, password: str) -> Optional[User]:
         user = db.query(User).filter(User.username == username).first()
-        if not user or not self.verify_password(password, user.hashed_password):
-            return None
-        if not user.is_active:
+        # Always run bcrypt verify to prevent username enumeration via response-time difference.
+        # For a nonexistent username, verify runs against _DUMMY_HASH (always fails) in constant
+        # time.  _DUMMY_HASH is never stored, logged, returned, or compared against real credentials.
+        password_ok = self.verify_password(password, user.hashed_password if user else _DUMMY_HASH)
+        if not user or not password_ok or not user.is_active:
             return None
         return user
 

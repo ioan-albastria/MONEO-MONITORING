@@ -10,25 +10,27 @@ import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
 from config import settings
-from DAL import SessionLocal
+from DAL import session_scope
 from DAL.models.alert_notification_outbox import AlertNotificationOutbox
 
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 5
+_DISPATCH_BATCH_SIZE = 50
+_BACKOFF_BASE_SECONDS = 60
+_WEBHOOK_TIMEOUT_S = 10
 
 
 async def dispatch_outbox() -> None:
     if not settings.notification_dispatch_enabled:
         return
 
-    db = SessionLocal()
-    try:
+    with session_scope() as db:
         now = datetime.now(timezone.utc)
         pending = (
             db.query(AlertNotificationOutbox)
@@ -36,7 +38,7 @@ async def dispatch_outbox() -> None:
                 AlertNotificationOutbox.status == "pending",
                 AlertNotificationOutbox.next_attempt_at <= now,
             )
-            .limit(50)
+            .limit(_DISPATCH_BATCH_SIZE)
             .all()
         )
 
@@ -53,12 +55,9 @@ async def dispatch_outbox() -> None:
                     entry.status = "failed"
                 else:
                     # Exponential back-off: 1m, 2m, 4m, 8m
-                    from datetime import timedelta
-                    backoff = 60 * (2 ** entry.attempts)
+                    backoff = _BACKOFF_BASE_SECONDS * (2 ** entry.attempts)
                     entry.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=backoff)
         db.commit()
-    finally:
-        db.close()
 
 
 async def _dispatch_one(entry: AlertNotificationOutbox) -> None:
@@ -110,7 +109,7 @@ async def _send_webhook(entry: AlertNotificationOutbox) -> None:
         hashlib.sha256,
     ).hexdigest()
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=_WEBHOOK_TIMEOUT_S) as client:
         resp = await client.post(
             entry.target,
             content=body_bytes,

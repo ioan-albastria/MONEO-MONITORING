@@ -17,6 +17,38 @@ logger = logging.getLogger(__name__)
 
 _SEVERITY_COLOR = {"warning": "#f5b428", "critical": "#e64b3c"}
 
+# Alert state machine states — values written to AlertState.current_state and AlertEvent.state.
+_STATE_OK = "ok"
+_STATE_PENDING = "pending"
+_STATE_FIRING = "firing"
+_STATE_RECOVERED = "recovered"
+_STATE_AWAITING_ACK = "awaiting_ack"
+_STATE_FLAPPING_STARTED = "flapping_started"
+_STATE_FLAPPING_STOPPED = "flapping_stopped"
+
+# AlertRule.condition values referenced in evaluation logic.
+_COND_OUTSIDE_RANGE = "outside_range"
+_COND_NO_DATA = "no_data"
+
+# Flap detection thresholds.
+_FLAP_WINDOW_SECONDS = 600   # 10-minute sliding window
+_FLAP_THRESHOLD = 4          # state-change flips within the window to trigger flapping
+
+
+def _lo(rule: "AlertRule") -> float:
+    """Return rule.threshold_lo, defaulting to -inf when unset."""
+    return rule.threshold_lo if rule.threshold_lo is not None else float("-inf")
+
+
+def _hi(rule: "AlertRule") -> float:
+    """Return rule.threshold_hi, defaulting to +inf when unset."""
+    return rule.threshold_hi if rule.threshold_hi is not None else float("inf")
+
+
+def _alert_label(rule: "AlertRule") -> str:
+    """Canonical alert display label used in annotation labels and notification subjects."""
+    return f"[{rule.severity.upper()}] {rule.name}"
+
 
 class AlertEvaluator:
     """Streaming evaluator — called once per new reading inside poll_latest_readings().
@@ -31,7 +63,7 @@ class AlertEvaluator:
             .filter(
                 AlertRule.sensor_id == sensor.id,
                 AlertRule.is_enabled == True,
-                AlertRule.condition != "no_data",
+                AlertRule.condition != _COND_NO_DATA,
             )
             .all()
         )
@@ -40,7 +72,7 @@ class AlertEvaluator:
                 state = db.get(AlertState, rule.id)
                 condition_met = self._condition_met(reading.value, rule)
                 self._apply_state_machine(db, rule, state, condition_met, now, reading.value)
-                if rule.condition == "outside_range" and sensor.ranges_source == "from_alert_rule":
+                if rule.condition == _COND_OUTSIDE_RANGE and sensor.ranges_source == "from_alert_rule":
                     self._sync_sensor_ranges(db, rule, sensor)
             except Exception:
                 logger.exception("AlertEvaluator.evaluate failed for rule %s", rule.id)
@@ -68,17 +100,13 @@ class AlertEvaluator:
             return False
         c = rule.condition
         if c == "gt":
-            return value > (rule.threshold_hi if rule.threshold_hi is not None else float("inf"))
+            return value > _hi(rule)
         if c == "lt":
-            return value < (rule.threshold_lo if rule.threshold_lo is not None else float("-inf"))
-        if c == "outside_range":
-            lo = rule.threshold_lo if rule.threshold_lo is not None else float("-inf")
-            hi = rule.threshold_hi if rule.threshold_hi is not None else float("inf")
-            return value < lo or value > hi
+            return value < _lo(rule)
+        if c == _COND_OUTSIDE_RANGE:
+            return value < _lo(rule) or value > _hi(rule)
         if c == "inside_range":
-            lo = rule.threshold_lo if rule.threshold_lo is not None else float("-inf")
-            hi = rule.threshold_hi if rule.threshold_hi is not None else float("inf")
-            return lo <= value <= hi
+            return _lo(rule) <= value <= _hi(rule)
         return False  # no_data handled separately
 
     def _apply_state_machine(
@@ -90,54 +118,54 @@ class AlertEvaluator:
         now: datetime,
         observed_value: float | None,
     ) -> None:
-        current = state.current_state if state else "ok"
+        current = state.current_state if state else _STATE_OK
 
-        if current == "ok":
+        if current == _STATE_OK:
             if condition_met:
                 if state is None:
                     state = AlertState(
                         rule_id=rule.id,
-                        current_state="pending",
+                        current_state=_STATE_PENDING,
                         state_since=now,
                         last_value=observed_value,
                         last_value_at=now,
                     )
                     db.add(state)
                 else:
-                    state.current_state = "pending"
+                    state.current_state = _STATE_PENDING
                     state.state_since = now
                     state.last_value = observed_value
                     state.last_value_at = now
-                self._write_event(db, rule, "pending", observed_value, now)
+                self._write_event(db, rule, _STATE_PENDING, observed_value, now)
                 # Immediately check dwell in case dwell_seconds == 0
                 elapsed = self._dt_elapsed(state.state_since, now)
                 if elapsed >= rule.dwell_seconds:
-                    state.current_state = "firing"
+                    state.current_state = _STATE_FIRING
                     state.state_since = now
-                    firing_event = self._write_event(db, rule, "firing", observed_value, now)
+                    firing_event = self._write_event(db, rule, _STATE_FIRING, observed_value, now)
                     self._write_annotation(
                         db, rule, firing_event,
                         kind="alert",
-                        label=f"[{rule.severity.upper()}] {rule.name}",
+                        label=_alert_label(rule),
                         started_at=now,
                         color=_SEVERITY_COLOR.get(rule.severity, "#8898aa"),
                     )
                     self._check_flapping(db, rule, state, "fired", now)
                     self._enqueue_notifications(db, rule, firing_event)
 
-        elif current == "pending":
+        elif current == _STATE_PENDING:
             if condition_met:
                 state.last_value = observed_value
                 state.last_value_at = now
                 elapsed = self._dt_elapsed(state.state_since, now)
                 if elapsed >= rule.dwell_seconds:
-                    state.current_state = "firing"
+                    state.current_state = _STATE_FIRING
                     state.state_since = now
-                    firing_event = self._write_event(db, rule, "firing", observed_value, now)
+                    firing_event = self._write_event(db, rule, _STATE_FIRING, observed_value, now)
                     self._write_annotation(
                         db, rule, firing_event,
                         kind="alert",
-                        label=f"[{rule.severity.upper()}] {rule.name}",
+                        label=_alert_label(rule),
                         started_at=now,
                         color=_SEVERITY_COLOR.get(rule.severity, "#8898aa"),
                     )
@@ -146,7 +174,7 @@ class AlertEvaluator:
             else:
                 db.delete(state)
 
-        elif current == "firing":
+        elif current == _STATE_FIRING:
             if condition_met:
                 state.last_value = observed_value
                 state.last_value_at = now
@@ -155,33 +183,33 @@ class AlertEvaluator:
                 recovery_elapsed = self._dt_elapsed(last_met_at, now)
                 if recovery_elapsed >= rule.recovery_dwell_seconds:
                     if rule.policy == "auto_clear":
-                        state.current_state = "recovered"
+                        state.current_state = _STATE_RECOVERED
                         state.state_since = now
-                        recovered_event = self._write_event(db, rule, "recovered", observed_value, now)
+                        recovered_event = self._write_event(db, rule, _STATE_RECOVERED, observed_value, now)
                         self._close_open_annotation(db, rule, now)
                         self._check_flapping(db, rule, state, "recovered", now)
                         self._enqueue_notifications(db, rule, recovered_event)
                         db.delete(state)
                     else:
-                        state.current_state = "awaiting_ack"
+                        state.current_state = _STATE_AWAITING_ACK
                         state.state_since = now
-                        awaiting_event = self._write_event(db, rule, "awaiting_ack", observed_value, now)
+                        awaiting_event = self._write_event(db, rule, _STATE_AWAITING_ACK, observed_value, now)
                         self._close_open_annotation(db, rule, now)
                         self._check_flapping(db, rule, state, "recovered", now)
                         self._enqueue_notifications(db, rule, awaiting_event)
 
-        elif current == "awaiting_ack":
+        elif current == _STATE_AWAITING_ACK:
             # Stays until explicitly ACK'd via the API
             state.last_value = observed_value
             state.last_value_at = now
 
-        elif current == "recovered":
+        elif current == _STATE_RECOVERED:
             if condition_met:
-                state.current_state = "pending"
+                state.current_state = _STATE_PENDING
                 state.state_since = now
                 state.last_value = observed_value
                 state.last_value_at = now
-                self._write_event(db, rule, "pending", observed_value, now)
+                self._write_event(db, rule, _STATE_PENDING, observed_value, now)
 
     def _write_event(
         self,
@@ -232,7 +260,7 @@ class AlertEvaluator:
                 Annotation.source_event_id.in_(
                     db.query(AlertEvent.id).filter(
                         AlertEvent.rule_id == rule.id,
-                        AlertEvent.state == "firing",
+                        AlertEvent.state == _STATE_FIRING,
                     )
                 ),
                 Annotation.ended_at.is_(None),
@@ -250,8 +278,8 @@ class AlertEvaluator:
         event: AlertEvent,
     ) -> None:
         """Match the fired/recovered event to AlertRoute records and enqueue outbox rows."""
-        is_firing = event.state in ("firing", "flapping_started")
-        is_recovering = event.state in ("recovered", "awaiting_ack", "flapping_stopped")
+        is_firing = event.state in (_STATE_FIRING, _STATE_FLAPPING_STARTED)
+        is_recovering = event.state in (_STATE_RECOVERED, _STATE_AWAITING_ACK, _STATE_FLAPPING_STOPPED)
 
         if not is_firing and not is_recovering:
             return
@@ -274,7 +302,7 @@ class AlertEvaluator:
         )
 
         payload = {
-            "subject":        f"[{rule.severity.upper()}] {rule.name}",
+            "subject":        _alert_label(rule),
             "body":           (
                 f"Alert '{rule.name}' is {event.state}. "
                 f"Value: {event.observed_value if event.observed_value is not None else 'N/A'}"
@@ -308,24 +336,24 @@ class AlertEvaluator:
         now: datetime,
     ) -> None:
         """Increment the 10-minute flap counter and toggle is_flapping."""
-        # Reset counter if the last tracked flip was > 10 minutes ago
-        if state.last_value_at and self._dt_elapsed(state.last_value_at, now) > 600:
+        # Reset counter if the last tracked flip was > _FLAP_WINDOW_SECONDS ago
+        if state.last_value_at and self._dt_elapsed(state.last_value_at, now) > _FLAP_WINDOW_SECONDS:
             state.flap_count_10m = 0
             if state.is_flapping:
                 state.is_flapping = False
-                self._write_event(db, rule, "flapping_stopped", state.last_value, now)
+                self._write_event(db, rule, _STATE_FLAPPING_STOPPED, state.last_value, now)
 
         state.flap_count_10m += 1
 
-        if state.flap_count_10m >= 4 and not state.is_flapping:
+        if state.flap_count_10m >= _FLAP_THRESHOLD and not state.is_flapping:
             state.is_flapping = True
-            self._write_event(db, rule, "flapping_started", state.last_value, now)
-        elif state.flap_count_10m < 4 and state.is_flapping:
+            self._write_event(db, rule, _STATE_FLAPPING_STARTED, state.last_value, now)
+        elif state.flap_count_10m < _FLAP_THRESHOLD and state.is_flapping:
             state.is_flapping = False
-            self._write_event(db, rule, "flapping_stopped", state.last_value, now)
+            self._write_event(db, rule, _STATE_FLAPPING_STOPPED, state.last_value, now)
 
     def _sync_sensor_ranges(self, db: Session, rule: AlertRule, sensor: Sensor) -> None:
-        if rule.condition != "outside_range":
+        if rule.condition != _COND_OUTSIDE_RANGE:
             return
         if rule.severity == "warning":
             sensor.warning_min = rule.threshold_lo
