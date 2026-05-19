@@ -148,6 +148,10 @@
 
 .dashboard-grid-shell {
   position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .dashboard-grid-shell--loading {
@@ -557,4 +561,17 @@
   font-weight: 600;
   color: var(--color-fg);
   flex: 1;
+}
+
+/* ── Widget editor 2-column layout ──────────────────────────────────────── */
+
+.widget-editor-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 639px) {
+  .widget-editor-columns { grid-template-columns: 1fr; }
 }

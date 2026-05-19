@@ -28,6 +28,11 @@ import { DashboardTimeService } from '../../core/dashboard/time.service';
 
 const PALETTE = ['#37c79a', '#56b9ff', '#ffbf47', '#ff7a59', '#9b8cff', '#5ed3c6'];
 
+interface MultiGaugeEntry {
+  name: string; value: number | null; unit: string;
+  percent: number; color: string; min: number; max: number;
+}
+
 @Component({
   selector: 'app-dashboard-widget',
   standalone: false,
@@ -46,7 +51,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   loading  = false;
   error: string | null = null;
   emptyMessage = '';
-  chartType: 'apex' | 'gauge' | 'stat' | null = null;
+  chartType: 'apex' | 'gauge' | 'stat' | 'multi_gauge' | null = null;
+  multiGauges: MultiGaugeEntry[] = [];
   chartConfig: any = null;
   widgetStatus: WidgetStatus = 'ok';
   currentTheme: 'light' | 'dark' = document.documentElement.classList.contains('theme-light') ? 'light' : 'dark';
@@ -190,10 +196,12 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   get tone(): WidgetTone {
     switch (this.widget.widget_type) {
       case 'gauge':
-      case 'stat_card':  return 'info';
-      case 'line_chart': return 'success';
-      case 'bar_chart':  return 'neutral';
-      default:           return 'neutral';
+      case 'multi_gauge':
+      case 'stat_card':            return 'info';
+      case 'line_chart':           return 'success';
+      case 'bar_chart':
+      case 'horizontal_bar_chart': return 'neutral';
+      default:                     return 'neutral';
     }
   }
 
@@ -221,10 +229,12 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
     try {
       switch (this.widget.widget_type) {
-        case 'line_chart': await this.loadLineChart(s, version); break;
-        case 'bar_chart':  await this.loadBarChart(s, version);  break;
-        case 'gauge':      await this.loadGauge(s, version);     break;
-        case 'stat_card':  await this.loadStatCard(s, version);  break;
+        case 'line_chart':          await this.loadLineChart(s, version);          break;
+        case 'bar_chart':           await this.loadBarChart(s, version);           break;
+        case 'horizontal_bar_chart': await this.loadHorizontalBarChart(s, version); break;
+        case 'gauge':               await this.loadGauge(s, version);              break;
+        case 'stat_card':           await this.loadStatCard(s, version);           break;
+        case 'multi_gauge':         await this.loadMultiGauge(s, version);         break;
       }
     } catch (err: unknown) {
       if (version !== this.loadVersion) return;
@@ -264,6 +274,65 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     this.freshAt = this.maxTimestamp(resp);
     this.activeSensor = s.sensor_ids?.length === 1 ? this.sensorForId(s.sensor_ids[0]) : null;
     this.applyBarChart(resp);
+  }
+
+  private async loadHorizontalBarChart(s: WidgetSettings, version: number): Promise<void> {
+    const { from, to } = this.resolveWindow(s);
+    const resp = await this.sensorApi.getAnalytics(s.sensor_ids!, from, to, {
+      aggregated: s.aggregated, bucket_minutes: s.bucket_minutes,
+    });
+    if (version !== this.loadVersion) return;
+    this.latestAnalytics = resp;
+    this.freshAt = this.maxTimestamp(resp);
+    this.activeSensor = s.sensor_ids?.length === 1 ? this.sensorForId(s.sensor_ids[0]) : null;
+    this.applyHorizontalBarChart(resp);
+  }
+
+  private async loadMultiGauge(s: WidgetSettings, version: number): Promise<void> {
+    const ids = (s.sensor_ids ?? []).slice(0, 4);
+    if (!ids.length) { this.setEmpty('Configure sensors in widget settings.'); return; }
+
+    const entries: MultiGaugeEntry[] = [];
+    for (const id of ids) {
+      let reading: SensorReading | null = null;
+      try { reading = await this.sensorApi.getLatest(id); } catch { /* no reading yet */ }
+      if (version !== this.loadVersion) return;
+
+      const sensor = this.sensorForId(id);
+      const gMin = s.gauge_min ?? sensor?.normal_min ?? 0;
+      const gMax = s.gauge_max ?? sensor?.normal_max ?? 100;
+      const safeMax = gMax <= gMin ? gMin + 100 : gMax;
+      const value = reading?.value ?? null;
+      const percent = value !== null
+        ? Math.round(Math.max(0, Math.min(100, ((value - gMin) / (safeMax - gMin)) * 100)))
+        : 0;
+      const tier = sensor ? statusOf(value ?? 0, sensor) : 'unknown';
+      const color = tier !== 'unknown' ? STATUS_COLOR_HEX[tier]
+        : percent >= 95 ? STATUS_COLOR_HEX.critical
+        : percent >= 80 ? STATUS_COLOR_HEX.warning
+        : STATUS_COLOR_HEX.normal;
+
+      if (reading) this.freshAt = reading.timestamp ?? null;
+      entries.push({
+        name:    sensor?.name ?? `Sensor ${id}`,
+        value,
+        unit:    sensor?.unit ?? '',
+        percent, color,
+        min:     gMin,
+        max:     safeMax,
+      });
+    }
+
+    this.multiGauges = entries;
+    this.chartType   = 'multi_gauge';
+    this.widgetStatus = this.computeStatus();
+
+    // Subscribe to realtime for the first sensor (representative freshness)
+    if (ids.length) {
+      this.realtimeSub = this.realtime.subscribe(ids[0]).subscribe(() => {
+        void this.loadMultiGauge(s, this.loadVersion);
+      });
+    }
   }
 
   private async loadGauge(s: WidgetSettings, version: number): Promise<void> {
@@ -460,6 +529,53 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
     };
   }
 
+  private applyHorizontalBarChart(resp: AnalyticsResponse): void {
+    const theme = this.readTheme();
+    const sensorIds = this.widget.settings?.sensor_ids ?? [];
+    const items = resp.data
+      .filter(d => d.points.length > 0)
+      .map((d, i) => {
+        const avgValue = d.points.reduce((sum, p) => sum + p.value, 0) / d.points.length;
+        const sensor = this.sensorForId(sensorIds[i] ?? d.sensor_id);
+        const tier = statusOf(avgValue, sensor);
+        const color = tier !== 'unknown' ? STATUS_COLOR_HEX[tier] : PALETTE[i % PALETTE.length];
+        return {
+          name:  d.sensor_name || `Sensor ${d.sensor_id}`,
+          value: avgValue,
+          unit:  d.unit ?? '',
+          color,
+        };
+      });
+
+    if (!items.length) { this.setEmpty('No readings in this window.'); return; }
+
+    const unit = items[0].unit;
+    this.chartType  = 'apex';
+    this.chartConfig = {
+      series: [{ name: 'Average', data: items.map(i => parseFloat(i.value.toFixed(2))) }],
+      chart: {
+        type: 'bar', height: '100%', toolbar: { show: false },
+        foreColor: theme.fgMuted,
+        animations: { easing: 'easeinout', speed: 220 },
+      },
+      plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 6, barHeight: '55%' } },
+      colors: items.map(i => i.color),
+      dataLabels: {
+        enabled: true,
+        formatter: (v: number) => `${v.toFixed(1)}${unit ? ' ' + unit : ''}`,
+        style: { colors: [theme.fg] },
+      },
+      grid: { borderColor: theme.border, strokeDashArray: 4 },
+      xaxis: { labels: { formatter: (v: number) => v.toFixed(1) } },
+      yaxis: { categories: items.map(i => i.name) },
+      legend: { show: false },
+      tooltip: {
+        theme: theme.tooltip,
+        y: { formatter: (v: number) => `${v.toFixed(2)}${unit ? ' ' + unit : ''}` },
+      },
+    };
+  }
+
   private applyGauge(reading: SensorReading, sensor?: Sensor | null): void {
     const value = reading?.value ?? null;
 
@@ -518,7 +634,8 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
   private computeStatus(): WidgetStatus {
     const type = this.widget.widget_type;
     // Charts have no live reading stream — always ok
-    if (type === 'line_chart' || type === 'bar_chart') return 'ok';
+    if (type === 'line_chart' || type === 'bar_chart' || type === 'horizontal_bar_chart') return 'ok';
+    if (type === 'multi_gauge') return 'ok';
     // Guard null/missing timestamp (WS messages may carry null)
     if (!this.latestReading || !this.latestReading.timestamp) return 'stale';
     const age = Date.now() - new Date(this.latestReading.timestamp).getTime();
@@ -812,11 +929,14 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
         case 'bar_chart':
           if (this.latestAnalytics) this.applyBarChart(this.latestAnalytics);
           break;
+        case 'horizontal_bar_chart':
+          if (this.latestAnalytics) this.applyHorizontalBarChart(this.latestAnalytics);
+          break;
         case 'stat_card':
           if (this.latestReading && this.latestReadings)
             this.applyStatCard(this.latestReading, this.latestReadings);
           break;
-        // gauge: CSS custom properties pick up theme vars automatically
+        // gauge / multi_gauge: CSS custom properties pick up theme vars automatically
       }
       this.cdr.markForCheck();
     });
@@ -899,11 +1019,13 @@ export class DashboardWidgetComponent implements OnInit, OnChanges, OnDestroy {
 
   private get catalogLabel(): string {
     switch (this.widget.widget_type) {
-      case 'line_chart': return 'Line Chart';
-      case 'bar_chart':  return 'Bar Chart';
-      case 'gauge':      return 'Gauge';
-      case 'stat_card':  return 'Stat Card';
-      default:           return 'Widget';
+      case 'line_chart':           return 'Line Chart';
+      case 'bar_chart':            return 'Bar Chart';
+      case 'horizontal_bar_chart': return 'Horizontal Bar Chart';
+      case 'gauge':                return 'Gauge';
+      case 'stat_card':            return 'Stat Card';
+      case 'multi_gauge':          return 'Multi-Gauge';
+      default:                     return 'Widget';
     }
   }
 }

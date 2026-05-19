@@ -82,10 +82,11 @@ before calling `websocket.accept()` — see `backend/routes/websocket_routes.py`
 - `frontend/src/app/modules/dashboard/dashboard-widget.component.ts` (471 lines) — renders a single widget
 - `frontend/src/app/modules/dashboard/dashboard-api.service.ts` — REST calls for dashboards/widgets
 
-**Gridster config** (dashboard.component.ts ~line 528):
-- `GridType.Fixed`, 64×64 px cells, 24 columns, 12px margin
+**Gridster config** (`buildGridOptions()` in dashboard.component.ts):
+- `GridType.Fixed`, 64×64 px cells, `minCols: 24, maxCols: 24`, 12px margin, `outerMargin: false`
 - Drag handle: `.dashboard-widget-drag-handle` CSS class
-- Drag/resize enabled only in `editMode`; `compactType: CompactType.None`
+- Drag/resize always enabled for owned dashboards (no explicit edit-mode toggle); controlled by `applyGridInteractivity()` which is called after every dashboard load/switch
+- `compactType: CompactType.None`; `.dashboard-grid-shell` has `flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain` to prevent resize growing-down
 
 **Layout persistence** (dashboard.component.ts ~line 274):
 - `itemChangeCallback` / `itemResizeCallback` → `queueLayoutPersistence()` → 320 ms debounce → `flushLayout()`
@@ -98,12 +99,15 @@ Hard-coded array of `WidgetCatalogItem` with label, description, default grid di
 |---|---|---|
 | `line_chart` | 12 cols × 5 rows | `aggregated: true`, `bucket_minutes: 60`, `show_legend: true` |
 | `bar_chart` | 8 cols × 5 rows | Same aggregation |
+| `horizontal_bar_chart` | 10 cols × 5 rows | Same data as `bar_chart`; `plotOptions.bar.horizontal: true` in ApexCharts |
 | `gauge` | 4 cols × 4 rows | `gauge_min`, `gauge_max` inputs; CSS conic-gradient, not ApexCharts |
+| `multi_gauge` | 8 cols × 4 rows | Up to 4 sensors; CSS mini-gauges in 2×2 grid; `sensor_ids`, `time_range_hours` |
 | `stat_card` | 4 cols × 3 rows | Big number + delta arrow + 30-point sparkline |
 
 **Widget editor modal** (dashboard.component.ts ~line 405):
-- Fields: type, title, subtitle, time range (now above sensors), sensor IDs (multi-select with data filters), gauge min/max.
-- Section order: Widget type → Details → **Time window** → **Data (sensors)** → Gauge → Thresholds.
+- Fields: type, title, subtitle, time range, sensor IDs (multi-select with data filters), gauge min/max.
+- Section order: Widget type → Details → **[Time window + Data side by side]** → Gauge → Thresholds.
+- The Time window and Data sections are placed in a two-column CSS Grid via `.widget-editor-columns` (defined in `dashboard.component.css`). Collapses to single column on viewports < 640 px.
 - Create: `POST /api/dashboards/{id}/widgets`; Update: `PUT /api/widgets/{id}`.
 - `effectiveTimeFrom` / `effectiveTimeTo` getters compute ISO strings from `widgetForm` and are passed as `[timeFrom]`/`[timeTo]` inputs to `<app-asset-tree-picker>`.
 
@@ -238,7 +242,9 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 - **`RelativeTimePipe` is pure** — it won't re-evaluate automatically when time passes. The shell component drives re-evaluation via a 5-second `interval()` subscription that calls `cdr.markForCheck()`. Do not make the pipe impure to solve this.
 - **`dashboard.component.ts` is 724 lines** — widget catalog, modal state, gridster config, layout persistence, and dashboard CRUD all live here. Navigate by line number comments when editing.
 - **`NgApexchartsModule`** must be in the `imports` of `DashboardModule`, not the root module — it is only used inside the dashboard feature.
-- **Edit/Add widget buttons** were reported as a known bug (EDIT-01, EDIT-02): they should not be disabled for owned dashboards, but tests were written to expect them enabled. If they appear disabled, investigate `editMode` state and ownership check logic in `dashboard.component.ts`.
+- **Edit/Add widget buttons** were reported as a known bug (EDIT-01, EDIT-02): they should not be disabled for owned dashboards, but tests were written to expect them enabled. If they appear disabled, investigate `canEditSelected` and ownership check logic in `dashboard.component.ts`.
+- **Edit mode is now always-on for owners.** `toggleEditMode()` has been removed. The pencil button opens the dashboard settings dialog (name/description/public) via `openEditor()`. Drag/resize state is managed entirely by `applyGridInteractivity()`.
+- **Favorites not yet implemented** — backend has no `/favorite` endpoint. A TODO comment is above `openPublicCatalog()`. See `EXPANSION_PLAN.md` for roadmap context.
 
 ## Where to look for X
 
@@ -256,6 +262,7 @@ interface WsMessage { id?: number; sensor_id: number; value: number | null; time
 | REST calls for sensor data | `core/sensors/sensor-api.service.ts` |
 | Sensor data filters (has data / active in window) | `modules/dashboard/asset-tree-picker.component.ts` — `filterWithDataOnly`, `filterInTimeWindow`, `_sensorPassesDataFilter()`, `_applyDataVisibility()` |
 | Gauge CSS conic-gradient render | `modules/dashboard/dashboard-widget.component.ts` `applyGauge()` ~line 346 |
+| Multi-gauge render (mini CSS dials) | `modules/dashboard/dashboard-widget.component.ts` `applyMultiGauge()` / `loadMultiGauge()` |
 | Stat card sparkline / delta | `modules/dashboard/dashboard-widget.component.ts` `applyStatCard()` ~line 359 |
 | Ambient tinting hex palette + alpha ramps | `modules/widgets/app-widgets-shell.component.ts` — `TONE_HEX`, `TINT_SUBTLE`, `EDGE_ALPHA`, `TEXT_LIGHT/DARK` |
 | Widget status derivation | `modules/dashboard/dashboard-widget.component.ts` `computeStatus()` |

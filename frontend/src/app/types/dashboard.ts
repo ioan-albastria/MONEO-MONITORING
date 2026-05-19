@@ -1,6 +1,6 @@
 import { WidgetSettings } from './widget';
 
-export type DashboardWidgetType = 'line_chart' | 'bar_chart' | 'gauge' | 'stat_card';
+export type DashboardWidgetType = 'line_chart' | 'bar_chart' | 'horizontal_bar_chart' | 'gauge' | 'stat_card' | 'multi_gauge';
 
 export interface DashboardWidget {
   id: number;

@@ -59,14 +59,13 @@
     </div>
 
     <div class="dashboard-toolbar__group dashboard-toolbar__group--right">
-      <!-- Edit mode toggle (pencil) -->
+      <!-- Dashboard settings (pencil) -->
       <button type="button"
         class="dashboard-toolbar__btn dashboard-toolbar__btn--icon"
-        [class.dashboard-toolbar__btn--active]="editMode"
-        (click)="toggleEditMode()"
+        (click)="openEditor()"
         [disabled]="!canEditSelected"
-        title="Toggle edit mode"
-        aria-label="Toggle edit mode">
+        title="Dashboard settings"
+        aria-label="Dashboard settings">
         <span class="icon" aria-hidden="true">edit</span>
       </button>
 
@@ -122,13 +121,7 @@
 
   <!-- ─── Dashboard selected ───────────────────────────────────────────────── -->
   <ng-container *ngIf="selectedDashboard as dashboard; else emptyState">
-    <div class="dashboard-grid-shell" [class.dashboard-grid-shell--edit]="editMode">
-
-      <!-- Edit mode banner -->
-      <div class="dashboard-banner" *ngIf="editMode">
-        <span class="icon" aria-hidden="true">drag_pan</span>
-        Edit mode — drag and resize widgets. Click the pencil again to exit.
-      </div>
+    <div class="dashboard-grid-shell" [class.dashboard-grid-shell--edit]="canEditSelected">
 
       <!-- Gridster grid -->
       <gridster [options]="gridOptions" class="dashboard-grid">
@@ -137,9 +130,9 @@
           [item]="item.gridsterItem"
           class="p-0"
         >
-          <!-- Bulk-select checkbox — visible only in edit mode on owned dashboard -->
+          <!-- Bulk-select checkbox — visible only on owned dashboard -->
           <div
-            *ngIf="editMode && selectedDashboard?.is_owned"
+            *ngIf="canEditSelected"
             class="widget-select-overlay"
             [class.is-selected]="selectedWidgetIds.has(item.widget.id)"
             (click)="toggleWidgetSelection(item.widget.id)"
@@ -152,7 +145,7 @@
           <app-dashboard-widget
             [widget]="item.widget"
             [editable]="selectedDashboard!.is_owned"
-            [editMode]="editMode"
+            [editMode]="canEditSelected"
             (configure)="openWidgetEditor(item.widget)"
             (remove)="deleteWidget(item.widget)"
           ></app-dashboard-widget>
@@ -161,7 +154,7 @@
 
       <!-- Bulk selection bar -->
       <div
-        *ngIf="editMode && selectedWidgetIds.size > 0"
+        *ngIf="canEditSelected && selectedWidgetIds.size > 0"
         class="selection-bar"
       >
         <span class="selection-bar__count">
@@ -386,62 +379,67 @@
           </div>
         </div>
 
-        <!-- Section 2: Time range -->
-        <div class="dashboard-editor-section">
-          <div class="dashboard-editor-section__eyebrow">Time window</div>
-          <div class="dashboard-editor-section__title">Time Range</div>
-          <div class="flex gap-4 mb-2">
-            <label class="flex items-center gap-2 text-sm text-fg-muted">
-              <input type="radio" name="timeMode" value="relative" [(ngModel)]="widgetForm.timeMode" />
-              <span>Last X hours</span>
-            </label>
-            <label class="flex items-center gap-2 text-sm text-fg-muted">
-              <input type="radio" name="timeMode" value="absolute" [(ngModel)]="widgetForm.timeMode" />
-              <span>From / To</span>
-            </label>
+        <!-- Sections 2 + 3: Time window + Data side by side -->
+        <div class="widget-editor-columns">
+
+          <!-- Section 2: Time range -->
+          <div class="dashboard-editor-section">
+            <div class="dashboard-editor-section__eyebrow">Time window</div>
+            <div class="dashboard-editor-section__title">Time Range</div>
+            <div class="flex gap-4 mb-2">
+              <label class="flex items-center gap-2 text-sm text-fg-muted">
+                <input type="radio" name="timeMode" value="relative" [(ngModel)]="widgetForm.timeMode" />
+                <span>Last X hours</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm text-fg-muted">
+                <input type="radio" name="timeMode" value="absolute" [(ngModel)]="widgetForm.timeMode" />
+                <span>From / To</span>
+              </label>
+            </div>
+
+            <div class="dashboard-date-grid" *ngIf="widgetForm.timeMode === 'relative'">
+              <label class="dashboard-form-field">
+                <span class="dashboard-toolbar__label">Hours</span>
+                <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number"
+                  [(ngModel)]="widgetForm.timeRangeHours" min="1" max="8760" />
+              </label>
+            </div>
+
+            <div class="dashboard-date-grid" *ngIf="widgetForm.timeMode === 'absolute'">
+              <label class="dashboard-form-field">
+                <span class="dashboard-toolbar__label">From</span>
+                <input class="dashboard-toolbar__input dashboard-toolbar__input--date" type="datetime-local" [(ngModel)]="widgetForm.from" />
+              </label>
+              <label class="dashboard-form-field">
+                <span class="dashboard-toolbar__label">To</span>
+                <input class="dashboard-toolbar__input dashboard-toolbar__input--date" type="datetime-local" [(ngModel)]="widgetForm.to" />
+              </label>
+            </div>
+            <div class="dashboard-editor-section__hint">Used to query sensor readings.</div>
           </div>
 
-          <div class="dashboard-date-grid" *ngIf="widgetForm.timeMode === 'relative'">
-            <label class="dashboard-form-field">
-              <span class="dashboard-toolbar__label">Hours</span>
-              <input class="dashboard-toolbar__input dashboard-toolbar__input--sm" type="number"
-                [(ngModel)]="widgetForm.timeRangeHours" min="1" max="8760" />
-            </label>
+          <!-- Section 3: Sensor multi-select -->
+          <div class="dashboard-editor-section">
+            <div class="dashboard-editor-section__eyebrow">Data</div>
+            <div class="dashboard-editor-section__title">
+              Sensors
+              <span class="text-xs text-fg-faint">required — pick at least one</span>
+            </div>
+            <app-asset-tree-picker
+              [selectedIds]="widgetForm.sensorIds"
+              (selectedIdsChange)="onWidgetSensorIdsChanged($event)"
+              [timeFrom]="effectiveTimeFrom"
+              [timeTo]="effectiveTimeTo"
+            ></app-asset-tree-picker>
+            <div class="dashboard-editor-section__hint">
+              Browse the asset tree or type to filter. Click a sensor to select it.
+            </div>
           </div>
 
-          <div class="dashboard-date-grid" *ngIf="widgetForm.timeMode === 'absolute'">
-            <label class="dashboard-form-field">
-              <span class="dashboard-toolbar__label">From</span>
-              <input class="dashboard-toolbar__input dashboard-toolbar__input--date" type="datetime-local" [(ngModel)]="widgetForm.from" />
-            </label>
-            <label class="dashboard-form-field">
-              <span class="dashboard-toolbar__label">To</span>
-              <input class="dashboard-toolbar__input dashboard-toolbar__input--date" type="datetime-local" [(ngModel)]="widgetForm.to" />
-            </label>
-          </div>
-          <div class="dashboard-editor-section__hint">Used to query sensor readings.</div>
-        </div>
+        </div><!-- /widget-editor-columns -->
 
-        <!-- Section 3: Sensor multi-select -->
-        <div class="dashboard-editor-section">
-          <div class="dashboard-editor-section__eyebrow">Data</div>
-          <div class="dashboard-editor-section__title">
-            Sensors
-            <span class="text-xs text-fg-faint">required — pick at least one</span>
-          </div>
-          <app-asset-tree-picker
-            [selectedIds]="widgetForm.sensorIds"
-            (selectedIdsChange)="onWidgetSensorIdsChanged($event)"
-            [timeFrom]="effectiveTimeFrom"
-            [timeTo]="effectiveTimeTo"
-          ></app-asset-tree-picker>
-          <div class="dashboard-editor-section__hint">
-            Browse the asset tree or type to filter. Click a sensor to select it.
-          </div>
-        </div>
-
-        <!-- Section 4: Gauge bounds (gauge type only) -->
-        <div class="dashboard-editor-section" *ngIf="widgetForm.type === 'gauge'">
+        <!-- Section 4: Gauge bounds (gauge / multi_gauge type only) -->
+        <div class="dashboard-editor-section" *ngIf="widgetForm.type === 'gauge' || widgetForm.type === 'multi_gauge'">
           <div class="dashboard-editor-section__eyebrow">Gauge</div>
           <div class="dashboard-editor-section__title">Scale bounds</div>
           <div class="dashboard-date-grid">

@@ -7,7 +7,7 @@
   [theme]="currentTheme"
   [freshAt]="freshAt"
   [expectedIntervalSeconds]="expectedIntervalSeconds"
-  [editMode]="editMode"
+  [editMode]="editable"
 >
   <!-- Always-visible reload button in header -->
   <button widgetActions type="button" class="icon-btn" title="Refresh widget" (click)="reload()">
@@ -70,6 +70,21 @@
       <div class="gauge-scale-row">
         <span>min <strong>{{ gaugeMin }}</strong></span>
         <span>max <strong>{{ gaugeMax }}</strong></span>
+      </div>
+    </div>
+
+    <!-- Multi-gauge -->
+    <div *ngIf="!loading && !error && chartType === 'multi_gauge'" class="multi-gauge-grid">
+      <div *ngFor="let g of multiGauges" class="mini-gauge">
+        <div class="mini-gauge__dial"
+             [style.--gauge-progress]="g.percent + '%'"
+             [style.--gauge-color]="g.color">
+          <div class="mini-gauge__dial-inner">
+            <span class="mini-gauge__value">{{ g.value !== null ? g.value.toFixed(1) : '—' }}</span>
+            <span class="mini-gauge__unit">{{ g.unit }}</span>
+          </div>
+        </div>
+        <div class="mini-gauge__label truncate">{{ g.name }}</div>
       </div>
     </div>
 

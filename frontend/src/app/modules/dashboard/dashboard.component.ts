@@ -135,7 +135,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Gridster (Phase 8.3) ───────────────────────────────────────────────
 
-  editMode = false;
+  dashboardSettingsOpen = false;
   selectedWidgetIds = new Set<number>();
   gridItems: GridItem[] = [];
   gridOptions: GridsterConfig = this.buildGridOptions();
@@ -220,6 +220,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
         defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60 },
       },
       {
+        type: 'horizontal_bar_chart',
+        label: 'Horizontal Bar Chart',
+        description: 'Side-by-side bar comparison across sensors — good for current-value ranking.',
+        tags: ['comparison', 'multi-sensor'],
+        bestFor: 'Ranking sensors by current value',
+        thumbnail: trust(`<svg viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5"  y="6"  height="9" width="40" rx="3" fill="#56b9ff" fill-opacity="0.80"/>
+          <rect x="5"  y="18" height="9" width="60" rx="3" fill="#37c79a" fill-opacity="0.80"/>
+          <rect x="5"  y="30" height="9" width="50" rx="3" fill="#f5b428" fill-opacity="0.80"/>
+          <rect x="5"  y="42" height="4" width="30" rx="2" fill="#56b9ff" fill-opacity="0.60"/>
+        </svg>`),
+        defaultCols: 10, defaultRows: 5,
+        defaultSettings: { sensor_ids: [], time_range_inherit: true, aggregated: true, bucket_minutes: 60 },
+      },
+      {
         type: 'gauge',
         label: 'Gauge',
         description: 'Live circular gauge for the most recent reading of one sensor.',
@@ -237,6 +252,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
         </svg>`),
         defaultCols: 4, defaultRows: 4,
         defaultSettings: { sensor_ids: [], gauge_min: 0, gauge_max: 100 },
+      },
+      {
+        type: 'multi_gauge',
+        label: 'Multi-Gauge',
+        description: 'Up to 4 sensors as side-by-side mini gauges — good for live status overview.',
+        tags: ['live', 'multi-sensor', 'gauge'],
+        bestFor: 'Live comparison of related sensors',
+        thumbnail: trust(`<svg viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="22" cy="18" r="12" stroke="currentColor" stroke-opacity="0.15" stroke-width="4" fill="none"/>
+          <path d="M10 18 A12 12 0 0 1 30.4 9" stroke="#37c79a" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <text x="22" y="21" text-anchor="middle" font-size="6" font-weight="600" fill="currentColor" fill-opacity="0.6">72%</text>
+          <circle cx="58" cy="18" r="12" stroke="currentColor" stroke-opacity="0.15" stroke-width="4" fill="none"/>
+          <path d="M46 18 A12 12 0 0 1 70 18" stroke="#f5b428" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <text x="58" y="21" text-anchor="middle" font-size="6" font-weight="600" fill="currentColor" fill-opacity="0.6">50%</text>
+          <circle cx="22" cy="38" r="7" stroke="currentColor" stroke-opacity="0.15" stroke-width="3" fill="none"/>
+          <path d="M15 38 A7 7 0 0 1 27.6 31.6" stroke="#56b9ff" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <circle cx="58" cy="38" r="7" stroke="currentColor" stroke-opacity="0.15" stroke-width="3" fill="none"/>
+          <path d="M51 38 A7 7 0 0 1 65 38" stroke="#e64b3c" stroke-width="3" stroke-linecap="round" fill="none"/>
+        </svg>`),
+        defaultCols: 8, defaultRows: 4,
+        defaultSettings: { sensor_ids: [], time_range_hours: 1 },
       },
       {
         type: 'stat_card',
@@ -352,6 +388,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.timeService.loadFromDashboard(this.selectedDashboard);
       this.timeRange = this.timeService.current;
       this.buildGridItems();
+      this.applyGridInteractivity();
       this.syncPageHeader();
       this.refreshView();
       this._syncUrlFromState();
@@ -361,20 +398,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Edit mode toggle ───────────────────────────────────────────────────
+  // ── Grid interactivity (always-on for owned dashboards) ───────────────
 
-  toggleEditMode(): void {
-    if (!this.canEditSelected) return;
-    this.editMode = !this.editMode;
-    if (!this.editMode) this.clearSelection();
+  private applyGridInteractivity(): void {
+    const editable = this.canEditSelected;
     this.gridOptions = {
       ...this.gridOptions,
-      draggable: { ...this.gridOptions.draggable, enabled: this.editMode },
-      resizable: { ...this.gridOptions.resizable, enabled: this.editMode },
-      displayGrid: this.editMode ? DisplayGrid.Always : DisplayGrid.None,
+      draggable: { ...this.gridOptions.draggable, enabled: editable },
+      resizable: { ...this.gridOptions.resizable, enabled: editable },
+      displayGrid: editable ? DisplayGrid.Always : DisplayGrid.None,
     };
     this.gridOptions.api?.optionsChanged?.();
-    this.refreshView();
   }
 
   // ── Layout persistence ─────────────────────────────────────────────────
@@ -490,6 +524,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Public catalog ─────────────────────────────────────────────────────
 
+  // TODO(favorites): Add star/unfavorite UI once backend adds POST /api/dashboards/{id}/favorite
+  // and DELETE /api/dashboards/{id}/favorite endpoints. Track in EXPANSION_PLAN.md.
   async openPublicCatalog(): Promise<void> {
     this.publicCatalogOpen = true;
     this.publicError = null;
@@ -531,7 +567,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       title: widget.title ?? '',
       subtitle: widget.subtitle ?? '',
       sensorIds: [...(s.sensor_ids ?? [])],
-      timeMode: (s.time_range_hours ?? 0) > 0 ? 'relative' : 'absolute',
+      timeMode: (s.time_range_hours ?? 0) > 0 || s.time_range_inherit !== false ? 'relative' : 'absolute',
       timeRangeHours: s.time_range_hours ?? 24,
       from: s.from ?? '',
       to: s.to ?? '',
@@ -758,14 +794,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       fixedColWidth: 64,
       fixedRowHeight: 64,
       margin: 12,
-      outerMargin: true,
-      cols: 24,
+      outerMargin: false,
+      minCols: 24,
+      maxCols: 24,
       draggable: {
-        enabled: false,
+        enabled: true,
         ignoreContentClass: 'gridster-item-content',
         dragHandleClass: 'dashboard-widget-drag-handle',
       },
-      resizable: { enabled: false },
+      resizable: { enabled: true },
       pushItems: true,
       compactType: CompactType.None,
       displayGrid: DisplayGrid.None,
@@ -834,19 +871,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private buildWidgetSettings(form: WidgetFormModel): WidgetSettings {
     const s: WidgetSettings = { sensor_ids: [...form.sensorIds] };
     if (form.timeMode === 'relative') {
-      s.time_range_inherit = true;
+      s.time_range_hours = form.timeRangeHours;
+      s.time_range_inherit = false;
     } else {
       s.time_range_inherit = false;
-      s.from = form.from;
-      s.to = form.to;
+      if (form.from) s.from = form.from;
+      if (form.to)   s.to   = form.to;
     }
-    if (form.type === 'gauge') {
+    if (form.type === 'gauge' || form.type === 'multi_gauge') {
       s.gauge_min = form.gaugeMin;
       s.gauge_max = form.gaugeMax;
     }
-    if (form.type === 'line_chart' || form.type === 'bar_chart') {
-      s.aggregated = true;
-      s.bucket_minutes = 60;
+    if (form.type === 'line_chart' || form.type === 'bar_chart' || form.type === 'horizontal_bar_chart') {
+      const existing = this.editingWidget?.settings;
+      s.aggregated    = existing?.aggregated    ?? true;
+      s.bucket_minutes = existing?.bucket_minutes ?? 60;
     }
     return s;
   }
@@ -887,6 +926,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.isOwnedSelected = false;
         this.gridItems = [];
       }
+      this.applyGridInteractivity();
       this.syncPageHeader();
     } catch (err: unknown) {
       this.loadError = err instanceof Error ? err.message : 'Failed to load dashboards.';
