@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from DAL import User, get_db
+from DAL import User, KioskToken, get_db
 from services.auth_service import AuthService
 
 _bearer = HTTPBearer()
@@ -43,7 +43,6 @@ def get_current_user(
     # ── Kiosk token path ─────────────────────────────────────────────────────
     kiosk_token_id = payload.get("kiosk_token_id")
     if kiosk_token_id is not None:
-        from DAL.models.kiosk_token import KioskToken
         kt = db.get(KioskToken, kiosk_token_id)
         if not kt or not kt.is_active:
             raise HTTPException(
@@ -88,3 +87,18 @@ def requires_role(*roles: str) -> Callable:
         return current_user
 
     return _check
+
+
+def require_admin(current_user=Depends(get_current_user)) -> User:
+    """Restrict an endpoint to the built-in 'admin' account.
+
+    Uses a username string comparison intentionally — there is no ``is_admin``
+    column on the User model.  See backend/CLAUDE.md → Gotchas for the design
+    rationale.  Do not replace this with a role check.
+    """
+    if current_user.username != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin only",
+        )
+    return current_user

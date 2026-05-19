@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from DAL import get_db
 from middleware import get_current_user
+from routes._shared import _not_found_on_value_error
 from routes.response_models.dashboard import (
     DashboardCreate,
     DashboardRead,
     DashboardUpdate,
     DashboardWidgetCreate,
     DashboardWidgetRead,
-    DashboardWidgetUpdate,
 )
 from services.dashboard_service import DashboardService
 
@@ -25,6 +25,9 @@ async def get_user_dashboards(
     return _service.get_user_dashboards(db, current_user.id)
 
 
+# /public must be declared before /{dashboard_id}: FastAPI matches routes in
+# declaration order, so the literal "public" would otherwise be consumed by
+# the {dashboard_id} path parameter.  See backend/CLAUDE.md → Gotchas.
 @dashboard_router.get("/public", response_model=list[DashboardRead])
 async def get_public_dashboards(db: Session = Depends(get_db)):
     return _service.get_public_dashboards(db)
@@ -36,10 +39,8 @@ async def get_dashboard(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         return _service.get_dashboard(db, dashboard_id, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @dashboard_router.post("", response_model=DashboardRead, status_code=status.HTTP_201_CREATED)
@@ -58,10 +59,8 @@ async def update_dashboard(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         return _service.update_dashboard(db, current_user.id, dashboard_id, payload)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @dashboard_router.delete("/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -70,10 +69,8 @@ async def delete_dashboard(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         _service.delete_dashboard(db, current_user.id, dashboard_id)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 # ── Widget sub-routes ──────────────────────────────────────────────────────
@@ -85,12 +82,12 @@ async def add_widget(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         return _service.add_widget(db, current_user.id, dashboard_id, payload)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
+# Returns 204 no-body intentionally: the frontend relies on its local gridster
+# state and does not need a refreshed server response.  See backend/CLAUDE.md.
 @dashboard_router.post("/{dashboard_id}/layout", status_code=status.HTTP_204_NO_CONTENT)
 async def save_layout(
     dashboard_id: int,
@@ -98,7 +95,5 @@ async def save_layout(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         _service.save_layout(db, current_user.id, dashboard_id, layout)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

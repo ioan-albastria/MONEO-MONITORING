@@ -14,17 +14,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from DAL import Sensor, SensorReading, User, get_db
 from config import settings
-from middleware import get_current_user
+from middleware import require_admin
 from services.moneo_api_client import MoneoApiClient
 from services.moneo_poller import bulk_upsert_readings
 
 admin_debug_router = APIRouter(prefix="/api/admin/debug", tags=["admin-debug"])
-
-
-def _require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.username != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-    return current_user
 
 
 # ── Task 2 — sensor map ───────────────────────────────────────────────────────
@@ -32,7 +26,7 @@ def _require_admin(current_user: User = Depends(get_current_user)) -> User:
 @admin_debug_router.get("/sensor-map")  # DIAGNOSTIC
 def get_sensor_map(
     db: Session = Depends(get_db),
-    _: User = Depends(_require_admin),
+    _: User = Depends(require_admin),
 ) -> list[dict]:
     """Return all active sensors with the IDs the poller would use and the URL it would build."""
     sensors = (
@@ -87,7 +81,7 @@ class ProbeProcessdataRequest(BaseModel):
 @admin_debug_router.post("/probe-processdata")  # DIAGNOSTIC
 async def probe_processdata(
     body: ProbeProcessdataRequest,
-    _: User = Depends(_require_admin),
+    _: User = Depends(require_admin),
 ) -> dict:
     """Fire one raw /processdata call with caller-supplied IDs and return the MONEO response."""
     client = MoneoApiClient()
@@ -134,7 +128,7 @@ async def probe_processdata(
 async def sync_one_sensor(
     sensor_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(_require_admin),
+    _: User = Depends(require_admin),
 ) -> dict:
     """Run the poll loop for exactly one sensor and return a detailed trace.
     Does NOT create a SyncRun row — health surface data is not polluted."""

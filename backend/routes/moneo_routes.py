@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 from DAL import User, Sensor, get_db
-from middleware import get_current_user
+from middleware import get_current_user, require_admin
 from services.moneo_api_client import MoneoApiClient
 from services.moneo_poller import MoneoPoller
 
@@ -156,11 +156,8 @@ async def get_moneo_raw(path: str, request: Request, current_user=Depends(get_cu
 
 
 @moneo_router.post("/admin/sync-metadata")
-async def trigger_metadata_sync(current_user: User = Depends(get_current_user)):
+async def trigger_metadata_sync(current_user: User = Depends(require_admin)):
     """Manually trigger metadata sync from MONEO (admin only)."""
-    if current_user.username != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-
     poller = MoneoPoller()
     try:
         await poller.sync_sensor_metadata()
@@ -170,11 +167,8 @@ async def trigger_metadata_sync(current_user: User = Depends(get_current_user)):
 
 
 @moneo_router.post("/admin/poll-readings")
-async def trigger_poll_readings(current_user: User = Depends(get_current_user)):
+async def trigger_poll_readings(current_user: User = Depends(require_admin)):
     """Manually trigger a readings poll from MONEO (admin only)."""
-    if current_user.username != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-
     poller = MoneoPoller()
     try:
         await poller.poll_latest_readings()

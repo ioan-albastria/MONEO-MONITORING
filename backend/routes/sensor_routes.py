@@ -3,13 +3,16 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from DAL import get_db
+from DAL import SensorReading, get_db
 from DAL.models.sensor import Sensor
 from middleware import get_current_user, requires_role
+from routes._shared import _not_found_on_value_error
 from routes.response_models.sensor import SensorRead, SensorRangesUpdate
 from routes.response_models.analytics import SensorTimeSeriesData
 from services.sensor_service import SensorService
 from services.sensor_readings_service import SensorReadingsService
+
+_SPARKLINE_POINTS = 12
 
 sensor_router = APIRouter(prefix="/api/sensors", tags=["sensors"])
 _sensor_service = SensorService()
@@ -24,26 +27,24 @@ async def get_sensor_sparklines(
     db: Session = Depends(get_db),
 ):
     """Return a 12-point downsampled value array for each requested sensor."""
-    from DAL.models.sensor_reading import SensorReading as SR
     now = datetime.now(timezone.utc)
     since = now - timedelta(minutes=minutes)
     result = []
     for sid in ids:
         readings = (
-            db.query(SR)
-            .filter(SR.sensor_id == sid, SR.timestamp >= since)
-            .order_by(SR.timestamp.asc())
+            db.query(SensorReading)
+            .filter(SensorReading.sensor_id == sid, SensorReading.timestamp >= since)
+            .order_by(SensorReading.timestamp.asc())
             .all()
         )
         if not readings:
             result.append({"sensor_id": sid, "points": []})
             continue
-        target = 12
-        if len(readings) <= target:
+        if len(readings) <= _SPARKLINE_POINTS:
             pts = [r.value for r in readings]
         else:
-            step = len(readings) / target
-            pts = [readings[int(i * step)].value for i in range(target)]
+            step = len(readings) / _SPARKLINE_POINTS
+            pts = [readings[int(i * step)].value for i in range(_SPARKLINE_POINTS)]
         result.append({"sensor_id": sid, "points": pts})
     return result
 
@@ -63,10 +64,8 @@ async def get_sensor(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         return _sensor_service.get_sensor(db, sensor_id)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @sensor_router.get("/{sensor_id}/readings/around")
@@ -78,18 +77,17 @@ async def get_readings_around(
     db: Session = Depends(get_db),
 ):
     """Return up to `radius` readings before and after `at`, sorted ascending."""
-    from DAL.models.sensor_reading import SensorReading as SR
     before = (
-        db.query(SR)
-        .filter(SR.sensor_id == sensor_id, SR.timestamp <= at)
-        .order_by(SR.timestamp.desc())
+        db.query(SensorReading)
+        .filter(SensorReading.sensor_id == sensor_id, SensorReading.timestamp <= at)
+        .order_by(SensorReading.timestamp.desc())
         .limit(radius)
         .all()
     )
     after = (
-        db.query(SR)
-        .filter(SR.sensor_id == sensor_id, SR.timestamp > at)
-        .order_by(SR.timestamp.asc())
+        db.query(SensorReading)
+        .filter(SensorReading.sensor_id == sensor_id, SensorReading.timestamp > at)
+        .order_by(SensorReading.timestamp.asc())
         .limit(radius)
         .all()
     )
@@ -110,10 +108,8 @@ async def get_sensor_readings(
         from_timestamp = now - timedelta(hours=24)
     if to_timestamp is None:
         to_timestamp = now
-    try:
+    with _not_found_on_value_error():
         return _readings_service.get_sensor_readings(db, sensor_id, from_timestamp, to_timestamp)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @sensor_router.get("/{sensor_id}/latest")
@@ -135,10 +131,8 @@ async def set_sensor_active(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    with _not_found_on_value_error():
         return _sensor_service.set_sensor_active(db, sensor_id, is_active)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @sensor_router.put("/{sensor_id}/ranges", response_model=SensorRead)

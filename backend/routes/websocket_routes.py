@@ -4,12 +4,17 @@ from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from DAL import SessionLocal, User
+from DAL import session_scope, User
 from services.auth_service import AuthService
 from services.sensor_readings_service import SensorReadingsService
 
 ws_router = APIRouter(tags=["websocket"])
 logger = logging.getLogger(__name__)
+
+# Push cadence matches the backend poll interval (5 s).  See backend/CLAUDE.md
+# WebSocket section.  Changing this value does not require a migration but
+# the frontend's live-update UX is tuned to this interval.
+_WS_PUSH_INTERVAL_SECONDS = 5
 
 _readings_service = SensorReadingsService()
 _auth_service = AuthService()
@@ -44,11 +49,8 @@ async def sensor_live_feed(
         await websocket.close(code=1008)
         return
 
-    db = SessionLocal()
-    try:
+    with session_scope() as db:
         user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-    finally:
-        db.close()
 
     if not user:
         await websocket.close(code=1008)
@@ -60,18 +62,15 @@ async def sensor_live_feed(
 
     try:
         while True:
-            db = SessionLocal()
-            try:
+            with session_scope() as db:
                 latest = _readings_service.get_latest_reading(db, sensor_id)
-            finally:
-                db.close()
 
             if latest:
                 await websocket.send_json(latest)
             else:
                 await websocket.send_json({"sensor_id": sensor_id, "value": None, "timestamp": None})
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(_WS_PUSH_INTERVAL_SECONDS)
     except WebSocketDisconnect:
         logger.info("WS client disconnected for sensor %d", sensor_id)
     except Exception as e:
